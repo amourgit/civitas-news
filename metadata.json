@@ -1,0 +1,6 @@
+{
+  "name": "CIVITAS NEWS",
+  "description": "Plateforme nationale de débat, consultation, sondage et participation citoyenne et académique",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

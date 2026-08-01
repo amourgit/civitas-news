@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+    <script>
+      (function() {
+        try {
+          if (typeof window !== 'undefined') {
+            var _fetch = window.fetch;
+            var fetchProp = {
+              get: function() { return _fetch; },
+              set: function(v) { _fetch = v; },
+              configurable: true,
+              enumerable: true
+            };
+            try { Object.defineProperty(window, 'fetch', fetchProp); } catch (e) {}
+            try {
+              if (window.Window && window.Window.prototype) {
+                Object.defineProperty(window.Window.prototype, 'fetch', fetchProp);
+              }
+            } catch (e) {}
+            try {
+              if (typeof globalThis !== 'undefined') {
+                Object.defineProperty(globalThis, 'fetch', fetchProp);
+              }
+            } catch (e) {}
+          }
+        } catch (e) {
+          console.warn('Failed to patch fetch:', e);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
