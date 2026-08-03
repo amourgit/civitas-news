@@ -4,6 +4,8 @@ import { Sujet } from '../../../types/global.types';
 import { Badge } from '../../../components/ui/Badge';
 import { Avatar } from '../../../components/ui/Avatar';
 import { RichTextViewer } from '../../../components/ui/RichTextViewer';
+import { ExpandableDescription } from '../../../components/ui/ExpandableDescription';
+import { TikTokHeartButton } from '../../../components/ui/TikTokHeartButton';
 import { useSujetReactions } from '../hooks/useSujetReactions';
 import { formatDateRelative } from '../../../lib/formatDate';
 import { formatNumber } from '../../../lib/formatNumber';
@@ -111,9 +113,7 @@ export const SujetCard: React.FC<SujetCardProps> = ({ sujet, onUpdate }) => {
             </Link>
 
             {/* Description */}
-            <div className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 leading-snug">
-              <RichTextViewer content={sujet.description} compact />
-            </div>
+            <ExpandableDescription content={sujet.description} maxChars={130} />
 
             {/* Tags */}
             {sujet.tags && sujet.tags.length > 0 && (
@@ -257,17 +257,12 @@ export const SujetCard: React.FC<SujetCardProps> = ({ sujet, onUpdate }) => {
       {/* 3. Action Toolbar Footer */}
       <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => react('coeur')}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-bold transition-all ${
-              sujet.userReaction === 'coeur'
-                ? 'bg-red-500 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:text-red-500'
-            }`}
-          >
-            <Heart className={`w-3 h-3 ${sujet.userReaction === 'coeur' ? 'fill-current' : ''}`} />
-            <span>Soutenir ({totalReactions})</span>
-          </button>
+          <TikTokHeartButton
+            newsId={sujet.id}
+            initialCount={sujet.stats?.reactions?.coeur || 0}
+            userReaction={sujet.userReaction}
+            onUpdate={onUpdate}
+          />
 
           <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium hidden sm:inline">
             <MessageSquare className="w-3 h-3 inline mr-1 text-[#5B4DFF]" />

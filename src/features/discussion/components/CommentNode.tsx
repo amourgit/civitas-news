@@ -71,7 +71,7 @@ export const CommentNode: React.FC<CommentNodeProps> = ({
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="mt-2 ml-5 sm:ml-10 pl-3 sm:pl-4 border-l-2 border-[#5B4DFF] dark:border-sky-500">
+            <div className="mt-1.5 ml-2.5 sm:ml-8 pl-2 sm:pl-3 border-l-2 border-[#5B4DFF] dark:border-sky-500">
               <CommentComposer
                 onSubmit={(text) => {
                   if (onSubmitReply) {
@@ -91,10 +91,10 @@ export const CommentNode: React.FC<CommentNodeProps> = ({
 
       {/* Expand/Collapse toggle button for nested replies */}
       {children.length > 0 && (
-        <div className="ml-10 sm:ml-12">
+        <div className="ml-5 sm:ml-9">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#0079D3] dark:text-sky-400 hover:underline py-1 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#0079D3] dark:text-sky-400 hover:underline py-0.5 transition-colors"
           >
             {isExpanded ? (
               <>
@@ -126,10 +126,10 @@ export const CommentNode: React.FC<CommentNodeProps> = ({
             className="overflow-hidden"
           >
             <div
-              className={`mt-2 space-y-3 ${
+              className={`mt-1.5 space-y-2 ${
                 depth < 4
-                  ? 'ml-5 sm:ml-10 pl-3 sm:pl-4 border-l-2 border-gray-200 dark:border-gray-800'
-                  : 'ml-2 sm:ml-4 pl-2.5 sm:pl-3 border-l-2 border-gray-300 dark:border-gray-700'
+                  ? 'ml-2.5 sm:ml-8 pl-2 sm:pl-3 border-l-2 border-gray-200 dark:border-gray-800'
+                  : 'ml-1.5 sm:ml-4 pl-1.5 sm:pl-2.5 border-l-2 border-gray-300 dark:border-gray-700'
               }`}
             >
               {children.map((child) => (

@@ -21,7 +21,7 @@ export const NewsGrid: React.FC<NewsGridProps> = ({
 
   if (isLoading) {
     return (
-      <div className="w-full flex flex-col space-y-2">
+      <div className="w-full flex flex-col space-y-4 sm:space-y-6">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-col gap-2 rounded-none p-2 bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-800">
             <Skeleton variant="card" height={100} />
@@ -45,7 +45,7 @@ export const NewsGrid: React.FC<NewsGridProps> = ({
   }
 
   return (
-    <div className="w-full flex flex-col space-y-2">
+    <div className="w-full flex flex-col space-y-4 sm:space-y-6">
       {list.map((item) => (
         <NewsCard key={item.id} news={item} />
       ))}

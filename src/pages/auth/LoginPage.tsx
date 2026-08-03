@@ -124,8 +124,8 @@ export default function LoginPage() {
     <div className="max-w-xl mx-auto space-y-6 py-6 sm:py-10 px-3 sm:px-4">
       {/* Header Banner */}
       <div className="text-center space-y-3">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#5B4DFF] via-[#0078d4] to-cyan-400 mx-auto flex items-center justify-center text-white font-extrabold text-2xl shadow-xl shadow-purple-500/20">
-          C
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-white via-gray-50 to-gray-100 dark:from-gray-800 dark:via-gray-800/80 dark:to-gray-900 mx-auto flex items-center justify-center text-white font-extrabold text-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+          <img src="/images/logo-civitas-color-simple-removebg-preview.png" alt="CIVITAS Logo" className="w-10 h-10 object-contain drop-shadow-sm" />
         </div>
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white font-display">

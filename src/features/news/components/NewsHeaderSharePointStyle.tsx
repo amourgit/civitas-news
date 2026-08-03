@@ -5,7 +5,6 @@ import { useNewsReactions } from '../hooks/useNewsReactions';
 import { RichTextViewer } from '../../../components/ui/RichTextViewer';
 import {
   Plus,
-  Star,
   Share2,
   MessageSquarePlus,
   Settings,
@@ -58,7 +57,6 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
 
   const { react } = useNewsReactions(currentItem.id, onUpdate);
   const { copy } = useClipboard();
-  const [isFollowing, setIsFollowing] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
@@ -70,12 +68,6 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
     if (success) {
       toast('success', 'Lien copié !', 'Le lien de la news a été copié dans votre presse-papier.');
     }
-  };
-
-  const toggleFollow = () => {
-    const nextState = !isFollowing;
-    setIsFollowing(nextState);
-    toast('info', nextState ? 'Abonnement activé' : 'Désabonné', nextState ? 'Vous recevrez les notifications pour cette news.' : 'Vous ne recevrez plus les notifications.');
   };
 
   const handleReportSubmit = (e: React.FormEvent) => {
@@ -96,8 +88,8 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
 
   return (
     <div className="w-full rounded-none overflow-hidden shadow-sm border border-emerald-900/10 mb-2 bg-white dark:bg-[#101538] text-xs">
-      {/* 1. Sub-navigation Category Bar (Dark Teal) */}
-      <div className="bg-[#005a42] text-white px-1 sm:px-2 py-0.5 flex items-center gap-1.5 sm:gap-3 overflow-x-auto no-scrollbar text-[11px]">
+      {/* 1. Sub-navigation Category Bar (Dark Purple) */}
+      <div className="bg-[#3b2d91] text-white px-1 sm:px-2 py-0.5 flex items-center gap-1.5 sm:gap-3 overflow-x-auto no-scrollbar text-[11px]">
         <span className="font-semibold px-1.5 py-0.5 rounded-none bg-white/20 whitespace-nowrap">
           {currentItem.categorie.nom}
         </span>
@@ -109,7 +101,7 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
         </Link>
         {currentItem.province && (
           <span className="opacity-90 whitespace-nowrap flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-emerald-300" />
+            <MapPin className="w-3 h-3 text-purple-300" />
             {currentItem.province}
           </span>
         )}
@@ -118,15 +110,15 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
         </span>
       </div>
 
-      {/* 2. Main News Title Header Banner (Emerald Green) */}
-      <div className="bg-[#00785a] text-white px-1.5 sm:px-3 py-1.5 sm:py-2 flex flex-wrap items-center justify-between gap-1.5">
+      {/* 2. Main News Title Header Banner (Purple) */}
+      <div className="bg-[#5B4DFF] text-white px-1.5 sm:px-3 py-1.5 sm:py-2 flex flex-wrap items-center justify-between gap-1.5">
         {/* Left: Hexagon Logo & Title */}
         <div className="flex items-center gap-1.5 max-w-2xl">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-none bg-emerald-800 border border-emerald-400/40 flex items-center justify-center shrink-0 shadow-sm text-white font-extrabold text-xs sm:text-sm">
-            <Hexagon className="w-4 h-4 text-emerald-200 fill-emerald-600/30" />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-none bg-purple-800 border border-purple-400/40 flex items-center justify-center shrink-0 shadow-sm text-white font-extrabold text-xs sm:text-sm">
+            <Hexagon className="w-4 h-4 text-purple-200 fill-purple-600/30" />
           </div>
           <div>
-            <div className="flex items-center gap-1 text-[10px] text-emerald-200 uppercase tracking-wider font-semibold leading-none mb-0.5">
+            <div className="flex items-center gap-1 text-[10px] text-purple-200 uppercase tracking-wider font-semibold leading-none mb-0.5">
               <span>NEWS #{currentItem.id.slice(-4).toUpperCase()}</span>
               <span>•</span>
               <span className="capitalize">{currentItem.type}</span>
@@ -139,14 +131,6 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
 
         {/* Right: Quick Action Links */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0 text-xs text-white">
-          <button
-            onClick={toggleFollow}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded-none hover:bg-white/15 transition-colors font-medium cursor-pointer"
-          >
-            <Star className={`w-3.5 h-3.5 ${isFollowing ? 'fill-amber-300 text-amber-300' : 'text-white'}`} />
-            <span className="hidden sm:inline">{isFollowing ? 'Suivi' : 'Non suivi'}</span>
-          </button>
-
           <button
             onClick={handleShareCopy}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded-none hover:bg-white/15 transition-colors font-medium cursor-pointer"
@@ -165,7 +149,7 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
             onClick={onScrollToComments}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded-none hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-100 font-medium transition-colors cursor-pointer"
           >
-            <MessageSquarePlus className="w-3 h-3 text-[#00785a]" />
+            <MessageSquarePlus className="w-3 h-3 text-[#5B4DFF]" />
             <span>+ Nouveau commentaire</span>
           </button>
 
@@ -214,7 +198,7 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
                       setShowReactions(false);
                     }}
                     className={`p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-none transition-transform hover:scale-110 ${
-                      currentItem.userReaction === type ? 'bg-emerald-50 dark:bg-emerald-950 ring-1 ring-emerald-500' : ''
+                      currentItem.userReaction === type ? 'bg-purple-50 dark:bg-purple-950 ring-1 ring-purple-500' : ''
                     }`}
                     title={EMOJI_MAP[type].label}
                   >
@@ -252,14 +236,14 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
       </div>
 
       {/* 4. Main Hero Media Visual & Context Grid */}
-      <div className="relative w-full overflow-hidden bg-slate-900 text-white min-h-[160px] sm:min-h-[220px]">
+      <div className="relative w-full overflow-hidden bg-slate-900 text-white min-h-[250px] sm:min-h-[350px]">
         {/* Main Background Image */}
         <img
           src={currentItem.image}
           alt={currentItem.titre}
-          className="w-full h-44 sm:h-64 object-cover opacity-40"
+          className="w-full h-[250px] sm:h-[350px] object-cover opacity-80"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
 
         {/* Floating Hero Content Overlay */}
         <div className="absolute inset-0 p-3 sm:p-5 flex flex-col justify-end max-w-5xl">
@@ -267,14 +251,14 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
             <RichTextViewer content={currentItem.description} compact />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-emerald-300">
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-purple-300">
             <span className="flex items-center gap-1.5 bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm border border-white/10">
               <Avatar src={currentItem.auteur.avatar} name={currentItem.auteur.nomAffiche} size="sm" className="w-4 h-4 rounded-full" />
               <span>Par {currentItem.auteur.nomAffiche}</span>
             </span>
             {currentItem.organisation && (
               <span className="flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm border border-white/10">
-                <Building2 className="w-3 h-3 text-emerald-400" />
+                <Building2 className="w-3 h-3 text-purple-400" />
                 {currentItem.organisation.nom}
               </span>
             )}
@@ -288,42 +272,42 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
       </div>
 
       {/* 5. Bottom Teal Quick-Info Bar */}
-      <div className="bg-[#00785a] text-white p-2 sm:p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+      <div className="bg-[#5B4DFF] text-white p-2 sm:p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
         <div className="flex items-start gap-1.5">
-          <Calendar className="w-4 h-4 text-emerald-200 shrink-0 mt-0.5" />
+          <Calendar className="w-4 h-4 text-purple-200 shrink-0 mt-0.5" />
           <div>
             <div className="font-semibold leading-none">Publication</div>
-            <div className="text-emerald-100 opacity-90 text-[10px] mt-0.5">
+            <div className="text-purple-100 opacity-90 text-[10px] mt-0.5">
               {formatDateFull(currentItem.createdAt)}
             </div>
           </div>
         </div>
 
         <div className="flex items-start gap-1.5">
-          <Clock className="w-4 h-4 text-emerald-200 shrink-0 mt-0.5" />
+          <Clock className="w-4 h-4 text-purple-200 shrink-0 mt-0.5" />
           <div>
             <div className="font-semibold leading-none">Statut de la publication</div>
-            <div className="text-emerald-100 opacity-90 text-[10px] mt-0.5">
+            <div className="text-purple-100 opacity-90 text-[10px] mt-0.5">
               {currentItem.dateFin ? `Clôture le ${formatDateFull(currentItem.dateFin)}` : 'Debat ouvert aux citoyens'}
             </div>
           </div>
         </div>
 
         <div className="flex items-start gap-1.5">
-          <MessageSquarePlus className="w-4 h-4 text-emerald-200 shrink-0 mt-0.5" />
+          <MessageSquarePlus className="w-4 h-4 text-purple-200 shrink-0 mt-0.5" />
           <div>
             <div className="font-semibold leading-none">Participations</div>
-            <div className="text-emerald-100 opacity-90 text-[10px] mt-0.5">
+            <div className="text-purple-100 opacity-90 text-[10px] mt-0.5">
               {currentItem.stats.commentaires} commentaires • {currentItem.stats.vues} vues
             </div>
           </div>
         </div>
 
         <div className="flex items-start gap-1.5">
-          <MapPin className="w-4 h-4 text-emerald-200 shrink-0 mt-0.5" />
+          <MapPin className="w-4 h-4 text-purple-200 shrink-0 mt-0.5" />
           <div>
             <div className="font-semibold leading-none">Portée territoriale</div>
-            <div className="text-emerald-100 opacity-90 text-[10px] mt-0.5">
+            <div className="text-purple-100 opacity-90 text-[10px] mt-0.5">
               {currentItem.province || 'Nationale & Interuniversitaire'}
             </div>
           </div>

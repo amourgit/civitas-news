@@ -2,6 +2,7 @@ import { Commentaire, TypeReaction } from '../types/global.types';
 import { apiClient } from './api.client';
 
 export const INITIAL_COMMENTS: Commentaire[] = [
+  // NEWS 1
   {
     id: 'comm-101',
     newsId: 'news-1',
@@ -15,8 +16,10 @@ export const INITIAL_COMMENTS: Commentaire[] = [
       badges: [{ id: 'b-sec', nom: 'Officiel', icone: '🏛️', description: 'Compte Officiel' }],
       stats: { contributions: 120, votes: 300, commentaires: 450 },
     },
+    typeContenu: 'texte',
     contenu: "⚠️ **Note Officielle de la Commission Transports** : La première phase de consultation restera ouverte jusqu'au 31 août. Merci à tous les représentants des délégués de partager cette page au sein de leurs amphithéâtres.",
-    reactions: { coeur: 45, jaime: 88, bravo: 62, youpi: 12, wow: 8, jaimepas: 0 },
+    reactions: { '👍': 88, '❤️': 45, '👏': 62, '🎉': 12, '😮': 8 },
+    userReactions: ['👍'],
     votes: 34,
     estEpingle: true,
     estReponseAcceptee: false,
@@ -36,13 +39,38 @@ export const INITIAL_COMMENTS: Commentaire[] = [
       badges: [{ id: 'b-active', nom: 'Contributeur Actif', icone: '🔥', description: '+20 commentaires' }],
       stats: { contributions: 18, votes: 45, commentaires: 29 },
     },
+    typeContenu: 'texte',
     contenu: "Excellente initiative ! Mais qu'en est-il des étudiants vivant dans la périphérie Est ? La ligne 12 actuelle s'arrête à 18h30, ce qui empêche d'assister aux TP du soir.",
-    reactions: { coeur: 12, jaime: 28, bravo: 5, youpi: 2, wow: 3, jaimepas: 0 },
+    reactions: { '👍': 28, '❤️': 12, '👏': 5, '🎉': 2 },
     votes: 19,
     estEpingle: false,
     estReponseAcceptee: true,
     estAdministrateur: false,
     createdAt: '2026-07-16T11:20:00Z',
+  },
+  {
+    id: 'comm-102-audio',
+    newsId: 'news-1',
+    sujetId: 'news-1',
+    reponseA: 'comm-102',
+    auteur: {
+      id: 'usr-student-77',
+      username: 'marc_tshibangu',
+      nomAffiche: 'Marc Tshibangu (Représentant étudiant)',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      role: 'etudiant',
+      badges: [{ id: 'b-rep', nom: 'Délégué', icone: '🎙️', description: 'Porteur de parole' }],
+      stats: { contributions: 14, votes: 32, commentaires: 21 },
+    },
+    typeContenu: 'audio',
+    audioDuration: 28,
+    contenu: '🎙️ Message vocal (00:28)',
+    reactions: { '❤️': 14, '👏': 9, '🔥': 5 },
+    votes: 16,
+    estEpingle: false,
+    estReponseAcceptee: false,
+    estAdministrateur: false,
+    createdAt: '2026-07-16T11:45:00Z',
   },
   {
     id: 'comm-103',
@@ -58,82 +86,19 @@ export const INITIAL_COMMENTS: Commentaire[] = [
       badges: [],
       stats: { contributions: 45, votes: 120, commentaires: 88 },
     },
+    typeContenu: 'texte',
     contenu: "@jean_paul_m C'est exactement le point 2 de la négociation ! Nous avons proposé une extension jusqu'à 21h30 pour la ligne 12.",
-    reactions: { coeur: 8, jaime: 15, bravo: 10, youpi: 4, wow: 1, jaimepas: 0 },
+    reactions: { '👍': 15, '❤️': 8, '👏': 10 },
     votes: 14,
     estEpingle: false,
     estReponseAcceptee: false,
     estAdministrateur: false,
     createdAt: '2026-07-16T12:05:00Z',
   },
+
+  // NEWS 2
   {
-    id: 'comm-104',
-    newsId: 'news-1',
-    sujetId: 'news-1',
-    reponseA: 'comm-103',
-    auteur: {
-      id: 'usr-student-88',
-      username: 'claire_mwamba',
-      nomAffiche: 'Claire Mwamba (Déléguée L3)',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [{ id: 'b-rep', nom: 'Représentante', icone: '🎓', description: 'Déléguée Amphi' }],
-      stats: { contributions: 32, votes: 95, commentaires: 41 },
-    },
-    contenu: "Merci pour la précision ! Est-ce que le tarif étudiant subventionné à 50% sera également garanti sur ces lignes tardives ?",
-    reactions: { coeur: 10, jaime: 22, bravo: 4, youpi: 1, wow: 0, jaimepas: 0 },
-    votes: 11,
-    estEpingle: false,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-16T13:15:00Z',
-  },
-  {
-    id: 'comm-105',
-    newsId: 'news-1',
-    sujetId: 'news-1',
-    reponseA: 'comm-104',
-    auteur: {
-      id: 'usr-org-01',
-      username: 'mutuelle_nationale',
-      nomAffiche: 'Confédération des Mutuelles Étudiantes',
-      avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&auto=format&fit=crop&q=80',
-      role: 'organisation',
-      badges: [],
-      stats: { contributions: 45, votes: 120, commentaires: 88 },
-    },
-    contenu: "Oui absolument Claire ! Le ministère a confirmé que la carte étudiante restera valable sur toutes les navettes jusqu'à la fermeture.",
-    reactions: { coeur: 18, jaime: 30, bravo: 12, youpi: 8, wow: 2, jaimepas: 0 },
-    votes: 24,
-    estEpingle: false,
-    estReponseAcceptee: true,
-    estAdministrateur: false,
-    createdAt: '2026-07-16T14:00:00Z',
-  },
-  {
-    id: 'comm-106',
-    newsId: 'news-1',
-    sujetId: 'news-1',
-    reponseA: 'comm-102',
-    auteur: {
-      id: 'usr-student-77',
-      username: 'patrick_k',
-      nomAffiche: 'Patrick Kimbembe',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [],
-      stats: { contributions: 8, votes: 15, commentaires: 12 },
-    },
-    contenu: "Je confirme, la ligne 12 est toujours saturée vers 18h. Il faudrait au moins deux bus articulés supplémentaires.",
-    reactions: { coeur: 4, jaime: 11, bravo: 2, youpi: 0, wow: 0, jaimepas: 0 },
-    votes: 8,
-    estEpingle: false,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-16T15:10:00Z',
-  },
-  {
-    id: 'comm-107',
+    id: 'comm-201',
     newsId: 'news-2',
     sujetId: 'news-2',
     auteur: {
@@ -145,8 +110,9 @@ export const INITIAL_COMMENTS: Commentaire[] = [
       badges: [{ id: 'b-active', nom: 'Contributeur Actif', icone: '🔥', description: '+20 commentaires' }],
       stats: { contributions: 18, votes: 45, commentaires: 29 },
     },
-    contenu: "Pour la numérisation des examens, une période de test d'au moins 6 mois est indispensable pour éviter les pannes techniques lors des épreuves.",
-    reactions: { coeur: 15, jaime: 34, bravo: 11, youpi: 2, wow: 0, jaimepas: 0 },
+    typeContenu: 'texte',
+    contenu: "Pour le réseau WiFi 7 dans les amphis, est-ce que la bande de fréquence permettra le streaming de cours en direct sans coupures lors des heures de pointe ?",
+    reactions: { '👍': 34, '❤️': 15, '👏': 11 },
     votes: 29,
     estEpingle: false,
     estReponseAcceptee: false,
@@ -154,48 +120,172 @@ export const INITIAL_COMMENTS: Commentaire[] = [
     createdAt: '2026-07-17T08:30:00Z',
   },
   {
-    id: 'comm-108',
+    id: 'comm-202-audio',
     newsId: 'news-2',
     sujetId: 'news-2',
-    reponseA: 'comm-107',
+    reponseA: 'comm-201',
     auteur: {
-      id: 'usr-admin-sec',
-      username: 'secretariat_general',
-      nomAffiche: 'Secrétariat Général Académique',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+      id: 'usr-prof-arlette',
+      username: 'dr_arlette',
+      nomAffiche: 'Dr. Arlette Kasa (Fac. Sciences)',
+      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
       role: 'administrateur',
-      badges: [{ id: 'b-sec', nom: 'Officiel', icone: '🏛️', description: 'Compte Officiel' }],
-      stats: { contributions: 120, votes: 300, commentaires: 450 },
+      badges: [{ id: 'b-prof', nom: 'Enseignante', icone: '👩‍🏫', description: 'Responsable Réseau' }],
+      stats: { contributions: 52, votes: 110, commentaires: 89 },
     },
-    contenu: "Nous avons prévu une session blanche (examen blanc de simulation) fin novembre pour tester toute l'infrastructure serveur et fibre optique.",
-    reactions: { coeur: 22, jaime: 41, bravo: 19, youpi: 5, wow: 3, jaimepas: 0 },
+    typeContenu: 'audio',
+    audioDuration: 42,
+    contenu: '🎙️ Message vocal (00:42)',
+    reactions: { '❤️': 25, '👍': 40, '👏': 18 },
     votes: 38,
-    estEpingle: false,
+    estEpingle: true,
     estReponseAcceptee: true,
     estAdministrateur: true,
     createdAt: '2026-07-17T09:15:00Z',
   },
+
+  // NEWS 3
   {
-    id: 'comm-109',
-    newsId: 'news-2',
-    sujetId: 'news-2',
-    reponseA: 'comm-108',
+    id: 'comm-301',
+    newsId: 'news-3',
+    sujetId: 'news-3',
     auteur: {
-      id: 'usr-student-88',
-      username: 'claire_mwamba',
-      nomAffiche: 'Claire Mwamba (Déléguée L3)',
+      id: 'usr-student-[#01]',
+      username: 'christian_l',
+      nomAffiche: 'Christian Luboya (Polytech L2)',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      role: 'etudiant',
+      badges: [],
+      stats: { contributions: 12, votes: 20, commentaires: 15 },
+    },
+    typeContenu: 'texte',
+    contenu: "Est-ce qu'il faut obligatoirement s'inscrire en avance pour les simulations d'entretiens avec les DRH au Forum ?",
+    reactions: { '👍': 18, '❤️': 6 },
+    votes: 12,
+    estEpingle: false,
+    estReponseAcceptee: false,
+    estAdministrateur: false,
+    createdAt: '2026-07-21T10:00:00Z',
+  },
+  {
+    id: 'comm-302-audio',
+    newsId: 'news-3',
+    sujetId: 'news-3',
+    reponseA: 'comm-301',
+    auteur: {
+      id: 'usr-student-01',
+      username: 'association_avenir',
+      nomAffiche: 'Association Avenir Jeunesse',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      role: 'organisation',
+      badges: [{ id: 'b3', nom: 'Partenaire', icone: '🎯', description: 'Organisateur' }],
+      stats: { contributions: 30, votes: 90, commentaires: 45 },
+    },
+    typeContenu: 'audio',
+    audioDuration: 19,
+    contenu: '🎙️ Message vocal (00:19)',
+    reactions: { '👍': 22, '❤️': 11, '🎉': 8 },
+    votes: 21,
+    estEpingle: false,
+    estReponseAcceptee: true,
+    estAdministrateur: false,
+    createdAt: '2026-07-21T10:30:00Z',
+  },
+
+  // NEWS 4
+  {
+    id: 'comm-401',
+    newsId: 'news-4',
+    sujetId: 'news-4',
+    auteur: {
+      id: 'usr-student-02',
+      username: 'samuel_n',
+      nomAffiche: 'Samuel N. (Délégué Général)',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      role: 'etudiant',
+      badges: [{ id: 'b4', nom: 'Délégué Élu', icone: '📢', description: 'Porteur de pétition' }],
+      stats: { contributions: 22, votes: 140, commentaires: 110 },
+    },
+    typeContenu: 'texte',
+    contenu: "Mobilisons-nous tous pour la signature ! Plus de 4 000 signatures récoltées en 48 heures. Le pouvoir de décision appartient aux étudiants réguliers.",
+    reactions: { '❤️': 95, '👍': 120, '👏': 89, '🔥': 42 },
+    votes: 88,
+    estEpingle: true,
+    estReponseAcceptee: false,
+    estAdministrateur: false,
+    createdAt: '2026-07-18T16:00:00Z',
+  },
+  {
+    id: 'comm-402-audio',
+    newsId: 'news-4',
+    sujetId: 'news-4',
+    auteur: {
+      id: 'usr-student-dorcas',
+      username: 'dorcas_k',
+      nomAffiche: 'Dorcas Kabeya (Campus Nord)',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       role: 'etudiant',
-      badges: [{ id: 'b-rep', nom: 'Représentante', icone: '🎓', description: 'Déléguée Amphi' }],
-      stats: { contributions: 32, votes: 95, commentaires: 41 },
+      badges: [],
+      stats: { contributions: 5, votes: 14, commentaires: 8 },
     },
-    contenu: "Super nouvelle ! Pouvez-vous aussi nous confirmer si des ordinateurs seront fournis pour les étudiants n'ayant pas d'ordinateur portable ?",
-    reactions: { coeur: 14, jaime: 28, bravo: 8, youpi: 2, wow: 1, jaimepas: 0 },
+    typeContenu: 'audio',
+    audioDuration: 35,
+    contenu: '🎙️ Message vocal (00:35)',
+    reactions: { '❤️': 31, '👍': 45, '👏': 20 },
+    votes: 30,
+    estEpingle: false,
+    estReponseAcceptee: false,
+    estAdministrateur: false,
+    createdAt: '2026-07-18T17:10:00Z',
+  },
+
+  // NEWS 5
+  {
+    id: 'comm-501',
+    newsId: 'news-5',
+    sujetId: 'news-5',
+    auteur: {
+      id: 'usr-student-kevin',
+      username: 'kevin_ndombe',
+      nomAffiche: 'Kevin Ndombe (Master Informatique)',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      role: 'etudiant',
+      badges: [],
+      stats: { contributions: 15, votes: 40, commentaires: 22 },
+    },
+    typeContenu: 'texte',
+    contenu: "L'IA ne doit pas remplacer le raisonnement critique, mais servir d'assistant documentaire. La charte doit encourager la transparence.",
+    reactions: { '👍': 48, '❤️': 19, '👏': 15 },
+    votes: 27,
+    estEpingle: false,
+    estReponseAcceptee: false,
+    estAdministrateur: false,
+    createdAt: '2026-07-22T10:15:00Z',
+  },
+
+  // NEWS 6
+  {
+    id: 'comm-601',
+    newsId: 'news-6',
+    sujetId: 'news-6',
+    auteur: {
+      id: 'usr-student-sarah',
+      username: 'sarah_ilunga',
+      nomAffiche: 'Sarah Ilunga (L1 Médecine)',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      role: 'etudiant',
+      badges: [],
+      stats: { contributions: 3, votes: 8, commentaires: 4 },
+    },
+    typeContenu: 'audio',
+    audioDuration: 24,
+    contenu: '🎙️ Message vocal (00:24)',
+    reactions: { '👍': 35, '❤️': 18, '👏': 12 },
     votes: 19,
     estEpingle: false,
     estReponseAcceptee: false,
     estAdministrateur: false,
-    createdAt: '2026-07-17T10:00:00Z',
+    createdAt: '2026-07-28T09:30:00Z',
   },
 ];
 
@@ -219,14 +309,26 @@ export const commentsService = {
   },
 
   addComment: async (newsId: string, contenu: string, auteur: Commentaire['auteur'], reponseA?: string): Promise<Commentaire> => {
+    const isAudio = contenu.startsWith('🎙️ Message vocal');
+    let audioDuration = 15;
+    if (isAudio) {
+      const match = contenu.match(/\((\d{2}):(\d{2})\)/);
+      if (match) {
+        audioDuration = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+      }
+    }
+
     const newComm: Commentaire = {
       id: `comm-${Date.now()}`,
       newsId,
       sujetId: newsId,
       auteur,
+      typeContenu: isAudio ? 'audio' : 'texte',
+      audioDuration: isAudio ? audioDuration : undefined,
       contenu,
       reponseA,
-      reactions: { coeur: 0, jaime: 0, bravo: 0, youpi: 0, wow: 0, jaimepas: 0 },
+      reactions: {},
+      userReactions: [],
       votes: 1,
       userVoteStatus: 'up',
       estEpingle: false,
@@ -242,7 +344,6 @@ export const commentsService = {
     commentsMemory = commentsMemory.map((c) => {
       if (c.id === commentId) {
         if (c.userVoteStatus === direction) {
-          // remove vote
           return {
             ...c,
             votes: c.votes + (direction === 'up' ? -1 : 1),
@@ -262,13 +363,30 @@ export const commentsService = {
     return commentsMemory.find((c) => c.id === commentId) || null;
   },
 
-  reactToComment: async (commentId: string, reaction: TypeReaction): Promise<Commentaire | null> => {
+  reactToComment: async (commentId: string, reaction: TypeReaction | string): Promise<Commentaire | null> => {
     commentsMemory = commentsMemory.map((c) => {
       if (c.id === commentId) {
-        const count = c.reactions[reaction] || 0;
+        const reactionsMap = { ...(c.reactions || {}) };
+        const userReactions = [...(c.userReactions || [])];
+        const index = userReactions.indexOf(reaction);
+
+        if (index > -1) {
+          // Toggle OFF
+          userReactions.splice(index, 1);
+          reactionsMap[reaction] = Math.max(0, (reactionsMap[reaction] || 1) - 1);
+          if (reactionsMap[reaction] <= 0) {
+            delete reactionsMap[reaction];
+          }
+        } else {
+          // Toggle ON
+          userReactions.push(reaction);
+          reactionsMap[reaction] = (reactionsMap[reaction] || 0) + 1;
+        }
+
         return {
           ...c,
-          reactions: { ...c.reactions, [reaction]: count + 1 },
+          reactions: reactionsMap,
+          userReactions,
         };
       }
       return c;

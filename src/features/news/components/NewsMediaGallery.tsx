@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SujetMediaItem } from '../../../types/global.types';
-import { MediaDetailModal, extractYouTubeId } from './MediaDetailModal';
+import { MediaDetailModal, extractYouTubeId } from '../../sujets/components/MediaDetailModal';
 import {
   Video,
   Image as ImageIcon,

@@ -13,11 +13,15 @@ const monthlyData = [
   { month: 'Août', participation: 64500, consultations: 150, adhésion: 96 },
 ];
 
-export const BentoAreaEvolution: React.FC = () => {
+interface BentoAreaEvolutionProps {
+  className?: string;
+}
+
+export const BentoAreaEvolution: React.FC<BentoAreaEvolutionProps> = ({ className }) => {
   const [timeframe, setTimeframe] = useState<'mensuel' | 'trimestriel'>('mensuel');
 
   return (
-    <div className="bg-white dark:bg-[#1A1F4D] border border-gray-200/80 dark:border-gray-800 rounded-2xl p-4 shadow-sm h-full flex flex-col justify-between">
+    <div className={`bg-white dark:bg-[#1A1F4D] border border-gray-200/80 dark:border-gray-800 p-4 shadow-sm h-full flex flex-col justify-between ${className ?? 'rounded-2xl'}`}>
       {/* Header & Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-800/80 pb-2.5">
         <div>

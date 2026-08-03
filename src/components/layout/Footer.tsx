@@ -7,9 +7,12 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-x-6 gap-y-1 leading-tight">
         {/* Left: Brand, Copyright & Official Site */}
         <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-gray-600 dark:text-gray-400">
-          <span className="font-display font-extrabold text-gray-900 dark:text-white tracking-tight">
-            CIVITAS<span className="text-[#7B61FF]">.NEWS</span>
-          </span>
+          <div className="flex items-center gap-1.5 font-display">
+            <img src="/images/logo-civitas-color-simple-removebg-preview.png" alt="CIVITAS Logo" className="w-5 h-5 object-contain drop-shadow-sm" />
+            <span className="font-display font-extrabold text-gray-900 dark:text-white tracking-tight">
+              CIVITAS<span className="text-[#7B61FF]">.NEWS</span>
+            </span>
+          </div>
           <span className="text-gray-400 dark:text-gray-600">|</span>
           <span className="text-gray-500">© {new Date().getFullYear()}</span>
           <span className="text-gray-400 dark:text-gray-600">|</span>

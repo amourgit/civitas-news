@@ -57,8 +57,8 @@ export const AdminSidebar: React.FC = () => {
       <div className="space-y-6">
         {/* Brand */}
         <div className="flex items-center gap-3 px-2 py-3 border-b border-gray-200 dark:border-gray-800">
-          <div className="w-8 h-8 rounded-xl bg-[#5B4DFF] text-white flex items-center justify-center font-bold">
-            A
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center">
+            <img src="/images/logo-civitas-color-simple-removebg-preview.png" alt="CIVITAS Logo" className="w-6 h-6 object-contain" />
           </div>
           <div>
             <div className="font-extrabold text-gray-900 dark:text-white text-sm">CIVITAS Admin</div>

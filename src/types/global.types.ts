@@ -140,11 +140,15 @@ export interface Commentaire {
   newsId: string;
   sujetId?: string;
   auteur: Utilisateur;
+  typeContenu?: 'texte' | 'audio';
+  audioUrl?: string;
+  audioDuration?: number; // duration in seconds
   contenu: string;
   media?: MediaJoint[];
   reponseA?: string; // id du commentaire parent
   mentions?: string[];
-  reactions: Record<TypeReaction, number>;
+  reactions: Record<string, number>;
+  userReactions?: string[];
   votes: number;
   userVoteStatus?: 'up' | 'down' | null;
   estEpingle: boolean;
@@ -213,27 +217,52 @@ export type Sujet = News;
 
 export interface NotificationAction {
   label: string;
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'purple' | 'pink' | 'blue' | 'success';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'purple' | 'pink' | 'blue' | 'success' | 'warning';
   actionKey: string;
+  url?: string;
+  toastTitle?: string;
+  toastMessage?: string;
+  toastType?: 'success' | 'warning' | 'info' | 'error' | 'purple';
 }
+
+export type NotificationFormat =
+  | 'actualite'
+  | 'sondage'
+  | 'annonce'
+  | 'alerte'
+  | 'consultation'
+  | 'decision'
+  | 'reforme'
+  | 'rapport';
 
 export interface NotificationItem {
   id: string;
-  type: 'commentaire' | 'mention' | 'reponse' | 'nouveau_vote' | 'nouveau_sondage' | 'nouvelle_news' | 'nouveau_sujet' | 'invitation' | 'review' | 'rejet';
-  contenu: string;
+  format: NotificationFormat;
+  titre: string;
+  description: string;
+  categorie: {
+    nom: string;
+    couleur: string;
+    icone?: string;
+  };
   lien: string;
   lu: boolean;
   createdAt: string;
+  tag?: string; // e.g. 'RÉF-2026-01', 'TN38'
+  urgente?: boolean;
+  categoryTab?: 'all' | 'direct' | 'news' | 'sondages' | 'alertes';
+  notice?: string;
+  actions?: NotificationAction[];
+
+  // Backwards compatibility optional fields
+  type?: string;
+  contenu?: string;
   auteur?: {
     nom: string;
     avatar?: string;
   };
   badgeType?: 'comment' | 'goal' | 'rejected' | 'invite' | 'review' | 'push' | 'mention';
-  tag?: string;
-  categoryTab?: 'direct' | 'comments' | 'review' | 'ready';
   workedTime?: string;
-  notice?: string;
-  actions?: NotificationAction[];
 }
 
 export interface Signalement {

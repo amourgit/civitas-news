@@ -6,6 +6,7 @@ import { NewsFiltres } from '../features/news/components/NewsFiltres';
 import { NewsType } from '../types/global.types';
 import { BarChart2, ShieldCheck, CheckSquare, MessageSquare, TrendingUp } from 'lucide-react';
 import { NetflixHeroCarousel } from '../components/home/NetflixHeroCarousel';
+import { HomeStatsPreviewSection } from '../components/home/HomeStatsPreviewSection';
 import { CivitasAmbitionsSection } from '../components/home/CivitasAmbitionsSection';
 
 export default function HomePage() {
@@ -41,6 +42,9 @@ export default function HomePage() {
           </div>
         ))}
       </section>
+
+      {/* Section Statistiques Preview */}
+      <HomeStatsPreviewSection />
 
       {/* Section Autonome CIVITAS & Ambitions */}
       <CivitasAmbitionsSection />

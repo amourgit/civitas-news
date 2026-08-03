@@ -1,24 +1,44 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { INITIAL_NEWS } from '../../../services/news.service';
 
-interface CategoryData {
-  name: string;
-  value: number;
-  percentage: number;
-  color: string;
+interface BentoDonutCategoriesProps {
+  className?: string;
 }
 
-const data: CategoryData[] = [
-  { name: 'Infrastructures & Route', value: 38500, percentage: 32, color: '#5B4DFF' },
-  { name: 'Santé & Protection Sociale', value: 26400, percentage: 22, color: '#34D399' },
-  { name: 'Éducation & Formation', value: 21600, percentage: 18, color: '#F59E0B' },
-  { name: 'Numérique & Connectivité', value: 18000, percentage: 15, color: '#3B82F6' },
-  { name: 'Économie & Emploi', value: 15500, percentage: 13, color: '#EC4899' },
-];
+const CATEGORY_COLORS = ['#5B4DFF', '#34D399', '#F59E0B', '#3B82F6', '#EC4899', '#10B981', '#6366F1'];
 
-export const BentoDonutCategories: React.FC = () => {
+export const BentoDonutCategories: React.FC<BentoDonutCategoriesProps> = ({ className }) => {
+  const allNews = INITIAL_NEWS;
+
+  // Aggregate news & interactions by category
+  const categoryMap: Record<string, { count: number; votes: number; color: string }> = {};
+
+  allNews.forEach((item) => {
+    const catName = item.categorie?.nom || 'Général';
+    const votes = (item.stats?.votes || 0) + (item.stats?.commentaires || 0) + (item.stats?.partages || 0);
+    const catColor = item.categorie?.couleur || CATEGORY_COLORS[Object.keys(categoryMap).length % CATEGORY_COLORS.length];
+
+    if (!categoryMap[catName]) {
+      categoryMap[catName] = { count: 0, votes: 0, color: catColor };
+    }
+    categoryMap[catName].count += 1;
+    categoryMap[catName].votes += votes;
+  });
+
+  const totalVotes = Object.values(categoryMap).reduce((acc, curr) => acc + curr.votes, 0) || 1;
+  const totalNewsCount = allNews.length;
+
+  const data = Object.entries(categoryMap).map(([name, val]) => ({
+    name,
+    value: val.votes,
+    count: val.count,
+    percentage: Math.round((val.votes / totalVotes) * 100) || 1,
+    color: val.color,
+  }));
+
   return (
-    <div className="bg-white dark:bg-[#1A1F4D] border border-gray-200/80 dark:border-gray-800 rounded-2xl p-4 shadow-sm h-full flex flex-col justify-between">
+    <div className={`bg-white dark:bg-[#1A1F4D] border border-gray-200/80 dark:border-gray-800 p-4 shadow-sm h-full flex flex-col justify-between ${className ?? 'rounded-2xl'}`}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800/80 pb-2.5">
         <div>
@@ -26,11 +46,11 @@ export const BentoDonutCategories: React.FC = () => {
             Répartition par Thématique
           </h3>
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            Consultations citoyennes actives (2026)
+            Poids des thèmes dans les actualités et publications (2026)
           </p>
         </div>
         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/50">
-          120k Sujets
+          {totalNewsCount} News Actives
         </span>
       </div>
 
@@ -61,13 +81,13 @@ export const BentoDonutCategories: React.FC = () => {
                   fontSize: '11px',
                   color: '#fff',
                 }}
-                formatter={(value: any) => [`${Number(value).toLocaleString()} votes`, 'Volume']}
+                formatter={(value: any) => [`${Number(value).toLocaleString()} engagements`, 'Volume']}
               />
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-xs font-black text-gray-900 dark:text-white">100%</span>
-            <span className="text-[9px] text-gray-400 font-semibold uppercase">National</span>
+            <span className="text-xs font-black text-gray-900 dark:text-white">{totalNewsCount}</span>
+            <span className="text-[9px] text-gray-400 font-semibold uppercase">News</span>
           </div>
         </div>
 
@@ -86,7 +106,7 @@ export const BentoDonutCategories: React.FC = () => {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-gray-400 text-[10px] hidden xl:inline">
-                  {item.value.toLocaleString()}
+                  {item.count} news
                 </span>
                 <span className="font-extrabold text-gray-900 dark:text-white text-[11px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
                   {item.percentage}%
@@ -99,3 +119,4 @@ export const BentoDonutCategories: React.FC = () => {
     </div>
   );
 };
+

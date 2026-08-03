@@ -125,45 +125,10 @@ export const Header: React.FC = () => {
               <motion.div
                 layoutId="civitas-logo-box"
                 transition={{ duration: 0.4 }}
-                className="w-7 h-7 rounded-lg bg-gradient-to-br from-white/20 to-white/5 border border-white/30 backdrop-blur-md flex items-center justify-center shadow-sm shrink-0"
+                className="shrink-0 flex items-center justify-center"
                 title="CIVITAS NEWS"
               >
-                <svg
-                  className="w-4 h-4 text-white"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M12 2L3 7V12C3 17.52 6.84 22.74 12 24C17.16 22.74 21 17.52 21 12V7L12 2Z"
-                    fill="url(#civitas-logo-grad)"
-                    fillOpacity="0.85"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M12 8C10.3431 8 9 9.34315 9 11C9 12.6569 10.3431 14 12 14C13.6569 14 15 12.6569 15 11"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="12" cy="11" r="1.5" fill="white" />
-                  <defs>
-                    <linearGradient
-                      id="civitas-logo-grad"
-                      x1="3"
-                      y1="2"
-                      x2="21"
-                      y2="24"
-                      gradientUnits="userSpaceOnUse"
-                    >
-                      <stop stopColor="#5B4DFF" />
-                      <stop offset="1" stopColor="#00E5FF" />
-                    </linearGradient>
-                  </defs>
-                </svg>
+                <img src="/images/ChatGPT_Image_10_juin_2026__02_11_18-removebg-preview.png" alt="Logo CIVITAS" className="w-8 h-8 object-contain drop-shadow-sm" />
               </motion.div>
 
               <div className="flex items-center gap-1.5 font-display">
@@ -248,44 +213,9 @@ export const Header: React.FC = () => {
                 <motion.div
                   layoutId="civitas-logo-box"
                   transition={{ duration: 0.4 }}
-                  className="w-11 h-11 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-white/25 via-white/10 to-white/5 border border-white/40 backdrop-blur-md flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform shrink-0"
+                  className="shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform"
                 >
-                  <svg
-                    className="w-6 h-6 sm:w-9 sm:h-9 text-white"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M12 2L3 7V12C3 17.52 6.84 22.74 12 24C17.16 22.74 21 17.52 21 12V7L12 2Z"
-                      fill="url(#civitas-logo-grad-lg)"
-                      fillOpacity="0.9"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M12 8C10.3431 8 9 9.34315 9 11C9 12.6569 10.3431 14 12 14C13.6569 14 15 12.6569 15 11"
-                      stroke="white"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                    <circle cx="12" cy="11" r="1.5" fill="white" />
-                    <defs>
-                      <linearGradient
-                        id="civitas-logo-grad-lg"
-                        x1="3"
-                        y1="2"
-                        x2="21"
-                        y2="24"
-                        gradientUnits="userSpaceOnUse"
-                      >
-                        <stop stopColor="#5B4DFF" />
-                        <stop offset="1" stopColor="#00E5FF" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
+                  <img src="/images/ChatGPT_Image_10_juin_2026__02_11_18-removebg-preview.png" alt="Logo CIVITAS" className="w-16 h-16 sm:w-24 sm:h-24 object-contain drop-shadow-lg" />
                 </motion.div>
 
                 <div className="flex flex-col">

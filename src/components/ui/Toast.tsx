@@ -1,6 +1,6 @@
 import React from 'react';
 import { useToast } from '../../hooks/useToast';
-import { CheckCircle2, AlertTriangle, Info, XCircle, X } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Info, XCircle, Sparkles, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const ToastContainer: React.FC = () => {
@@ -11,6 +11,15 @@ export const ToastContainer: React.FC = () => {
     warning: <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />,
     error: <XCircle className="w-5 h-5 text-red-500 shrink-0" />,
     info: <Info className="w-5 h-5 text-blue-500 shrink-0" />,
+    purple: <Sparkles className="w-5 h-5 text-purple-500 shrink-0" />,
+  };
+
+  const borderStyles = {
+    success: 'border-emerald-200 dark:border-emerald-800/70 bg-emerald-50/80 dark:bg-emerald-950/60',
+    warning: 'border-amber-200 dark:border-amber-800/70 bg-amber-50/80 dark:bg-amber-950/60',
+    error: 'border-rose-200 dark:border-rose-800/70 bg-rose-50/80 dark:bg-rose-950/60',
+    info: 'border-blue-200 dark:border-blue-800/70 bg-blue-50/80 dark:bg-blue-950/60',
+    purple: 'border-purple-200 dark:border-purple-800/70 bg-purple-50/80 dark:bg-purple-950/60',
   };
 
   return (
@@ -22,16 +31,18 @@ export const ToastContainer: React.FC = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
-            className="pointer-events-auto flex items-start gap-3 p-4 bg-white dark:bg-[#1A1F4D] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800"
+            className={`pointer-events-auto flex items-start gap-3 p-4 rounded-2xl shadow-xl border backdrop-blur-md ${
+              borderStyles[t.type] || 'bg-white dark:bg-[#1A1F4D] border-gray-100 dark:border-gray-800'
+            }`}
           >
             {icons[t.type]}
             <div className="flex-1 text-sm">
-              <h4 className="font-semibold text-gray-900 dark:text-white">{t.title}</h4>
-              {t.message && <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{t.message}</p>}
+              <h4 className="font-extrabold text-gray-900 dark:text-white font-display text-xs sm:text-sm">{t.title}</h4>
+              {t.message && <p className="text-gray-600 dark:text-gray-300 text-xs mt-0.5 leading-snug">{t.message}</p>}
             </div>
             <button
               onClick={() => removeToast(t.id)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded-lg transition-colors"
             >
               <X className="w-4 h-4" />
             </button>

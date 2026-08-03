@@ -2,8 +2,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { News, Sujet } from '../../../types/global.types';
 import { Badge } from '../../../components/ui/Badge';
-import { Avatar } from '../../../components/ui/Avatar';
 import { RichTextViewer } from '../../../components/ui/RichTextViewer';
+import { ExpandableDescription } from '../../../components/ui/ExpandableDescription';
+import { TikTokHeartButton } from '../../../components/ui/TikTokHeartButton';
 import { useNewsReactions } from '../hooks/useNewsReactions';
 import { formatDateRelative } from '../../../lib/formatDate';
 import { formatNumber } from '../../../lib/formatNumber';
@@ -12,7 +13,6 @@ import {
   CheckSquare,
   Heart,
   MapPin,
-  Building2,
   Eye,
   TrendingUp,
   BarChart2,
@@ -88,34 +88,15 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
         {/* Main Column (Title, Description, Tags, Author info, AND Media thumbnails stacked vertically) */}
         <div className="flex-1 flex flex-col justify-between space-y-2 min-w-0">
           <div className="space-y-1.5">
-            {/* Author info */}
-            <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
-              <Avatar src={newsItem.auteur.avatar} name={newsItem.auteur.nomAffiche} size="sm" className="w-5 h-5 rounded-full" />
-              <span className="font-semibold text-gray-900 dark:text-gray-200 truncate">
-                {newsItem.auteur.nomAffiche}
-              </span>
-              {newsItem.organisation && (
-                <>
-                  <span>•</span>
-                  <span className="flex items-center gap-0.5 text-[#5B4DFF] font-medium truncate">
-                    <Building2 className="w-3 h-3" />
-                    {newsItem.organisation.nom}
-                  </span>
-                </>
-              )}
-            </div>
-
             {/* Title */}
             <Link to={`/news/${newsItem.slug}`}>
-              <h3 className="text-sm sm:text-base font-extrabold text-gray-900 dark:text-white font-display hover:text-[#5B4DFF] transition-colors leading-tight line-clamp-2">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 dark:text-white font-display hover:text-[#5B4DFF] transition-colors leading-tight line-clamp-2">
                 {newsItem.titre}
               </h3>
             </Link>
 
             {/* Description */}
-            <div className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 leading-snug">
-              <RichTextViewer content={newsItem.description} compact />
-            </div>
+            <ExpandableDescription content={newsItem.description} maxChars={130} />
 
             {/* Tags */}
             {newsItem.tags && newsItem.tags.length > 0 && (
@@ -259,17 +240,12 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
       {/* 3. Action Toolbar Footer */}
       <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => react('coeur')}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-bold transition-all ${
-              newsItem.userReaction === 'coeur'
-                ? 'bg-red-500 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:text-red-500'
-            }`}
-          >
-            <Heart className={`w-3 h-3 ${newsItem.userReaction === 'coeur' ? 'fill-current' : ''}`} />
-            <span>Soutenir ({totalReactions})</span>
-          </button>
+          <TikTokHeartButton
+            newsId={newsItem.id}
+            initialCount={newsItem.stats?.reactions?.coeur || 0}
+            userReaction={newsItem.userReaction}
+            onUpdate={onUpdate}
+          />
 
           <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium hidden sm:inline">
             <MessageSquare className="w-3 h-3 inline mr-1 text-[#5B4DFF]" />

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Users, CheckSquare, MessageSquare, TrendingUp, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { Users, CheckSquare, MessageSquare, TrendingUp, ShieldCheck, ArrowUpRight, Newspaper } from 'lucide-react';
+import { INITIAL_NEWS } from '../../../services/news.service';
 
 interface MetricItem {
   label: string;
@@ -11,37 +12,44 @@ interface MetricItem {
 }
 
 export const BentoMetricsRow: React.FC = () => {
+  const allNews = INITIAL_NEWS;
+
+  const totalVotes = allNews.reduce((acc, curr) => acc + (curr.stats?.votes || 0), 0);
+  const totalComments = allNews.reduce((acc, curr) => acc + (curr.stats?.commentaires || 0), 0);
+  const totalShares = allNews.reduce((acc, curr) => acc + (curr.stats?.partages || 0), 0);
+  const totalViews = allNews.reduce((acc, curr) => acc + (curr.stats?.vues || 0), 0);
+
   const metrics: MetricItem[] = [
     {
-      label: 'Citoyens Engagés',
-      value: '124,580',
+      label: 'Publications & News',
+      value: allNews.length.toLocaleString(),
       change: '+14.2%',
       isPositive: true,
-      subtext: 'vs mois dernier',
-      icon: <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
+      subtext: `${totalViews.toLocaleString()} vues cumulées`,
+      icon: <Newspaper className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
     },
     {
-      label: 'Votes Enregistrés',
-      value: '482,910',
+      label: 'Votes & Suffrages',
+      value: totalVotes.toLocaleString(),
       change: '+22.8%',
       isPositive: true,
-      subtext: '34,210 cette semaine',
+      subtext: 'Participation civique vérifiée',
       icon: <CheckSquare className="w-4 h-4 text-purple-600 dark:text-purple-400" />,
     },
     {
-      label: 'Débats & Contributions',
-      value: '89,340',
+      label: 'Débats & Commentaires',
+      value: totalComments.toLocaleString(),
       change: '+8.5%',
       isPositive: true,
-      subtext: 'Modération AI 99.4%',
+      subtext: 'Modération IA à 99.4%',
       icon: <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
     },
     {
-      label: 'Consultations Clôturées',
-      value: '1,240',
-      change: '+12.0%',
+      label: 'Partages Citoyens',
+      value: totalShares.toLocaleString(),
+      change: '+18.0%',
       isPositive: true,
-      subtext: '88% suivies d\'effet',
+      subtext: 'Diffusion multi-canaux',
       icon: <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
     },
   ];
@@ -86,3 +94,4 @@ export const BentoMetricsRow: React.FC = () => {
     </div>
   );
 };
+

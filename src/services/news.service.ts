@@ -45,7 +45,7 @@ Face à l'augmentation des coûts de déplacement pour rejoindre les campus et l
       type: 'Mutuelle Nationale',
     },
     etablissement: { id: 'etab-1', nom: 'Université Centrale & Réseau National', province: 'Kinshasa' },
-    categorie: { id: 'cat-transports', nom: 'Vie Étudiante & Transports', couleur: '#5B4DFF', icone: 'Bus' },
+    categorie: { id: 'cat-transports', nom: 'Transports & Mobilité', couleur: '#5B4DFF', icone: 'Bus' },
     tags: ['Transports', 'Bourses', 'Campus', 'Mobilité', 'Consultation2026'],
     province: 'Kinshasa',
     lieu: 'Grand Amphithéâtre & En Ligne',
@@ -178,7 +178,7 @@ Le Conseil Pédagogique et Technologique présente le **Plan Campus Connecté 20
       stats: { contributions: 68, votes: 95, commentaires: 150 },
     },
     etablissement: { id: 'etab-2', nom: 'Faculté Polytechnique & Sciences', province: 'Haut-Katanga' },
-    categorie: { id: 'cat-numerique', nom: 'Innovation & IA Académique', couleur: '#7B61FF', icone: 'Cpu' },
+    categorie: { id: 'cat-numerique', nom: 'Innovation & IA', couleur: '#7B61FF', icone: 'Cpu' },
     tags: ['Numérique', 'WiFi7', 'IntelligenceArtificielle', 'Polytech', 'Matériel'],
     province: 'Haut-Katanga',
     lieu: 'Amphi Sciences II',
@@ -240,7 +240,7 @@ Le Conseil Pédagogique et Technologique présente le **Plan Campus Connecté 20
       stats: { contributions: 30, votes: 90, commentaires: 45 },
     },
     etablissement: { id: 'etab-3', nom: 'Palais des Expositions & Campus Universitaires', province: 'Nord-Kivu' },
-    categorie: { id: 'cat-emploi', nom: 'Orientation & Carrière', couleur: '#16A34A', icone: 'Briefcase' },
+    categorie: { id: 'cat-emploi', nom: 'Carrière & Emploi', couleur: '#16A34A', icone: 'Briefcase' },
     tags: ['Emploi', 'Stages', 'Forum2026', 'Hackathon', 'Recrutement'],
     province: 'Nord-Kivu',
     lieu: 'Palais des Congrès & En Ligne',
@@ -271,7 +271,7 @@ Le Conseil Pédagogique et Technologique présente le **Plan Campus Connecté 20
 3. L'intégration de produits frais et locaux issus de l'agriculture biologique régionale.`,
     image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80',
     auteur: {
-      id: 'usr-student-[#5B4DFF]',
+      id: 'usr-student-02',
       username: 'samuel_n',
       nomAffiche: 'Samuel N. (Délégué Général)',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
@@ -280,7 +280,7 @@ Le Conseil Pédagogique et Technologique présente le **Plan Campus Connecté 20
       stats: { contributions: 22, votes: 140, commentaires: 110 },
     },
     etablissement: { id: 'etab-4', nom: 'Réseau National des Restaurants Universitaires', province: 'Kongo-Central' },
-    categorie: { id: 'cat-sante', nom: 'Santé & Alimentation', couleur: '#F59E0B', icone: 'Utensils' },
+    categorie: { id: 'cat-sante', nom: 'Alimentation & Santé', couleur: '#F59E0B', icone: 'Utensils' },
     tags: ['RestoU', 'Alimentation', 'Pétition', 'Santé', 'Budget'],
     province: 'Kongo-Central',
     createdAt: '2026-07-18T15:00:00Z',
@@ -316,6 +316,107 @@ Le Conseil Pédagogique et Technologique présente le **Plan Campus Connecté 20
       },
     ],
   },
+  {
+    id: 'news-5',
+    slug: 'sondage-intelligence-artificielle-ethique-universite',
+    type: 'sondage',
+    titre: 'Sondage Étudiant : Usage de l’IA Générative dans les Travaux Académiques',
+    description: 'Donnez votre avis sur le cadre éthique et la charte d’utilisation de ChatGPT et Gemini dans la rédaction des mémoires et évaluations.',
+    contenu: `### Enquête Nationale sur l'Intelligence Artificielle à l'Université
+
+Le Ministère de l'Enseignement Supérieur sollicite les étudiants pour élaborer la première **Charte Citoyenne de l'IA Académique**.
+
+#### Questions clés abordées :
+1. Faut-il autoriser l'IA comme outil d'assistance à la recherche documentée ?
+2. Quelle transparence exiger dans la mention des sources générées par l'IA ?`,
+    image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+    auteur: {
+      id: 'usr-admin-01',
+      username: 'prof_moussa',
+      nomAffiche: 'Prof. Moussa Diop',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      role: 'administrateur',
+      badges: [{ id: 'b2', nom: 'Doyen des Sciences', icone: '🎓', description: 'Administrateur académique' }],
+      stats: { contributions: 68, votes: 95, commentaires: 150 },
+    },
+    etablissement: { id: 'etab-2', nom: 'Faculté Polytechnique & Sciences', province: 'Haut-Katanga' },
+    categorie: { id: 'cat-numerique', nom: 'Innovation & IA', couleur: '#7B61FF', icone: 'Cpu' },
+    tags: ['Sondage', 'IA', 'Éthique', 'Étudiants', 'Pédagogie'],
+    province: 'Kinshasa',
+    createdAt: '2026-07-22T09:00:00Z',
+    updatedAt: '2026-07-31T14:00:00Z',
+    statut: 'publie',
+    visibilite: 'public',
+    stats: {
+      vues: 3410,
+      commentaires: 95,
+      reactions: { coeur: 540, jaime: 780, bravo: 210, youpi: 90, wow: 110, jaimepas: 8 },
+      votes: 1950,
+      partages: 320,
+    },
+    sondages: [
+      {
+        id: 'sondage-105',
+        newsId: 'news-5',
+        sujetId: 'news-5',
+        titre: 'Autorisation de l\'IA aux examens',
+        question: 'Pensez-vous que l\'utilisation des assistants IA doit être encadrée ou librement autorisée ?',
+        typeVote: 'unique',
+        anonymat: true,
+        visibiliteResultat: 'instantane',
+        statut: 'actif',
+        dateDebut: '2026-07-22T00:00:00Z',
+        dateFin: '2026-09-30T23:59:59Z',
+        totalVotes: 1950,
+        choix: [
+          { id: 'c1', libelle: 'Encadrée par une charte éthique claire', nombreVotes: 1250, pourcentage: 64.1 },
+          { id: 'c2', libelle: 'Librement autorisée sans restriction', nombreVotes: 510, pourcentage: 26.2 },
+          { id: 'c3', libelle: 'Strictement interdite pour les devoirs notés', nombreVotes: 190, pourcentage: 9.7 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'news-6',
+    slug: 'annonce-lancement-bourses-excellence-2026',
+    type: 'annonce',
+    titre: 'Annonce Officielle : Ouverture des Candidatures aux Bourses d’Excellence 2026-2027',
+    description: 'Publication des critères d’éligibilité, pièces à fournir et calendrier de dépôt pour les 5 000 nouvelles bourses d’études supérieures.',
+    contenu: `### Lancement de la Campagne de Bourses d'Excellence 2026
+
+La Direction Générale des Bourses et Prêts Étudiants informe l'ensemble des étudiants de l'ouverture du guichet unique de dépôt des dossiers.
+
+#### Conditions générales :
+- Être inscrit régulièrement dans un établissement supérieur agréé.
+- Avoir validé son année précédente avec au moins 70% de réussite.
+- Dépôt exclusivement en ligne via la plateforme CIVITAS.`,
+    image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1200&auto=format&fit=crop&q=80',
+    auteur: {
+      id: 'usr-org-01',
+      username: 'mutuelle_nationale',
+      nomAffiche: 'Confédération des Mutuelles Étudiantes',
+      avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&auto=format&fit=crop&q=80',
+      role: 'organisation',
+      badges: [{ id: 'b1', nom: 'Organisation Agrée', icone: '🏛️', description: 'Représentant étudiant officiel' }],
+      stats: { contributions: 45, votes: 120, commentaires: 88 },
+    },
+    etablissement: { id: 'etab-1', nom: 'Université Centrale & Réseau National', province: 'Kinshasa' },
+    categorie: { id: 'cat-emploi', nom: 'Carrière & Emploi', couleur: '#16A34A', icone: 'Briefcase' },
+    tags: ['Bourses', 'Annonce', 'Excellence', 'Inscription', 'Finances'],
+    province: 'Kinshasa',
+    createdAt: '2026-07-28T08:00:00Z',
+    updatedAt: '2026-07-31T10:00:00Z',
+    statut: 'publie',
+    visibilite: 'public',
+    stats: {
+      vues: 6120,
+      commentaires: 115,
+      reactions: { coeur: 720, jaime: 910, bravo: 650, youpi: 240, wow: 180, jaimepas: 3 },
+      votes: 0,
+      partages: 510,
+    },
+    sondages: [],
+  },
 ];
 
 export const INITIAL_SUJETS = INITIAL_NEWS;
@@ -344,6 +445,10 @@ export const newsService = {
       );
     }
     return list;
+  },
+
+  getNewsSync: (): News[] => {
+    return newsMemory;
   },
 
   getNewsList: async (params?: { category?: string; type?: NewsType; search?: string; province?: string }): Promise<News[]> => {
@@ -389,6 +494,22 @@ export const newsService = {
             stats: { ...s.stats, reactions: newReactions },
           };
         }
+      }
+      return s;
+    });
+    return (await newsService.getNewsBySlug(newsId)) || newsMemory[0];
+  },
+
+  incrementHeart: async (newsId: string, count: number = 1): Promise<News> => {
+    newsMemory = newsMemory.map((s) => {
+      if (s.id === newsId || s.slug === newsId) {
+        const newReactions = { ...s.stats.reactions };
+        newReactions.coeur = (newReactions.coeur || 0) + count;
+        return {
+          ...s,
+          userReaction: 'coeur',
+          stats: { ...s.stats, reactions: newReactions },
+        };
       }
       return s;
     });

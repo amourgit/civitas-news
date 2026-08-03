@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 export interface ToastMessage {
   id: string;
-  type: 'success' | 'error' | 'info' | 'warning';
+  type: 'success' | 'error' | 'info' | 'warning' | 'purple';
   title: string;
   message?: string;
   duration?: number;
@@ -51,5 +51,6 @@ export function useToast() {
     error: (title: string, msg?: string) => toast('error', title, msg),
     info: (title: string, msg?: string) => toast('info', title, msg),
     warning: (title: string, msg?: string) => toast('warning', title, msg),
+    purple: (title: string, msg?: string) => toast('purple', title, msg),
   };
 }

@@ -1,7 +1,5 @@
 import React from 'react';
-import { BarChart2, Download, RefreshCw, Sparkles, Filter } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { toast } from '../hooks/useToast';
+import { BarChart2, Sparkles } from 'lucide-react';
 import { useSetSideContent } from '../context/SideContentContext';
 import { GooglePartnerWidget } from '../components/widgets/GooglePartnerWidget';
 import { AirtelGabonWidget } from '../components/widgets/AirtelGabonWidget';
@@ -37,49 +35,22 @@ export default function StatistiquesPage() {
     []
   );
 
-  const handleExport = () => {
-    toast('success', 'Rapport analytique complet (PDF/CSV) généré avec succès.');
-  };
-
   return (
     <div className="space-y-5 pb-10">
-      {/* Top Banner & Action Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-800 p-4 rounded-2xl shadow-sm">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-[#5B4DFF]">
-              <BarChart2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-black text-gray-900 dark:text-white font-display tracking-tight">
-                Statistiques & Analyse Civique
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Visualisation temps réel de l'engagement populaire et de la démographie des consultations
-              </p>
-            </div>
+      {/* Top Banner */}
+      <div className="bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-800 p-4 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-[#5B4DFF]">
+            <BarChart2 className="w-5 h-5" />
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => toast('info', 'Données mises à jour à l\'instant.')}
-            className="text-xs gap-1.5 rounded-xl border-gray-200 dark:border-gray-700"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Actualiser
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleExport}
-            className="text-xs gap-1.5 rounded-xl bg-[#5B4DFF] hover:bg-purple-700 text-white"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Exporter Rapport
-          </Button>
+          <div>
+            <h1 className="text-lg font-black text-gray-900 dark:text-white font-display tracking-tight">
+              Statistiques & Analyse Civique
+            </h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Visualisation temps réel de l'engagement populaire et de la démographie des consultations
+            </p>
+          </div>
         </div>
       </div>
 
@@ -106,7 +77,7 @@ export default function StatistiquesPage() {
         </div>
       </div>
 
-      {/* Row 4: Radial KPIs + Top Sujets */}
+      {/* Row 4: Radial KPIs + Top News */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-5">
           <BentoRadialKPIs />

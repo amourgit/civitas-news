@@ -18,18 +18,18 @@ export default function NotificationsPage() {
   const navigate = useNavigate();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotificationsStore();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'direct' | 'comments' | 'review' | 'ready'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'news' | 'sondages' | 'alertes' | 'direct'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [visibleCount, setVisibleCount] = useState(8);
 
   // Category Tabs Configuration
   const tabs = [
-    { id: 'all', label: 'Toutes' },
-    { id: 'direct', label: 'Direct' },
-    { id: 'comments', label: 'Commentaires' },
-    { id: 'review', label: 'Soumis pour examen' },
-    { id: 'ready', label: 'Prêt pour Consultation' },
+    { id: 'all', label: 'Toutes les notifications' },
+    { id: 'news', label: 'Actualités & Décrets' },
+    { id: 'sondages', label: 'Sondages & Votes' },
+    { id: 'alertes', label: 'Alertes & Santé' },
+    { id: 'direct', label: 'Consultations Citoyennes' },
   ];
 
   // Filtering Logic
@@ -41,19 +41,21 @@ export default function NotificationsPage() {
           return false;
         }
         if (!notif.categoryTab) {
-          if (activeTab === 'comments' && notif.type !== 'commentaire') return false;
-          if (activeTab === 'direct' && notif.type !== 'mention' && notif.type !== 'invitation') return false;
-          if (activeTab === 'review' && notif.type !== 'review') return false;
+          if (activeTab === 'news' && notif.format !== 'actualite' && notif.format !== 'reforme') return false;
+          if (activeTab === 'sondages' && notif.format !== 'sondage') return false;
+          if (activeTab === 'alertes' && notif.format !== 'alerte' && notif.format !== 'annonce') return false;
+          if (activeTab === 'direct' && notif.format !== 'consultation') return false;
         }
       }
 
       // 2. Search query filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const contentMatch = notif.contenu.toLowerCase().includes(query);
-        const authorMatch = notif.auteur?.nom.toLowerCase().includes(query);
-        const tagMatch = notif.tag?.toLowerCase().includes(query);
-        if (!contentMatch && !authorMatch && !tagMatch) {
+        const titleMatch = (notif.titre || '').toLowerCase().includes(query);
+        const descMatch = (notif.description || notif.contenu || '').toLowerCase().includes(query);
+        const categoryMatch = (notif.categorie?.nom || '').toLowerCase().includes(query);
+        const tagMatch = (notif.tag || '').toLowerCase().includes(query);
+        if (!titleMatch && !descMatch && !categoryMatch && !tagMatch) {
           return false;
         }
       }
@@ -192,7 +194,7 @@ export default function NotificationsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher par utilisateur, tag (ex: TN38, FA-1) ou mot-clé..."
+            placeholder="Rechercher par titre, thème (ex: Transports, IA), format ou référence (ex: RÉF-TRANS-2026)..."
             className="w-full pl-9 pr-8 py-2 rounded-xl bg-gray-50 dark:bg-[#121638] text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400 border border-gray-200/80 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5B4DFF]/50 transition-all"
           />
           {searchQuery && (
