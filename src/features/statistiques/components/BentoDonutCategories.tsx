@@ -1,6 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { INITIAL_NEWS } from '../../../services/news.service';
+import { useNewsList } from '../hooks/useNewsList';
 
 interface BentoDonutCategoriesProps {
   className?: string;
@@ -9,7 +9,7 @@ interface BentoDonutCategoriesProps {
 const CATEGORY_COLORS = ['#5B4DFF', '#34D399', '#F59E0B', '#3B82F6', '#EC4899', '#10B981', '#6366F1'];
 
 export const BentoDonutCategories: React.FC<BentoDonutCategoriesProps> = ({ className }) => {
-  const allNews = INITIAL_NEWS;
+  const { news: allNews } = useNewsList();
 
   // Aggregate news & interactions by category
   const categoryMap: Record<string, { count: number; votes: number; color: string }> = {};

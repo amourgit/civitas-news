@@ -1,19 +1,19 @@
 // services/UpdateService.ts
 import { BaseHttpService } from "./base/BaseHttpService";
-import { OptimisticUpdateMetadata } from "../types/update.types";
-import { ConflictResolutionStrategy } from "../types/update.types";
-import { PutRequestConfig } from "../types/update.types";
-import { ApiResponse } from "../types/http.types";
-import { RequestSanitizer } from "../utils/sanitizer";
-import { UrlBuilder } from "../utils/urlBuilder";
-import { ApiError } from "../errors/ApiError";
-import { ValidationError } from "../errors/ApiError";
-import { NetworkError } from "../errors/ApiError";
+import type {
+  OptimisticUpdateMetadata,
+  ConflictResolutionStrategy,
+  PutRequestConfig,
+  PatchRequestConfig,
+  BulkUpdateConfig,
+  ConflictInfo,
+  JsonPatchOperation,
+} from "./types/update.types";
+import type { ApiResponse } from "./types/http.types";
+import { RequestSanitizer } from "./utils/sanitizer";
+import { UrlBuilder } from "./utils/urlBuilder";
+import { ApiError, ValidationError, NetworkError, ConflictError } from "./errors";
 import { z } from "zod";
-import { ConflictError } from "../errors/UpdateError";
-import { PatchRequestConfig } from "../types/update.types";
-import { BulkUpdateConfig } from "../types/update.types";
-import { ConflictInfo } from "../types/update.types";
 
 export class UpdateService extends BaseHttpService {
     private readonly optimisticUpdates = new Map<string, OptimisticUpdateMetadata>();
@@ -434,7 +434,10 @@ export class UpdateService extends BaseHttpService {
       const originalData = await this.getCurrentData(endpoint, resourceId);
       
       // Calculer les données optimistes
-      const optimisticData = method === 'PUT' ? data : { ...originalData, ...data };
+      const optimisticData =
+        method === 'PUT'
+          ? data
+          : { ...(originalData as Record<string, unknown>), ...(data as Record<string, unknown>) };
       
       // Stocker dans le cache optimiste
       this.optimisticUpdates.set(optimisticId, {
@@ -467,39 +470,39 @@ export class UpdateService extends BaseHttpService {
     }
   
     private async buildUpdateHeaders(
-      headers: HeadersInit,
+      headers: Record<string, string>,
       requireAuth: boolean,
       etag?: string,
       lastModified?: string
-    ): Promise<HeadersInit> {
-      const requestHeaders = { ...this.defaultHeaders, ...headers };
+    ): Promise<Record<string, string>> {
+      const requestHeaders: Record<string, string> = { ...this.defaultHeaders, ...headers };
   
       if (requireAuth) {
         const token = await this.getAuthToken();
         if (token) {
-          (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+          requestHeaders['Authorization'] = `Bearer ${token}`;
         }
       }
   
       // Headers pour la gestion des conflits
       if (etag) {
-        (requestHeaders as Record<string, string>)['If-Match'] = etag;
+        requestHeaders['If-Match'] = etag;
       }
   
       if (lastModified) {
-        (requestHeaders as Record<string, string>)['If-Unmodified-Since'] = lastModified;
+        requestHeaders['If-Unmodified-Since'] = lastModified;
       }
   
       return requestHeaders;
     }
   
     private async buildPatchHeaders(
-      headers: HeadersInit,
+      headers: Record<string, string>,
       requireAuth: boolean,
       patchFormat: string,
       etag?: string,
       lastModified?: string
-    ): Promise<HeadersInit> {
+    ): Promise<Record<string, string>> {
       const baseHeaders = await this.buildUpdateHeaders(headers, requireAuth, etag, lastModified);
       
       // Content-Type spécifique selon le format de patch
@@ -564,18 +567,19 @@ export class UpdateService extends BaseHttpService {
     private async mergeWithExisting(
       url: string,
       newData: unknown,
-      headers: HeadersInit
+      headers: Record<string, string>
     ): Promise<unknown> {
       try {
-        // Récupérer les données existantes
+        // Récupérer les données existantes (sans Content-Type, une requête GET n'a pas de corps)
+        const { 'Content-Type': _omitted, ...getHeaders } = headers;
         const currentResponse = await fetch(url, {
           method: 'GET',
-          headers: { ...headers, 'Content-Type': undefined } as HeadersInit
+          headers: getHeaders
         });
   
         if (currentResponse.ok) {
           const currentData = await currentResponse.json();
-          return { ...currentData, ...newData };
+          return { ...(currentData as Record<string, unknown>), ...(newData as Record<string, unknown>) };
         }
       } catch (error) {
         console.warn('Could not merge with existing data:', error);
@@ -666,7 +670,7 @@ export class UpdateService extends BaseHttpService {
     ): Promise<ApiResponse<TResponse>> {
       try {
         const clientData = 'body' in config ? config.body : config.patches;
-        const mergedData = { ...serverData, ...clientData };
+        const mergedData = { ...(serverData as Record<string, unknown>), ...(clientData as Record<string, unknown>) };
         
         // Re-tenter la mise à jour avec les données fusionnées
         const newEtag = conflictInfo.serverEtag;
@@ -758,10 +762,11 @@ export class UpdateService extends BaseHttpService {
     }
   
     private async validateData<T>(
-      schema: z.ZodSchema<T>,
+      schema: z.ZodSchema<T> | undefined,
       data: unknown,
       endpoint: string
     ): Promise<T> {
+      if (!schema) return data as T;
       try {
         return await schema.parseAsync(data);
       } catch (error) {
@@ -797,12 +802,6 @@ export class UpdateService extends BaseHttpService {
       return new ApiError('Unknown error occurred', 500, 'UNKNOWN_ERROR', endpoint);
     }
   
-    private async getAuthToken(): Promise<string | null> {
-      if (typeof window !== 'undefined') {
-        return this.getToken();
-      }
-      return null;
-    }
   
     /**
      * Méthodes de gestion publiques

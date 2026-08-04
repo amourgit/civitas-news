@@ -1,43 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Utilisateur } from '../types/global.types';
+import type { Utilisateur } from '../types/global.types';
+import { MOCK_ANONYMOUS_USER, MOCK_STUDENT_USER, MOCK_ADMIN_USER } from '../services/api/mocks/auth.mock';
+import { hasPermission, hasAnyPermission, canOnResource } from '../lib/permissions/hasPermission';
+import type { Permission } from '../lib/permissions/permissions.catalog';
 
-export const MOCK_ANONYMOUS_USER: Utilisateur = {
-  id: 'anon-user-001',
-  username: 'anonyme_citoyen',
-  nomAffiche: 'Citoyen Anonyme',
-  role: 'anonyme',
-  badges: [],
-  stats: { contributions: 2, votes: 12, commentaires: 5 },
-};
-
-export const MOCK_STUDENT_USER: Utilisateur = {
-  id: 'usr-student-789',
-  username: 'amina_k',
-  nomAffiche: 'Amina K. (Étudiante)',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  role: 'etudiant',
-  email: 'amina.k@univ-central.edu',
-  etablissement: 'Université Centrale de Kinshasa',
-  badges: [
-    { id: 'b1', nom: 'Pionnière', icone: '🌟', description: 'Membre fondatrice CIVITAS' },
-    { id: 'b2', nom: 'Débatteuse', icone: '💬', description: '+50 commentaires pertinents' },
-  ],
-  stats: { contributions: 14, votes: 38, commentaires: 42 },
-};
-
-export const MOCK_ADMIN_USER: Utilisateur = {
-  id: 'usr-admin-001',
-  username: 'super_admin',
-  nomAffiche: 'Administrateur CIVITAS',
-  avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-  role: 'administrateur',
-  email: 'admin@civitasnews.org',
-  etablissement: 'Secrétariat Général Académique',
-  badges: [
-    { id: 'ba', nom: 'Modérateur Officiel', icone: '🛡️', description: 'Garant du débat démocratique' },
-  ],
-  stats: { contributions: 120, votes: 150, commentaires: 310 },
-};
+export { MOCK_ANONYMOUS_USER, MOCK_STUDENT_USER, MOCK_ADMIN_USER };
 
 const getInitialUser = (): Utilisateur => {
   if (typeof window !== 'undefined') {
@@ -156,6 +123,11 @@ export function useAuthStore() {
     loginWithGoogle,
     loginWithEmail,
     logout,
+    /** Vérification fine des permissions — voir src/lib/permissions/. */
+    can: (permission: Permission) => hasPermission(user, permission),
+    canAny: (permissions: Permission[]) => hasAnyPermission(user, permissions),
+    canOnResource: (baseAction: 'news:edit' | 'news:delete' | 'commentaire:delete', resourceOwnerId: string | undefined) =>
+      canOnResource(user, baseAction, resourceOwnerId),
   };
 }
 

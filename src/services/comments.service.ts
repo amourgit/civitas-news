@@ -1,314 +1,57 @@
-import { Commentaire, TypeReaction } from '../types/global.types';
-import { apiClient } from './api.client';
+// ============================================================
+// src/services/comments.service.ts
+// Service Commentaires — bascule automatique mock/réel selon
+// `env.useMockData` (voir src/config/env.ts). Mêmes exports et
+// signatures qu'avant : aucun changement requis côté vues.
+// ============================================================
 
-export const INITIAL_COMMENTS: Commentaire[] = [
-  // NEWS 1
-  {
-    id: 'comm-101',
-    newsId: 'news-1',
-    sujetId: 'news-1',
-    auteur: {
-      id: 'usr-admin-sec',
-      username: 'secretariat_general',
-      nomAffiche: 'Secrétariat Général Académique',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-      role: 'administrateur',
-      badges: [{ id: 'b-sec', nom: 'Officiel', icone: '🏛️', description: 'Compte Officiel' }],
-      stats: { contributions: 120, votes: 300, commentaires: 450 },
-    },
-    typeContenu: 'texte',
-    contenu: "⚠️ **Note Officielle de la Commission Transports** : La première phase de consultation restera ouverte jusqu'au 31 août. Merci à tous les représentants des délégués de partager cette page au sein de leurs amphithéâtres.",
-    reactions: { '👍': 88, '❤️': 45, '👏': 62, '🎉': 12, '😮': 8 },
-    userReactions: ['👍'],
-    votes: 34,
-    estEpingle: true,
-    estReponseAcceptee: false,
-    estAdministrateur: true,
-    createdAt: '2026-07-16T09:00:00Z',
-  },
-  {
-    id: 'comm-102',
-    newsId: 'news-1',
-    sujetId: 'news-1',
-    auteur: {
-      id: 'usr-student-99',
-      username: 'jean_paul_m',
-      nomAffiche: 'Jean-Paul Mukendi (Fac. Droit)',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [{ id: 'b-active', nom: 'Contributeur Actif', icone: '🔥', description: '+20 commentaires' }],
-      stats: { contributions: 18, votes: 45, commentaires: 29 },
-    },
-    typeContenu: 'texte',
-    contenu: "Excellente initiative ! Mais qu'en est-il des étudiants vivant dans la périphérie Est ? La ligne 12 actuelle s'arrête à 18h30, ce qui empêche d'assister aux TP du soir.",
-    reactions: { '👍': 28, '❤️': 12, '👏': 5, '🎉': 2 },
-    votes: 19,
-    estEpingle: false,
-    estReponseAcceptee: true,
-    estAdministrateur: false,
-    createdAt: '2026-07-16T11:20:00Z',
-  },
-  {
-    id: 'comm-102-audio',
-    newsId: 'news-1',
-    sujetId: 'news-1',
-    reponseA: 'comm-102',
-    auteur: {
-      id: 'usr-student-77',
-      username: 'marc_tshibangu',
-      nomAffiche: 'Marc Tshibangu (Représentant étudiant)',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [{ id: 'b-rep', nom: 'Délégué', icone: '🎙️', description: 'Porteur de parole' }],
-      stats: { contributions: 14, votes: 32, commentaires: 21 },
-    },
-    typeContenu: 'audio',
-    audioDuration: 28,
-    contenu: '🎙️ Message vocal (00:28)',
-    reactions: { '❤️': 14, '👏': 9, '🔥': 5 },
-    votes: 16,
-    estEpingle: false,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-16T11:45:00Z',
-  },
-  {
-    id: 'comm-103',
-    newsId: 'news-1',
-    sujetId: 'news-1',
-    reponseA: 'comm-102',
-    auteur: {
-      id: 'usr-org-01',
-      username: 'mutuelle_nationale',
-      nomAffiche: 'Confédération des Mutuelles Étudiantes',
-      avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&auto=format&fit=crop&q=80',
-      role: 'organisation',
-      badges: [],
-      stats: { contributions: 45, votes: 120, commentaires: 88 },
-    },
-    typeContenu: 'texte',
-    contenu: "@jean_paul_m C'est exactement le point 2 de la négociation ! Nous avons proposé une extension jusqu'à 21h30 pour la ligne 12.",
-    reactions: { '👍': 15, '❤️': 8, '👏': 10 },
-    votes: 14,
-    estEpingle: false,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-16T12:05:00Z',
-  },
+import { env } from '../config/env';
+import type { Commentaire, TypeReaction } from '../types/global.types';
+import { INITIAL_COMMENTS as MOCK_COMMENTS } from './api/mocks/comments.mock';
+import { commentsRepository } from './api/repositories/comments.repository';
 
-  // NEWS 2
-  {
-    id: 'comm-201',
-    newsId: 'news-2',
-    sujetId: 'news-2',
-    auteur: {
-      id: 'usr-student-99',
-      username: 'jean_paul_m',
-      nomAffiche: 'Jean-Paul Mukendi (Fac. Droit)',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [{ id: 'b-active', nom: 'Contributeur Actif', icone: '🔥', description: '+20 commentaires' }],
-      stats: { contributions: 18, votes: 45, commentaires: 29 },
-    },
-    typeContenu: 'texte',
-    contenu: "Pour le réseau WiFi 7 dans les amphis, est-ce que la bande de fréquence permettra le streaming de cours en direct sans coupures lors des heures de pointe ?",
-    reactions: { '👍': 34, '❤️': 15, '👏': 11 },
-    votes: 29,
-    estEpingle: false,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-17T08:30:00Z',
-  },
-  {
-    id: 'comm-202-audio',
-    newsId: 'news-2',
-    sujetId: 'news-2',
-    reponseA: 'comm-201',
-    auteur: {
-      id: 'usr-prof-arlette',
-      username: 'dr_arlette',
-      nomAffiche: 'Dr. Arlette Kasa (Fac. Sciences)',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-      role: 'administrateur',
-      badges: [{ id: 'b-prof', nom: 'Enseignante', icone: '👩‍🏫', description: 'Responsable Réseau' }],
-      stats: { contributions: 52, votes: 110, commentaires: 89 },
-    },
-    typeContenu: 'audio',
-    audioDuration: 42,
-    contenu: '🎙️ Message vocal (00:42)',
-    reactions: { '❤️': 25, '👍': 40, '👏': 18 },
-    votes: 38,
-    estEpingle: true,
-    estReponseAcceptee: true,
-    estAdministrateur: true,
-    createdAt: '2026-07-17T09:15:00Z',
-  },
+/** Conservé pour compatibilité ascendante. */
+export const INITIAL_COMMENTS: Commentaire[] = MOCK_COMMENTS;
 
-  // NEWS 3
-  {
-    id: 'comm-301',
-    newsId: 'news-3',
-    sujetId: 'news-3',
-    auteur: {
-      id: 'usr-student-[#01]',
-      username: 'christian_l',
-      nomAffiche: 'Christian Luboya (Polytech L2)',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [],
-      stats: { contributions: 12, votes: 20, commentaires: 15 },
-    },
-    typeContenu: 'texte',
-    contenu: "Est-ce qu'il faut obligatoirement s'inscrire en avance pour les simulations d'entretiens avec les DRH au Forum ?",
-    reactions: { '👍': 18, '❤️': 6 },
-    votes: 12,
-    estEpingle: false,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-21T10:00:00Z',
-  },
-  {
-    id: 'comm-302-audio',
-    newsId: 'news-3',
-    sujetId: 'news-3',
-    reponseA: 'comm-301',
-    auteur: {
-      id: 'usr-student-01',
-      username: 'association_avenir',
-      nomAffiche: 'Association Avenir Jeunesse',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      role: 'organisation',
-      badges: [{ id: 'b3', nom: 'Partenaire', icone: '🎯', description: 'Organisateur' }],
-      stats: { contributions: 30, votes: 90, commentaires: 45 },
-    },
-    typeContenu: 'audio',
-    audioDuration: 19,
-    contenu: '🎙️ Message vocal (00:19)',
-    reactions: { '👍': 22, '❤️': 11, '🎉': 8 },
-    votes: 21,
-    estEpingle: false,
-    estReponseAcceptee: true,
-    estAdministrateur: false,
-    createdAt: '2026-07-21T10:30:00Z',
-  },
+let commentsMemory: Commentaire[] = env.useMockData ? [...MOCK_COMMENTS] : [];
 
-  // NEWS 4
-  {
-    id: 'comm-401',
-    newsId: 'news-4',
-    sujetId: 'news-4',
-    auteur: {
-      id: 'usr-student-02',
-      username: 'samuel_n',
-      nomAffiche: 'Samuel N. (Délégué Général)',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [{ id: 'b4', nom: 'Délégué Élu', icone: '📢', description: 'Porteur de pétition' }],
-      stats: { contributions: 22, votes: 140, commentaires: 110 },
-    },
-    typeContenu: 'texte',
-    contenu: "Mobilisons-nous tous pour la signature ! Plus de 4 000 signatures récoltées en 48 heures. Le pouvoir de décision appartient aux étudiants réguliers.",
-    reactions: { '❤️': 95, '👍': 120, '👏': 89, '🔥': 42 },
-    votes: 88,
-    estEpingle: true,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-18T16:00:00Z',
-  },
-  {
-    id: 'comm-402-audio',
-    newsId: 'news-4',
-    sujetId: 'news-4',
-    auteur: {
-      id: 'usr-student-dorcas',
-      username: 'dorcas_k',
-      nomAffiche: 'Dorcas Kabeya (Campus Nord)',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [],
-      stats: { contributions: 5, votes: 14, commentaires: 8 },
-    },
-    typeContenu: 'audio',
-    audioDuration: 35,
-    contenu: '🎙️ Message vocal (00:35)',
-    reactions: { '❤️': 31, '👍': 45, '👏': 20 },
-    votes: 30,
-    estEpingle: false,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-18T17:10:00Z',
-  },
-
-  // NEWS 5
-  {
-    id: 'comm-501',
-    newsId: 'news-5',
-    sujetId: 'news-5',
-    auteur: {
-      id: 'usr-student-kevin',
-      username: 'kevin_ndombe',
-      nomAffiche: 'Kevin Ndombe (Master Informatique)',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [],
-      stats: { contributions: 15, votes: 40, commentaires: 22 },
-    },
-    typeContenu: 'texte',
-    contenu: "L'IA ne doit pas remplacer le raisonnement critique, mais servir d'assistant documentaire. La charte doit encourager la transparence.",
-    reactions: { '👍': 48, '❤️': 19, '👏': 15 },
-    votes: 27,
-    estEpingle: false,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-22T10:15:00Z',
-  },
-
-  // NEWS 6
-  {
-    id: 'comm-601',
-    newsId: 'news-6',
-    sujetId: 'news-6',
-    auteur: {
-      id: 'usr-student-sarah',
-      username: 'sarah_ilunga',
-      nomAffiche: 'Sarah Ilunga (L1 Médecine)',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      badges: [],
-      stats: { contributions: 3, votes: 8, commentaires: 4 },
-    },
-    typeContenu: 'audio',
-    audioDuration: 24,
-    contenu: '🎙️ Message vocal (00:24)',
-    reactions: { '👍': 35, '❤️': 18, '👏': 12 },
-    votes: 19,
-    estEpingle: false,
-    estReponseAcceptee: false,
-    estAdministrateur: false,
-    createdAt: '2026-07-28T09:30:00Z',
-  },
-];
-
-let commentsMemory: Commentaire[] = INITIAL_COMMENTS;
+function sortComments(list: Commentaire[], tri: 'recents' | 'populaires' | 'pertinents'): Commentaire[] {
+  if (tri === 'populaires') {
+    return [...list].sort((a, b) => b.votes - a.votes);
+  }
+  if (tri === 'pertinents') {
+    return [...list].sort((a, b) => (b.estEpingle || b.estReponseAcceptee ? 1 : 0) - (a.estEpingle || a.estReponseAcceptee ? 1 : 0));
+  }
+  return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
 
 export const commentsService = {
-  getCommentsByNews: async (newsId: string, tri: 'recents' | 'populaires' | 'pertinents' = 'recents'): Promise<Commentaire[]> => {
-    let list = commentsMemory.filter((c) => c.newsId === newsId || c.sujetId === newsId);
-    if (tri === 'populaires') {
-      list = [...list].sort((a, b) => b.votes - a.votes);
-    } else if (tri === 'pertinents') {
-      list = [...list].sort((a, b) => (b.estEpingle || b.estReponseAcceptee ? 1 : 0) - (a.estEpingle || a.estReponseAcceptee ? 1 : 0));
-    } else {
-      list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  getCommentsByNews: async (
+    newsId: string,
+    tri: 'recents' | 'populaires' | 'pertinents' = 'recents'
+  ): Promise<Commentaire[]> => {
+    if (env.useMockData) {
+      const list = commentsMemory.filter((c) => c.newsId === newsId || c.sujetId === newsId);
+      return sortComments(list, tri);
     }
-    return list;
+    const list = await commentsRepository.listByNews(newsId);
+    commentsMemory = [...commentsMemory.filter((c) => c.newsId !== newsId), ...list];
+    return sortComments(list, tri);
   },
 
-  getCommentsBySujet: async (sujetId: string, tri: 'recents' | 'populaires' | 'pertinents' = 'recents'): Promise<Commentaire[]> => {
+  getCommentsBySujet: async (
+    sujetId: string,
+    tri: 'recents' | 'populaires' | 'pertinents' = 'recents'
+  ): Promise<Commentaire[]> => {
     return commentsService.getCommentsByNews(sujetId, tri);
   },
 
-  addComment: async (newsId: string, contenu: string, auteur: Commentaire['auteur'], reponseA?: string): Promise<Commentaire> => {
+  addComment: async (
+    newsId: string,
+    contenu: string,
+    auteur: Commentaire['auteur'],
+    reponseA?: string
+  ): Promise<Commentaire> => {
     const isAudio = contenu.startsWith('🎙️ Message vocal');
     let audioDuration = 15;
     if (isAudio) {
@@ -318,114 +61,114 @@ export const commentsService = {
       }
     }
 
-    const newComm: Commentaire = {
-      id: `comm-${Date.now()}`,
-      newsId,
-      sujetId: newsId,
-      auteur,
+    if (env.useMockData) {
+      const newComm: Commentaire = {
+        id: `comm-${Date.now()}`,
+        newsId,
+        sujetId: newsId,
+        auteur,
+        typeContenu: isAudio ? 'audio' : 'texte',
+        audioDuration: isAudio ? audioDuration : undefined,
+        contenu,
+        reponseA,
+        reactions: {},
+        userReactions: [],
+        votes: 1,
+        userVoteStatus: 'up',
+        estEpingle: false,
+        estReponseAcceptee: false,
+        estAdministrateur: auteur.role === 'administrateur' || auteur.role === 'moderateur',
+        createdAt: new Date().toISOString(),
+      };
+      commentsMemory = [newComm, ...commentsMemory];
+      return newComm;
+    }
+
+    // Note : en mode réel, l'auteur est déterminé côté backend à partir du
+    // token JWT — le paramètre `auteur` n'est conservé ici que pour la
+    // compatibilité de signature avec le mode mock.
+    const created = await commentsRepository.create(newsId, {
+      contenu,
       typeContenu: isAudio ? 'audio' : 'texte',
       audioDuration: isAudio ? audioDuration : undefined,
-      contenu,
       reponseA,
-      reactions: {},
-      userReactions: [],
-      votes: 1,
-      userVoteStatus: 'up',
-      estEpingle: false,
-      estReponseAcceptee: false,
-      estAdministrateur: auteur.role === 'administrateur' || auteur.role === 'moderateur',
-      createdAt: new Date().toISOString(),
-    };
-    commentsMemory = [newComm, ...commentsMemory];
-    return newComm;
+    });
+    commentsMemory = [created, ...commentsMemory];
+    return created;
   },
 
   voteComment: async (commentId: string, direction: 'up' | 'down'): Promise<Commentaire | null> => {
-    commentsMemory = commentsMemory.map((c) => {
-      if (c.id === commentId) {
-        if (c.userVoteStatus === direction) {
-          return {
-            ...c,
-            votes: c.votes + (direction === 'up' ? -1 : 1),
-            userVoteStatus: null,
-          };
-        } else {
-          const delta = c.userVoteStatus ? (direction === 'up' ? 2 : -2) : (direction === 'up' ? 1 : -1);
-          return {
-            ...c,
-            votes: c.votes + delta,
-            userVoteStatus: direction,
-          };
+    if (env.useMockData) {
+      commentsMemory = commentsMemory.map((c) => {
+        if (c.id === commentId) {
+          if (c.userVoteStatus === direction) {
+            return { ...c, votes: c.votes + (direction === 'up' ? -1 : 1), userVoteStatus: null };
+          }
+          const delta = c.userVoteStatus ? (direction === 'up' ? 2 : -2) : direction === 'up' ? 1 : -1;
+          return { ...c, votes: c.votes + delta, userVoteStatus: direction };
         }
-      }
-      return c;
-    });
-    return commentsMemory.find((c) => c.id === commentId) || null;
+        return c;
+      });
+      return commentsMemory.find((c) => c.id === commentId) || null;
+    }
+
+    const updated = await commentsRepository.vote(commentId, direction);
+    commentsMemory = commentsMemory.map((c) => (c.id === commentId ? updated : c));
+    return updated;
   },
 
   reactToComment: async (commentId: string, reaction: TypeReaction | string): Promise<Commentaire | null> => {
-    commentsMemory = commentsMemory.map((c) => {
-      if (c.id === commentId) {
-        const reactionsMap = { ...(c.reactions || {}) };
-        const userReactions = [...(c.userReactions || [])];
-        const index = userReactions.indexOf(reaction);
+    if (env.useMockData) {
+      commentsMemory = commentsMemory.map((c) => {
+        if (c.id === commentId) {
+          const reactionsMap = { ...(c.reactions || {}) };
+          const userReactions = [...(c.userReactions || [])];
+          const index = userReactions.indexOf(reaction);
 
-        if (index > -1) {
-          // Toggle OFF
-          userReactions.splice(index, 1);
-          reactionsMap[reaction] = Math.max(0, (reactionsMap[reaction] || 1) - 1);
-          if (reactionsMap[reaction] <= 0) {
-            delete reactionsMap[reaction];
+          if (index > -1) {
+            userReactions.splice(index, 1);
+            reactionsMap[reaction] = Math.max(0, (reactionsMap[reaction] || 1) - 1);
+            if (reactionsMap[reaction] <= 0) delete reactionsMap[reaction];
+          } else {
+            userReactions.push(reaction);
+            reactionsMap[reaction] = (reactionsMap[reaction] || 0) + 1;
           }
-        } else {
-          // Toggle ON
-          userReactions.push(reaction);
-          reactionsMap[reaction] = (reactionsMap[reaction] || 0) + 1;
-        }
 
-        return {
-          ...c,
-          reactions: reactionsMap,
-          userReactions,
-        };
-      }
-      return c;
-    });
-    return commentsMemory.find((c) => c.id === commentId) || null;
+          return { ...c, reactions: reactionsMap, userReactions };
+        }
+        return c;
+      });
+      return commentsMemory.find((c) => c.id === commentId) || null;
+    }
+
+    const updated = await commentsRepository.react(commentId, reaction);
+    commentsMemory = commentsMemory.map((c) => (c.id === commentId ? updated : c));
+    return updated;
   },
 
   togglePin: async (commentId: string): Promise<Commentaire | null> => {
-    commentsMemory = commentsMemory.map((c) => (c.id === commentId ? { ...c, estEpingle: !c.estEpingle } : c));
-    return commentsMemory.find((c) => c.id === commentId) || null;
+    if (env.useMockData) {
+      commentsMemory = commentsMemory.map((c) => (c.id === commentId ? { ...c, estEpingle: !c.estEpingle } : c));
+      return commentsMemory.find((c) => c.id === commentId) || null;
+    }
+
+    const current = commentsMemory.find((c) => c.id === commentId);
+    const updated = await commentsRepository.pin(commentId, !(current?.estEpingle ?? false));
+    commentsMemory = commentsMemory.map((c) => (c.id === commentId ? updated : c));
+    return updated;
   },
 };
 
 /**
- * Operational Backend API Service for Comments (real HTTP requests)
+ * Alias explicites vers le repository réel (voir news.service.ts pour la
+ * même convention).
  */
 export const commentsBackendService = {
-  getCommentsByNews: async (newsId: string, tri: 'recents' | 'populaires' | 'pertinents' = 'recents'): Promise<Commentaire[]> => {
-    return apiClient.get<Commentaire[]>(`/news/${newsId}/commentaires?tri=${tri}`);
-  },
-
-  getCommentsBySujet: async (sujetId: string, tri: 'recents' | 'populaires' | 'pertinents' = 'recents'): Promise<Commentaire[]> => {
-    return apiClient.get<Commentaire[]>(`/news/${sujetId}/commentaires?tri=${tri}`);
-  },
-
-  addComment: async (newsId: string, contenu: string, reponseA?: string): Promise<Commentaire> => {
-    return apiClient.post<Commentaire>(`/news/${newsId}/commentaires`, { contenu, reponseA });
-  },
-
-  voteComment: async (commentId: string, direction: 'up' | 'down'): Promise<Commentaire> => {
-    return apiClient.post<Commentaire>(`/commentaires/${commentId}/vote`, { direction });
-  },
-
-  reactToComment: async (commentId: string, reaction: TypeReaction): Promise<Commentaire> => {
-    return apiClient.post<Commentaire>(`/commentaires/${commentId}/reactions`, { reaction });
-  },
-
-  togglePin: async (commentId: string): Promise<Commentaire> => {
-    return apiClient.post<Commentaire>(`/commentaires/${commentId}/pin`, {});
-  },
+  getCommentsByNews: (newsId: string) => commentsRepository.listByNews(newsId),
+  getCommentsBySujet: (sujetId: string) => commentsRepository.listByNews(sujetId),
+  addComment: (newsId: string, contenu: string, reponseA?: string) =>
+    commentsRepository.create(newsId, { contenu, reponseA }),
+  voteComment: (commentId: string, direction: 'up' | 'down') => commentsRepository.vote(commentId, direction),
+  reactToComment: (commentId: string, reaction: string) => commentsRepository.react(commentId, reaction),
+  togglePin: (commentId: string, epingle: boolean) => commentsRepository.pin(commentId, epingle),
 };
-

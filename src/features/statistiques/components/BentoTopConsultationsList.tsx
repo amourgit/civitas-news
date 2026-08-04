@@ -1,10 +1,11 @@
 import React from 'react';
 import { Layers, ArrowUpRight, Newspaper } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { INITIAL_NEWS } from '../../../services/news.service';
+import { useNewsList } from '../hooks/useNewsList';
 
 export const BentoTopConsultationsList: React.FC = () => {
-  const topNews = INITIAL_NEWS.slice(0, 3);
+  const { news } = useNewsList();
+  const topNews = news.slice(0, 3);
 
   return (
     <div className="bg-white dark:bg-[#1A1F4D] rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col justify-between space-y-3">

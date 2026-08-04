@@ -13,7 +13,7 @@ export class HttpServiceFactory {
 
   static createGetService(
     baseUrl?: string,
-    defaultHeaders?: HeadersInit,
+    defaultHeaders?: Record<string, string>,
     defaultTimeout?: number
   ): GetService {
     const key = this.generateKey(baseUrl, defaultHeaders, defaultTimeout);
@@ -25,7 +25,7 @@ export class HttpServiceFactory {
 
   static createPostService(
     baseUrl?: string,
-    defaultHeaders?: HeadersInit,
+    defaultHeaders?: Record<string, string>,
     defaultTimeout?: number
   ): PostService {
     const key = this.generateKey(baseUrl, defaultHeaders, defaultTimeout);
@@ -37,7 +37,7 @@ export class HttpServiceFactory {
 
   static createUpdateService(
     baseUrl?: string,
-    defaultHeaders?: HeadersInit,
+    defaultHeaders?: Record<string, string>,
     defaultTimeout?: number
   ): UpdateService {
     const key = this.generateKey(baseUrl, defaultHeaders, defaultTimeout);
@@ -49,7 +49,7 @@ export class HttpServiceFactory {
 
   static createDeleteService(
     baseUrl?: string,
-    defaultHeaders?: HeadersInit,
+    defaultHeaders?: Record<string, string>,
     defaultTimeout?: number
   ): DeleteService {
     const key = this.generateKey(baseUrl, defaultHeaders, defaultTimeout);
@@ -61,7 +61,7 @@ export class HttpServiceFactory {
 
   static createCompleteHttpService(
     baseUrl?: string,
-    defaultHeaders?: HeadersInit,
+    defaultHeaders?: Record<string, string>,
     defaultTimeout?: number
   ) {
     return {
@@ -74,7 +74,7 @@ export class HttpServiceFactory {
 
   private static generateKey(
     baseUrl?: string,
-    defaultHeaders?: HeadersInit,
+    defaultHeaders?: Record<string, string>,
     defaultTimeout?: number
   ): string {
     return `${baseUrl || 'default'}-${JSON.stringify(defaultHeaders || {})}-${defaultTimeout || 10000}`;

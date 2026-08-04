@@ -1,6 +1,6 @@
 import React from 'react';
 import { Users, CheckSquare, MessageSquare, TrendingUp, ShieldCheck, ArrowUpRight, Newspaper } from 'lucide-react';
-import { INITIAL_NEWS } from '../../../services/news.service';
+import { useNewsList } from '../hooks/useNewsList';
 
 interface MetricItem {
   label: string;
@@ -12,7 +12,7 @@ interface MetricItem {
 }
 
 export const BentoMetricsRow: React.FC = () => {
-  const allNews = INITIAL_NEWS;
+  const { news: allNews } = useNewsList();
 
   const totalVotes = allNews.reduce((acc, curr) => acc + (curr.stats?.votes || 0), 0);
   const totalComments = allNews.reduce((acc, curr) => acc + (curr.stats?.commentaires || 0), 0);

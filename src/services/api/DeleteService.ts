@@ -1,16 +1,27 @@
 // services/DeleteService.ts
 import { BaseHttpService } from "./base/BaseHttpService";
-import { OptimisticDeleteMetadata } from "../types/delete.types";
-import { DeleteConfirmation } from "../types/delete.types";
-import { ScheduledDeleteConfig } from "../types/delete.types";
-import { DeletedResourceInfo } from "../types/delete.types";
-import { DeleteRequestConfig } from "../types/delete.types";
-import { ApiResponse } from "../types/http.types";
-import { UrlBuilder } from "../utils/urlBuilder";
-import { ApiError } from "../errors/ApiError";
-import { DeleteError, DependencyError, PermissionDeniedError, ProtectedResourceError } from "../errors/DeleteError";
-import { ValidationError } from "../errors/ValidatatorError";
-import { NetworkError } from "../errors/NetworkError";
+import type {
+  OptimisticDeleteMetadata,
+  DeleteConfirmation,
+  ScheduledDeleteConfig,
+  DeletedResourceInfo,
+  DeleteRequestConfig,
+  BulkDeleteConfig,
+  ConditionalDeleteConfig,
+  RestoreConfig,
+} from "./types/delete.types";
+import type { ApiResponse } from "./types/http.types";
+import { UrlBuilder } from "./utils/urlBuilder";
+import {
+  ApiError,
+  ValidationError,
+  NetworkError,
+  DeleteError,
+  DependencyError,
+  PermissionDeniedError,
+  ProtectedResourceError,
+} from "./errors";
+import { z } from "zod";
 
 
 
@@ -100,7 +111,7 @@ export class DeleteService extends BaseHttpService {
         
         if (response.status !== 204) { // 204 No Content
           const rawData = await this.handleDeleteResponse(response, resourceEndpoint);
-          responseData = rawData ? (transform ? transform(rawData) : rawData) : undefined;
+          responseData = rawData ? ((transform ? transform(rawData) : rawData) as TResponse) : undefined;
           
           if (responseSchema && responseData !== undefined) {
             responseData = await this.validateData(responseSchema, responseData, resourceEndpoint);
@@ -171,7 +182,7 @@ export class DeleteService extends BaseHttpService {
                 requireAuth
               });
   
-              return { id: resourceId, success: true, data: response.data };
+              return { id: resourceId, success: true, data: response.data as TResponse };
             } catch (error) {
               const deleteError = error as Error;
               errors.push(deleteError);
@@ -224,9 +235,9 @@ export class DeleteService extends BaseHttpService {
   
       try {
         // Valider les conditions
-        const validatedConditions = conditionsSchema
-          ? await this.validateData(conditionsSchema, conditions, endpoint)
-          : conditions;
+        const validatedConditions = (
+          conditionsSchema ? await this.validateData(conditionsSchema, conditions, endpoint) : conditions
+        ) as Record<string, unknown>;
   
         // Construire les paramètres de requête
         const queryParams = {
@@ -242,7 +253,10 @@ export class DeleteService extends BaseHttpService {
         const controller = this.createAbortController(timeout);
   
         const response = await this.executeDeleteRequest(fullUrl, requestHeaders, controller);
-        const rawData = await this.handleDeleteResponse(response, endpoint);
+        const rawData = (await this.handleDeleteResponse(response, endpoint)) as
+          | { deletedCount?: number; deletedIds?: Array<string | number> }
+          | null
+          | undefined;
   
         const result = {
           deletedCount: rawData?.deletedCount || 0,
@@ -295,7 +309,12 @@ export class DeleteService extends BaseHttpService {
           }
         );
   
-        const rawData = await this.handleResponse(response, confirmationEndpoint);
+        const rawData = await this.handleResponse<{
+          token: string;
+          expiresAt: string;
+          resourceInfo?: unknown;
+          warnings?: string[];
+        }>(response, confirmationEndpoint);
         
         const confirmation: DeleteConfirmation = {
           token: rawData.token,
@@ -352,7 +371,10 @@ export class DeleteService extends BaseHttpService {
           }
         );
   
-        const result = await this.handleResponse(response, scheduleEndpoint);
+        const result = await this.handleResponse<{ scheduleId: string; scheduledFor: string }>(
+          response,
+          scheduleEndpoint
+        );
         
         const scheduleInfo = {
           scheduleId: result.scheduleId,
@@ -412,7 +434,7 @@ export class DeleteService extends BaseHttpService {
         let responseData: TResponse | void = undefined;
         
         if (response.status !== 204) {
-          const rawData = await this.handleResponse(response, restoreEndpoint);
+          const rawData = await this.handleResponse<TResponse>(response, restoreEndpoint);
           responseData = rawData;
           
           if (responseSchema && responseData !== undefined) {
@@ -830,10 +852,11 @@ export class DeleteService extends BaseHttpService {
     }
   
     private async validateData<T>(
-      schema: z.ZodSchema<T>,
+      schema: z.ZodSchema<T> | undefined,
       data: unknown,
       endpoint: string
     ): Promise<T> {
+      if (!schema) return data as T;
       try {
         return await schema.parseAsync(data);
       } catch (error) {
@@ -848,12 +871,6 @@ export class DeleteService extends BaseHttpService {
       }
     }
   
-    private async getAuthToken(): Promise<string | null> {
-      if (typeof window !== 'undefined') {
-        return this.getToken();
-      }
-      return null;
-    }
   
     /**
      * Méthodes de gestion publiques

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Flame, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { INITIAL_NEWS } from '../../../services/news.service';
+import { useNewsList } from '../hooks/useNewsList';
 
 export const BentoTopNewsCard: React.FC = () => {
-  const allNews = INITIAL_NEWS;
+  const { news: allNews } = useNewsList();
 
   // Sort by popularity (total votes + views + comments)
   const sortedNews = [...allNews]

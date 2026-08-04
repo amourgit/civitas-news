@@ -1,22 +1,10 @@
 // services/GetService.ts
 import { BaseHttpService } from "./base/BaseHttpService";
-import { GetRequestConfig } from "../types/http.types";
-import { ApiResponse } from "../types/http.types";
-import { RequestSanitizer } from "../utils/sanitizer";
-import { UrlBuilder } from "../utils/urlBuilder";
-import { ApiError } from "../errors/ApiError";
-import { ValidationError } from "../errors/ApiError";
-import { NetworkError } from "../errors/ApiError";
+import type { GetRequestConfig, ApiResponse, AuthConfig } from "./types/http.types";
+import { RequestSanitizer } from "./utils/sanitizer";
+import { UrlBuilder } from "./utils/urlBuilder";
+import { ApiError, ValidationError, NetworkError } from "./errors";
 import { z } from "zod";
-
-// Types pour l'authentification
-interface AuthConfig {
-  type: 'bearer' | 'cookie' | 'custom';
-  token?: string;
-  cookieName?: string;
-  customHeader?: string;
-  customValue?: string;
-}
 
 // Interface étendue pour les cookies
 interface CookieConfig {
@@ -73,7 +61,7 @@ export class GetService extends BaseHttpService {
       }
 
       // Construire les headers avec authentification complète
-      const requestHeaders = await this.buildHeaders(headers, requireAuth, authConfig, cookieNames);
+      const requestHeaders = await this.buildGetHeaders(headers, requireAuth, authConfig, cookieNames);
 
       // Créer l'AbortController pour le timeout
       const controller = this.createAbortController(timeout);
@@ -84,7 +72,6 @@ export class GetService extends BaseHttpService {
         headers: requestHeaders,
         signal: controller.signal,
         cache,
-        next: revalidate ? { revalidate } : undefined,
         // Support des cookies
         credentials: withCredentials ? 'include' : 'same-origin',
       };
@@ -195,13 +182,13 @@ export class GetService extends BaseHttpService {
 
   // === MÉTHODES PRIVÉES AMÉLIORÉES ===
 
-  private async buildHeaders(
-    headers: HeadersInit, 
-    requireAuth: boolean, 
+  private async buildGetHeaders(
+    headers: Record<string, string>,
+    requireAuth: boolean,
     authConfig?: AuthConfig,
     cookieNames: string[] = []
-  ): Promise<HeadersInit> {
-    const requestHeaders = { ...this.defaultHeaders, ...headers };
+  ): Promise<Record<string, string>> {
+    const requestHeaders: Record<string, string> = { ...this.defaultHeaders, ...headers };
 
     if (requireAuth || authConfig) {
       await this.addAuthenticationHeaders(requestHeaders, authConfig);
@@ -270,39 +257,6 @@ export class GetService extends BaseHttpService {
         ? `${existingCookies}; ${cookies.join('; ')}`
         : cookies.join('; ');
     }
-  }
-
-  private async getAuthToken(): Promise<string | null> {
-    // Priorité : cookies -> localStorage -> sessionStorage
-    
-    // 1. Essayer les cookies d'abord
-    const cookieToken = this.getCookieValue('authToken') || 
-                       this.getCookieValue('access_token') ||
-                       this.getCookieValue('token');
-    
-    if (cookieToken) {
-      return cookieToken;
-    }
-
-    // 2. Ensuite localStorage
-    if (typeof window !== 'undefined') {
-      const localToken = this.getToken() || 
-                        localStorage.getItem('access_token') ||
-                        localStorage.getItem('token');
-      
-      if (localToken) {
-        return localToken;
-      }
-
-      // 3. Finalement sessionStorage
-      const sessionToken = this.getToken() ||
-                          sessionStorage.getItem('access_token') ||
-                          sessionStorage.getItem('token');
-      
-      return sessionToken;
-    }
-
-    return null;
   }
 
   private getCookieValue(name: string): string | null {
@@ -384,10 +338,11 @@ export class GetService extends BaseHttpService {
   }
 
   private async validateData<T>(
-    schema: z.ZodSchema<T>,
+    schema: z.ZodSchema<T> | undefined,
     data: unknown,
     endpoint: string
   ): Promise<T> {
+    if (!schema) return data as T;
     try {
       return await schema.parseAsync(data);
     } catch (error) {

@@ -1,12 +1,10 @@
 // services/PostService.ts
 import { BaseHttpService } from "./base/BaseHttpService";
-import { BatchRequestConfig, FileUploadConfig, PostRequestConfig } from "../types/post.types";
-import { ApiResponse, RetryConfig } from "../types/http.types";
-import { RequestSanitizer } from "../utils/sanitizer";
-import { UrlBuilder } from "../utils/urlBuilder";
-import { ApiError } from "../errors/ApiError";
-import { ValidationError } from "../errors/ApiError";
-import { NetworkError } from "../errors/ApiError";
+import type { BatchRequestConfig, FileUploadConfig, PostRequestConfig } from "./types/post.types";
+import type { ApiResponse, RetryConfig } from "./types/http.types";
+import { RequestSanitizer } from "./utils/sanitizer";
+import { UrlBuilder } from "./utils/urlBuilder";
+import { ApiError, ValidationError, NetworkError } from "./errors";
 import { z } from "zod";
 
 
@@ -305,7 +303,7 @@ export class PostService extends BaseHttpService {
       body: unknown,
       headers: HeadersInit,
       controller: AbortController,
-      responseSchema: z.ZodSchema<TResponse>,
+      responseSchema: z.ZodSchema<TResponse> | undefined,
       transform?: (data: unknown) => TResponse,
       retry?: RetryConfig,
       endpoint?: string
@@ -378,10 +376,10 @@ export class PostService extends BaseHttpService {
       }
     }
   
-    private async executeSequentially<T>(promises: (() => Promise<T>)[]): Promise<T[]> {
+    private async executeSequentially<T>(promises: Promise<T>[]): Promise<T[]> {
       const results: T[] = [];
-      for (const promiseFactory of promises) {
-        results.push(await promiseFactory());
+      for (const promise of promises) {
+        results.push(await promise);
       }
       return results;
     }
@@ -489,18 +487,13 @@ export class PostService extends BaseHttpService {
       return headers;
     }
   
-    private async getAuthToken(): Promise<string | null> {
-      if (typeof window !== 'undefined') {
-        return this.getToken();
-      }
-      return null;
-    }
   
     private async validateData<T>(
-      schema: z.ZodSchema<T>,
+      schema: z.ZodSchema<T> | undefined,
       data: unknown,
       endpoint: string
     ): Promise<T> {
+      if (!schema) return data as T;
       try {
         return await schema.parseAsync(data);
       } catch (error) {

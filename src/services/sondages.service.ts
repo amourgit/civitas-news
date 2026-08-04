@@ -1,8 +1,23 @@
-import { Sondage } from '../types/global.types';
+// ============================================================
+// src/services/sondages.service.ts
+// Service Sondages — bascule automatique mock/réel selon
+// `env.useMockData`. En mode mock, les sondages vivent imbriqués
+// dans les News (voir news.service.ts) et sont mutés en place ;
+// en mode réel, le vote est délégué directement au backend via
+// sondagesRepository (services/api/).
+// ============================================================
+
+import { env } from '../config/env';
+import type { Sondage } from '../types/global.types';
 import { newsService } from './news.service';
+import { sondagesRepository } from './api/repositories/sondages.repository';
 
 export const sondagesService = {
   voteSondage: async (sondageId: string, choixIds: string[]): Promise<Sondage | null> => {
+    if (!env.useMockData) {
+      return sondagesRepository.vote(sondageId, choixIds);
+    }
+
     const newsList = await newsService.getNews();
     let updatedSondage: Sondage | null = null;
 
@@ -22,7 +37,7 @@ export const sondagesService = {
           };
         });
 
-        // recalculate percentages for all
+        // recalcule les pourcentages pour tous les choix
         updatedChoix.forEach((c) => {
           c.pourcentage = parseFloat(((c.nombreVotes / newTotalVotes) * 100).toFixed(1));
         });

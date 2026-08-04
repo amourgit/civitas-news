@@ -1,90 +1,48 @@
-import { Signalement, AuditLog, Utilisateur, Organisation } from '../types/global.types';
+// ============================================================
+// src/services/admin.service.ts
+// Service Administration/Modération — bascule automatique
+// mock/réel selon `env.useMockData`.
+// ============================================================
 
-let signalementsList: Signalement[] = [
-  {
-    id: 'sig-1',
-    typeContenu: 'commentaire',
-    contenuId: 'comm-88',
-    titreOuApercu: "Propos déplacés concernant le coût de l'inscription...",
-    motif: 'propos_inappropries',
-    auteurSignalement: {
-      id: 'usr-sig-1',
-      username: 'etudiant_vigilant',
-      nomAffiche: 'Marc L.',
-      role: 'etudiant',
-      badges: [],
-      stats: { contributions: 5, votes: 12, commentaires: 4 },
-    },
-    statut: 'en_attente',
-    createdAt: '2026-07-29T14:30:00Z',
-  },
-  {
-    id: 'sig-2',
-    typeContenu: 'news',
-    contenuId: 'news-fake-01',
-    titreOuApercu: 'Annonce suspecte pour un faux stage de recherche rémunéré',
-    motif: 'spam',
-    auteurSignalement: {
-      id: 'usr-sig-2',
-      username: 'caroline_p',
-      nomAffiche: 'Caroline P.',
-      role: 'etudiant',
-      badges: [],
-      stats: { contributions: 2, votes: 8, commentaires: 1 },
-    },
-    statut: 'en_attente',
-    createdAt: '2026-07-30T10:15:00Z',
-  },
-];
+import { env } from '../config/env';
+import type { Signalement, AuditLog, Utilisateur } from '../types/global.types';
+import {
+  INITIAL_SIGNALEMENTS as MOCK_SIGNALEMENTS,
+  INITIAL_AUDIT_LOGS as MOCK_AUDIT_LOGS,
+  INITIAL_ADMIN_UTILISATEURS as MOCK_UTILISATEURS,
+} from './api/mocks/admin.mock';
+import { adminRepository } from './api/repositories/admin.repository';
 
-let auditLogsList: AuditLog[] = [
-  {
-    id: 'audit-1',
-    action: 'Publication de News',
-    utilisateur: 'Amina K.',
-    cible: 'Plan Transport 2026',
-    horodatage: '2026-07-30T14:20:00Z',
-    adresseIP: '197.234.12.89',
-  },
-  {
-    id: 'audit-2',
-    action: 'Épinglage Commentaire',
-    utilisateur: 'Secrétariat Général',
-    cible: 'Note de cadrage',
-    horodatage: '2026-07-29T09:00:00Z',
-    adresseIP: '197.234.10.12',
-  },
-];
-
-let usersList: Utilisateur[] = [
-  {
-    id: 'usr-1',
-    username: 'amina_k',
-    nomAffiche: 'Amina K.',
-    email: 'amina.k@univ.edu',
-    role: 'etudiant',
-    etablissement: 'Université Centrale',
-    badges: [{ id: 'b1', nom: 'Pionnière', icone: '🌟', description: 'Membre fondatrice' }],
-    stats: { contributions: 14, votes: 38, commentaires: 42 },
-  },
-  {
-    id: 'usr-2',
-    username: 'prof_moussa',
-    nomAffiche: 'Prof. Moussa Diop',
-    email: 'moussa.diop@polytech.edu',
-    role: 'administrateur',
-    etablissement: 'Faculté Polytechnique',
-    badges: [{ id: 'b2', nom: 'Doyen', icone: '🎓', description: 'Responsable' }],
-    stats: { contributions: 68, votes: 95, commentaires: 150 },
-  },
-];
+let signalementsList: Signalement[] = env.useMockData ? [...MOCK_SIGNALEMENTS] : [];
+let auditLogsList: AuditLog[] = env.useMockData ? [...MOCK_AUDIT_LOGS] : [];
+let usersList: Utilisateur[] = env.useMockData ? [...MOCK_UTILISATEURS] : [];
 
 export const adminService = {
-  getSignalements: async () => signalementsList,
-  traiterSignalement: async (id: string, reponse: 'traite' | 'rejete') => {
-    signalementsList = signalementsList.map((s) => (s.id === id ? { ...s, statut: reponse } : s));
+  getSignalements: async (): Promise<Signalement[]> => {
+    if (env.useMockData) return signalementsList;
+    signalementsList = await adminRepository.getSignalements();
     return signalementsList;
   },
-  getAuditLogs: async () => auditLogsList,
-  getUtilisateurs: async () => usersList,
+
+  traiterSignalement: async (id: string, reponse: 'traite' | 'rejete'): Promise<Signalement | null> => {
+    if (env.useMockData) {
+      signalementsList = signalementsList.map((s) => (s.id === id ? { ...s, statut: reponse } : s));
+      return signalementsList.find((s) => s.id === id) || null;
+    }
+    const updated = await adminRepository.traiterSignalement(id, reponse);
+    signalementsList = signalementsList.map((s) => (s.id === id ? updated : s));
+    return updated;
+  },
+
+  getAuditLogs: async (): Promise<AuditLog[]> => {
+    if (env.useMockData) return auditLogsList;
+    auditLogsList = await adminRepository.getAuditLogs();
+    return auditLogsList;
+  },
+
+  getUtilisateurs: async (): Promise<Utilisateur[]> => {
+    if (env.useMockData) return usersList;
+    usersList = await adminRepository.getUtilisateurs();
+    return usersList;
+  },
 };
