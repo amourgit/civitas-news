@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Heart } from 'lucide-react';
-import { newsService } from '../../services/news.service';
+import { newsService } from '../../services/api/news.service';
 import { formatNumber } from '../../lib/formatNumber';
 
 interface FloatingHeart {

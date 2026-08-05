@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { News, NewsType } from '../../../types/global.types';
-import { newsService } from '../../../services/news.service';
+import { newsService } from '../../../services/api/news.service';
 
 export function useNewsList(params?: { category?: string; type?: NewsType; search?: string; province?: string }) {
   const [newsList, setNewsList] = useState<News[]>([]);

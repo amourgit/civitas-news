@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Stepper } from '../components/ui/Stepper';
 import { Button } from '../components/ui/Button';
 import { DatePicker } from '../components/ui/DatePicker';
-import { newsService } from '../services/news.service';
+import { newsService } from '../services/api/news.service';
 import { NewsType } from '../types/global.types';
 import { useAuthStore } from '../store/auth.store';
 import { toast } from '../hooks/useToast';

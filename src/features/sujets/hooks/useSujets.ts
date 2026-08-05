@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Sujet, SujetType } from '../../../types/global.types';
-import { sujetsService } from '../../../services/sujets.service';
+import { sujetsService } from '../../../services/api/sujets.service';
 
 export function useSujets(params?: { category?: string; type?: SujetType; search?: string; province?: string }) {
   const [sujets, setSujets] = useState<Sujet[]>([]);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { News, Sujet } from '../../../types/global.types';
-import { newsService } from '../../../services/news.service';
+import { newsService } from '../../../services/api/news.service';
 
 export function useNews(slug?: string) {
   const [news, setNews] = useState<News | null>(null);

@@ -1,5 +1,5 @@
 import { TypeReaction } from '../../../types/global.types';
-import { sujetsService } from '../../../services/sujets.service';
+import { sujetsService } from '../../../services/api/sujets.service';
 
 export function useSujetReactions(sujetId: string, onUpdate?: (updatedSujet: any) => void) {
   const react = async (reactionType: TypeReaction) => {

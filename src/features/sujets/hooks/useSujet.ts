@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Sujet } from '../../../types/global.types';
-import { sujetsService } from '../../../services/sujets.service';
+import { sujetsService } from '../../../services/api/sujets.service';
 
 export function useSujet(slug?: string) {
   const [sujet, setSujet] = useState<Sujet | null>(null);

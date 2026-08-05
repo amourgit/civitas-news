@@ -1,5 +1,5 @@
 import { TypeReaction } from '../../../types/global.types';
-import { newsService } from '../../../services/news.service';
+import { newsService } from '../../../services/api/news.service';
 
 export function useNewsReactions(newsId: string, onUpdate?: (updatedNews: any) => void) {
   const react = async (reactionType: TypeReaction) => {

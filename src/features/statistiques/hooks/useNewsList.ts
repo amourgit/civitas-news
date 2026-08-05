@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { News } from '../../../types/global.types';
-import { newsService } from '../../../services/news.service';
+import { newsService } from '../../../services/api/news.service';
 
 /**
  * Charge la liste complète des News via `newsService` (qui bascule

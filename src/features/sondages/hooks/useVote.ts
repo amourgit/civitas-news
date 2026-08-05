@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { sondagesService } from '../../../services/sondages.service';
+import { sondagesService } from '../../../services/api/sondages.service';
 import { toast } from '../../../hooks/useToast';
 
 export function useVote(sondageId: string, onVoteSuccess?: (updatedSondage: any) => void) {

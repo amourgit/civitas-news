@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Commentaire } from '../../../types/global.types';
-import { commentsService } from '../../../services/comments.service';
+import { commentsService } from '../../../services/api/comments.service';
 
 export function useComments(sujetId: string, tri: 'recents' | 'populaires' | 'pertinents' = 'recents') {
   const [comments, setComments] = useState<Commentaire[]>([]);

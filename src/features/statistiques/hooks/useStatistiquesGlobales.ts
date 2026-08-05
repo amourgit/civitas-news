@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { StatistiquesGlobales } from '../../../types/global.types';
-import { statistiquesService } from '../../../services/statistiques.service';
+import { statistiquesService } from '../../../services/api/statistiques.service';
 
 /**
  * Charge les statistiques globales via `statistiquesService` (qui bascule

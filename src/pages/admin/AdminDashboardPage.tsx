@@ -3,9 +3,9 @@ import { AdminSidebar } from '../../features/administration/components/AdminSide
 import { StatCard } from '../../features/statistiques/components/StatCard';
 import { AdminDataTable, type Column } from '../../features/administration/components/AdminDataTable';
 import { FileText, CheckSquare, MessageSquare, ShieldAlert, Users } from 'lucide-react';
-import { statistiquesService } from '../../services/statistiques.service';
-import { adminService } from '../../services/admin.service';
-import { newsService } from '../../services/news.service';
+import { statistiquesService } from '../../services/api/statistiques.service';
+import { adminService } from '../../services/api/admin.service';
+import { newsService } from '../../services/api/news.service';
 import { formatDateRelative } from '../../lib/formatDate';
 import type { AuditLog } from '../../types/global.types';
 

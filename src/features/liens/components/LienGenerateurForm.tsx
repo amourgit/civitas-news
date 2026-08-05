@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { liensService } from '../../../services/liens.service';
+import { liensService } from '../../../services/api/liens.service';
 import { LienPublication } from '../../../types/global.types';
 import { Button } from '../../../components/ui/Button';
 import { LienQrCode } from './LienQrCode';
