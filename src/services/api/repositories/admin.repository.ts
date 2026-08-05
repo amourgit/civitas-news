@@ -3,20 +3,23 @@
 // Implémentation RÉELLE du domaine Administration/Modération.
 // ============================================================
 
-import { z } from 'zod';
 import { http } from './httpClient';
-import { ADMIN_ENDPOINTS } from '../endpoints';
+import { ADMIN_ENDPOINTS, JOURNAL_ENDPOINTS } from '../endpoints';
 import { SignalementSchema, AuditLogSchema, UtilisateurSchema } from '../../../types/global.types';
 import type { Signalement, AuditLog, Utilisateur } from '../../../types/global.types';
+import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
 export const adminRepository = {
   async getSignalements(): Promise<Signalement[]> {
-    const response = await http.get.get<Signalement[]>({
-      endpoint: ADMIN_ENDPOINTS.signalements,
-      schema: z.array(SignalementSchema),
-      requireAuth: true,
+    return fetchAllPages<Signalement>(async (page) => {
+      const response = await http.get.get({
+        endpoint: ADMIN_ENDPOINTS.signalements,
+        params: { page },
+        schema: paginatedSchema(SignalementSchema),
+        requireAuth: true,
+      });
+      return { results: response.data.results, next: response.data.next };
     });
-    return response.data;
   },
 
   async traiterSignalement(id: string, reponse: 'traite' | 'rejete'): Promise<Signalement> {
@@ -29,21 +32,28 @@ export const adminRepository = {
     return response.data;
   },
 
+  /** GET /journal/v1/evenements/ — app backend séparée (journal d'audit immuable). */
   async getAuditLogs(): Promise<AuditLog[]> {
-    const response = await http.get.get<AuditLog[]>({
-      endpoint: ADMIN_ENDPOINTS.auditLogs,
-      schema: z.array(AuditLogSchema),
-      requireAuth: true,
+    return fetchAllPages<AuditLog>(async (page) => {
+      const response = await http.get.get({
+        endpoint: JOURNAL_ENDPOINTS.evenements,
+        params: { page },
+        schema: paginatedSchema(AuditLogSchema),
+        requireAuth: true,
+      });
+      return { results: response.data.results, next: response.data.next };
     });
-    return response.data;
   },
 
   async getUtilisateurs(): Promise<Utilisateur[]> {
-    const response = await http.get.get<Utilisateur[]>({
-      endpoint: ADMIN_ENDPOINTS.utilisateurs,
-      schema: z.array(UtilisateurSchema),
-      requireAuth: true,
+    return fetchAllPages<Utilisateur>(async (page) => {
+      const response = await http.get.get({
+        endpoint: ADMIN_ENDPOINTS.utilisateurs,
+        params: { page },
+        schema: paginatedSchema(UtilisateurSchema),
+        requireAuth: true,
+      });
+      return { results: response.data.results, next: response.data.next };
     });
-    return response.data;
   },
 };

@@ -4,26 +4,21 @@
 // frontend. Aucune chaîne d'URL ne doit être écrite en dur dans un
 // repository/service — tout passe par ce fichier.
 //
-// Deux catégories, clairement séparées :
+// Tous les chemins ci-dessous existent aujourd'hui dans
+// Backend-Core-Base (branche civitas-news) et sont vérifiés contre
+// les urls.py/views.py réels de chaque app (token_manager, users,
+// tenants, domain, referentiels, news, commentaires, sondages, liens,
+// notifications, moderation, journal, statistiques).
 //
-//  - REAL_ENDPOINTS   : existent aujourd'hui dans Backend-Core-Base
-//                        (branche civitas-news). Voir token_manager/,
-//                        users/, tenants/, domain/.
-//
-//  - PLANNED_ENDPOINTS: convention cible pour les domaines métier
-//                        (news, commentaires, sondages, liens,
-//                        statistiques, notifications, administration)
-//                        qui n'existent pas encore côté backend.
-//                        Ils suivent la même convention que le reste
-//                        de l'API (`/api/<app>/v1/...`) afin qu'un
-//                        futur backend puisse les implémenter sans
-//                        que le frontend ait à changer sa façon
-//                        d'appeler ces routes — seul le flag
-//                        `env.useRealContentApi` change de valeur.
+// Note : chaque endpoint de LISTE renvoie l'enveloppe de pagination
+// DRF (`{ count, next, previous, results }`), jamais un tableau nu —
+// voir `services/api/utils/pagination.ts`, consommé par les
+// repositories correspondants.
 // ============================================================
 
 /** Endpoints réellement exposés par Backend-Core-Base aujourd'hui. */
 export const AUTH_ENDPOINTS = {
+
   /** POST { username, password } -> { access, refresh, device_info } */
   login: '/token/v1/',
   /** POST { refresh } -> { access } */
@@ -56,31 +51,48 @@ export const DOMAIN_ENDPOINTS = {
 } as const;
 
 // ------------------------------------------------------------
-// Domaines métier CIVITAS NEWS — pas encore implémentés côté
-// backend. Convention prête pour la suite (voir env.useRealContentApi).
+// Domaines métier CIVITAS NEWS — implémentés côté backend depuis le
+// commit "construction complète du domaine métier CIVITAS NEWS"
+// (Backend-Core-Base, branche civitas-news). Chemins vérifiés contre
+// les urls.py/views.py réels de chaque app.
 // ------------------------------------------------------------
 
 export const NEWS_ENDPOINTS = {
   list: '/news/v1/news/',
   detail: (slugOrId: string) => `/news/v1/news/${slugOrId}/`,
   react: (id: string) => `/news/v1/news/${id}/reactions/`,
+  /** POST -> incrémente le compteur de partages, renvoie { partages }. */
+  partager: (id: string) => `/news/v1/news/${id}/partager/`,
 } as const;
 
+/**
+ * App backend séparée (`commentaires/`), PAS imbriquée sous /news/.
+ * Le filtrage par news se fait en query param (`?news={id}`), et la
+ * création exige `news` dans le corps de la requête (voir
+ * commentaires/api/v1/views.py: perform_create).
+ */
 export const COMMENTS_ENDPOINTS = {
-  byNews: (newsId: string) => `/news/v1/news/${newsId}/commentaires/`,
-  detail: (commentId: string) => `/news/v1/commentaires/${commentId}/`,
-  vote: (commentId: string) => `/news/v1/commentaires/${commentId}/vote/`,
-  react: (commentId: string) => `/news/v1/commentaires/${commentId}/reactions/`,
-  pin: (commentId: string) => `/news/v1/commentaires/${commentId}/pin/`,
+  list: '/commentaires/v1/commentaires/',
+  detail: (commentId: string) => `/commentaires/v1/commentaires/${commentId}/`,
+  vote: (commentId: string) => `/commentaires/v1/commentaires/${commentId}/vote/`,
+  react: (commentId: string) => `/commentaires/v1/commentaires/${commentId}/reactions/`,
+  pin: (commentId: string) => `/commentaires/v1/commentaires/${commentId}/pin/`,
 } as const;
 
 export const SONDAGES_ENDPOINTS = {
   vote: (sondageId: string) => `/sondages/v1/sondages/${sondageId}/vote/`,
 } as const;
 
+/**
+ * App backend séparée (`liens/`), PAS imbriquée sous /liens/v1/news/.
+ * Filtrage par news en query param (`?news=`) ; création exige `news`
+ * dans le corps de la requête.
+ */
 export const LIENS_ENDPOINTS = {
-  byNews: (newsId: string) => `/liens/v1/news/${newsId}/liens/`,
-  create: (newsId: string) => `/liens/v1/news/${newsId}/liens/`,
+  create: '/liens/v1/liens/',
+  detail: (id: string) => `/liens/v1/liens/${id}/`,
+  /** POST public (pas d'auth requise) -> trace un clic/scan, renvoie { valide, aMotDePasse }. */
+  acceder: (id: string) => `/liens/v1/liens/${id}/acceder/`,
 } as const;
 
 export const STATISTIQUES_ENDPOINTS = {
@@ -93,9 +105,19 @@ export const NOTIFICATIONS_ENDPOINTS = {
   markAllAsRead: '/notifications/v1/notifications/read-all/',
 } as const;
 
+/**
+ * Le panneau d'administration frontend regroupe des ressources qui
+ * vivent en réalité dans DEUX apps backend séparées :
+ *  - `moderation/` : signalements + annuaire utilisateurs admin
+ *  - `journal/`    : journal d'audit (EvenementJournal)
+ * (il n'existe PAS d'app/préfixe unique `/administration/`).
+ */
 export const ADMIN_ENDPOINTS = {
-  signalements: '/administration/v1/signalements/',
-  traiterSignalement: (id: string) => `/administration/v1/signalements/${id}/traiter/`,
-  auditLogs: '/administration/v1/audit-logs/',
-  utilisateurs: '/administration/v1/utilisateurs/',
+  signalements: '/moderation/v1/signalements/',
+  traiterSignalement: (id: string) => `/moderation/v1/signalements/${id}/traiter/`,
+  utilisateurs: '/moderation/v1/utilisateurs/',
+} as const;
+
+export const JOURNAL_ENDPOINTS = {
+  evenements: '/journal/v1/evenements/',
 } as const;

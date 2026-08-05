@@ -3,10 +3,10 @@
 // Implémentation RÉELLE et complète du domaine Commentaires.
 // ============================================================
 
-import { z } from 'zod';
 import { http } from './httpClient';
 import { COMMENTS_ENDPOINTS } from '../endpoints';
 import { CommentaireSchema, type Commentaire } from '../../../types/global.types';
+import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
 export interface CreerCommentairePayload {
   contenu: string;
@@ -19,18 +19,24 @@ export interface CreerCommentairePayload {
 
 export const commentsRepository = {
   async listByNews(newsId: string): Promise<Commentaire[]> {
-    const response = await http.get.get<Commentaire[]>({
-      endpoint: COMMENTS_ENDPOINTS.byNews(newsId),
-      schema: z.array(CommentaireSchema),
-      requireAuth: false,
+    return fetchAllPages<Commentaire>(async (page) => {
+      const response = await http.get.get({
+        endpoint: COMMENTS_ENDPOINTS.list,
+        params: { news: newsId, page },
+        schema: paginatedSchema(CommentaireSchema),
+        requireAuth: false,
+      });
+      return { results: response.data.results, next: response.data.next };
     });
-    return response.data;
   },
 
   async create(newsId: string, payload: CreerCommentairePayload): Promise<Commentaire> {
-    const response = await http.post.post<CreerCommentairePayload, Commentaire>({
-      endpoint: COMMENTS_ENDPOINTS.byNews(newsId),
-      body: payload,
+    const response = await http.post.post<CreerCommentairePayload & { news: string }, Commentaire>({
+      endpoint: COMMENTS_ENDPOINTS.list,
+      // `news` est requis par commentaires/api/v1/views.py (perform_create) —
+      // l'URL n'étant plus imbriquée sous /news/{id}/, l'id doit voyager
+      // dans le corps de la requête.
+      body: { ...payload, news: newsId },
       responseSchema: CommentaireSchema,
       requireAuth: true,
     });

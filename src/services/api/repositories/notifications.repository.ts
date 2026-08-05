@@ -3,19 +3,22 @@
 // Implémentation RÉELLE du domaine Notifications.
 // ============================================================
 
-import { z } from 'zod';
 import { http } from './httpClient';
 import { NOTIFICATIONS_ENDPOINTS } from '../endpoints';
 import { NotificationItemSchema, type NotificationItem } from '../../../types/global.types';
+import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
 export const notificationsRepository = {
   async list(): Promise<NotificationItem[]> {
-    const response = await http.get.get<NotificationItem[]>({
-      endpoint: NOTIFICATIONS_ENDPOINTS.list,
-      schema: z.array(NotificationItemSchema),
-      requireAuth: true,
+    return fetchAllPages<NotificationItem>(async (page) => {
+      const response = await http.get.get({
+        endpoint: NOTIFICATIONS_ENDPOINTS.list,
+        params: { page },
+        schema: paginatedSchema(NotificationItemSchema),
+        requireAuth: true,
+      });
+      return { results: response.data.results, next: response.data.next };
     });
-    return response.data;
   },
 
   async markAsRead(id: string): Promise<void> {

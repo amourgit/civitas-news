@@ -9,10 +9,10 @@
 // sans qu'aucun composant n'ait à changer.
 // ============================================================
 
-import { z } from 'zod';
 import { http } from './httpClient';
 import { NEWS_ENDPOINTS } from '../endpoints';
 import { NewsSchema, type News, type NewsType, type TypeReaction } from '../../../types/global.types';
+import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
 export interface NewsQueryParams {
   category?: string;
@@ -23,13 +23,15 @@ export interface NewsQueryParams {
 
 export const newsRepository = {
   async list(params?: NewsQueryParams): Promise<News[]> {
-    const response = await http.get.get<News[]>({
-      endpoint: NEWS_ENDPOINTS.list,
-      params: params as Record<string, unknown> | undefined,
-      schema: z.array(NewsSchema),
-      requireAuth: false,
+    return fetchAllPages<News>(async (page) => {
+      const response = await http.get.get({
+        endpoint: NEWS_ENDPOINTS.list,
+        params: { ...(params as Record<string, unknown> | undefined), page },
+        schema: paginatedSchema(NewsSchema),
+        requireAuth: false,
+      });
+      return { results: response.data.results, next: response.data.next };
     });
-    return response.data;
   },
 
   async getBySlug(slugOrId: string): Promise<News | null> {

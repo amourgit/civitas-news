@@ -6,7 +6,7 @@
 import { http } from './httpClient';
 import { USERS_ENDPOINTS } from '../endpoints';
 import { BackendUserSchema, type BackendUser } from '../../../types/models/backend.types';
-import { z } from 'zod';
+import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
 export const usersRepository = {
   /** GET /users/v1/users/me/ — profil de l'utilisateur authentifié courant. */
@@ -21,12 +21,15 @@ export const usersRepository = {
 
   /** GET /users/v1/users/ — liste (réservé aux rôles habilités côté backend). */
   async list(): Promise<BackendUser[]> {
-    const response = await http.get.get<BackendUser[]>({
-      endpoint: USERS_ENDPOINTS.list,
-      schema: z.array(BackendUserSchema),
-      requireAuth: true,
+    return fetchAllPages<BackendUser>(async (page) => {
+      const response = await http.get.get({
+        endpoint: USERS_ENDPOINTS.list,
+        params: { page },
+        schema: paginatedSchema(BackendUserSchema),
+        requireAuth: true,
+      });
+      return { results: response.data.results, next: response.data.next };
     });
-    return response.data;
   },
 
   async getById(id: number): Promise<BackendUser> {
