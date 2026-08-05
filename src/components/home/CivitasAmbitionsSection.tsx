@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   civitasInfoMockData,
-} from '../../mocks/civitasInfo.mock';
+} from '../../services/api/mocks/organisation.mock';
 import {
   Building2,
   MapPin,

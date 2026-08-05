@@ -1,17 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { TrendingUp, Calendar } from 'lucide-react';
-
-const monthlyData = [
-  { month: 'Jan', participation: 12400, consultations: 45, adhésion: 82 },
-  { month: 'Fév', participation: 18600, consultations: 52, adhésion: 85 },
-  { month: 'Mar', participation: 24100, consultations: 68, adhésion: 88 },
-  { month: 'Avr', participation: 21500, consultations: 61, adhésion: 84 },
-  { month: 'Mai', participation: 32800, consultations: 89, adhésion: 91 },
-  { month: 'Juin', participation: 41200, consultations: 104, adhésion: 93 },
-  { month: 'Juil', participation: 56900, consultations: 135, adhésion: 95 },
-  { month: 'Août', participation: 64500, consultations: 150, adhésion: 96 },
-];
+import { useStatistiquesGlobales } from '../hooks/useStatistiquesGlobales';
 
 interface BentoAreaEvolutionProps {
   className?: string;
@@ -19,6 +9,26 @@ interface BentoAreaEvolutionProps {
 
 export const BentoAreaEvolution: React.FC<BentoAreaEvolutionProps> = ({ className }) => {
   const [timeframe, setTimeframe] = useState<'mensuel' | 'trimestriel'>('mensuel');
+  const { stats } = useStatistiquesGlobales();
+
+  const monthlyData = useMemo(
+    () => (stats?.evolutionMensuelle ?? []).map((m) => ({ month: m.mois, participation: m.participation })),
+    [stats]
+  );
+
+  const { peakMonth, averageLabel } = useMemo(() => {
+    if (monthlyData.length === 0) {
+      return { peakMonth: null as string | null, averageLabel: null as string | null };
+    }
+    const peak = monthlyData.reduce((max, item) => (item.participation > max.participation ? item : max), monthlyData[0]);
+    const average = monthlyData.reduce((sum, item) => sum + item.participation, 0) / monthlyData.length;
+    return {
+      peakMonth: peak.month,
+      averageLabel: `${(average / 1000).toFixed(1)}k v/mois`,
+    };
+  }, [monthlyData]);
+
+  const croissance = stats?.croissanceMensuelle;
 
   return (
     <div className={`bg-white dark:bg-[#1A1F4D] border border-gray-200/80 dark:border-gray-800 p-4 shadow-sm h-full flex flex-col justify-between ${className ?? 'rounded-2xl'}`}>
@@ -29,9 +39,11 @@ export const BentoAreaEvolution: React.FC<BentoAreaEvolutionProps> = ({ classNam
             <h3 className="text-xs font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">
               Évolution de la Participation Citoyenne
             </h3>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/40 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> +38% Croissance
-            </span>
+            {croissance !== undefined && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/40 flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" /> {croissance >= 0 ? '+' : ''}{croissance}% Croissance
+              </span>
+            )}
           </div>
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
             Cumul des suffrages et contributions enregistrés par mois
@@ -113,10 +125,16 @@ export const BentoAreaEvolution: React.FC<BentoAreaEvolutionProps> = ({ classNam
       <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800/80 pt-2 text-[11px] text-gray-500 dark:text-gray-400">
         <span className="flex items-center gap-1">
           <Calendar className="w-3.5 h-3.5 text-purple-500" />
-          Pic observé en <strong>Juillet 2026</strong> (Grand Débat National)
+          {peakMonth ? (
+            <>
+              Pic observé en <strong>{peakMonth}</strong>
+            </>
+          ) : (
+            'Chargement des données de participation…'
+          )}
         </span>
         <span className="font-semibold text-gray-900 dark:text-gray-200">
-          Moyenne: 34.2k v/mois
+          {averageLabel ? `Moyenne: ${averageLabel}` : ''}
         </span>
       </div>
     </div>

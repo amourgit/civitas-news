@@ -1,13 +1,18 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { ShieldCheck, Heart, UserCheck } from 'lucide-react';
-
-const gaugeData = [
-  { name: 'Index Score', value: 92, fill: '#5B4DFF' },
-  { name: 'Remaining', value: 8, fill: '#E5E7EB' },
-];
+import { Heart, UserCheck } from 'lucide-react';
+import { useStatistiquesGlobales } from '../hooks/useStatistiquesGlobales';
 
 export const BentoGaugeParity: React.FC = () => {
+  const { stats } = useStatistiquesGlobales();
+  const parite = stats?.parite;
+  const score = parite?.scoreRepresentativite ?? 0;
+
+  const gaugeData = [
+    { name: 'Index Score', value: score, fill: '#5B4DFF' },
+    { name: 'Remaining', value: 100 - score, fill: '#E5E7EB' },
+  ];
+
   return (
     <div className="bg-white dark:bg-[#1A1F4D] border border-gray-200/80 dark:border-gray-800 rounded-2xl p-4 shadow-sm h-full flex flex-col justify-between">
       {/* Header */}
@@ -42,7 +47,7 @@ export const BentoGaugeParity: React.FC = () => {
         </ResponsiveContainer>
         <div className="absolute bottom-2 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-2xl font-black text-gray-900 dark:text-white font-display">
-            92%
+            {score}%
           </span>
           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
             Représentativité
@@ -56,13 +61,17 @@ export const BentoGaugeParity: React.FC = () => {
           <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
             <UserCheck className="w-3.5 h-3.5 text-blue-500" /> Parité H / F
           </span>
-          <span className="font-extrabold text-gray-900 dark:text-gray-100">49% / 51%</span>
+          <span className="font-extrabold text-gray-900 dark:text-gray-100">
+            {parite ? `${parite.hommesPct}% / ${parite.femmesPct}%` : '—'}
+          </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
             <Heart className="w-3.5 h-3.5 text-rose-500" /> Tranche 18-35 ans
           </span>
-          <span className="font-extrabold text-gray-900 dark:text-gray-100">64% des votants</span>
+          <span className="font-extrabold text-gray-900 dark:text-gray-100">
+            {parite ? `${parite.tranche1835Pct}% des votants` : '—'}
+          </span>
         </div>
       </div>
     </div>
