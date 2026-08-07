@@ -38,7 +38,7 @@ export const NotificationItemSchema = z.object({
   categorie: z.object({
     nom: z.string(),
     couleur: z.string(),
-    icone: z.string().optional(),
+    icone: z.string().nullable().optional(),
   }),
   lien: z.string(),
   lu: z.boolean(),

@@ -19,12 +19,13 @@ export const CommentaireSchema = z.object({
   sujetId: z.string().optional(),
   auteur: UtilisateurSchema,
   typeContenu: z.enum(['texte', 'audio']).optional(),
-  audioUrl: z.string().optional(),
+  // get_audio_url renvoie None si pas d'audio_fichier -> null JSON.
+  audioUrl: z.string().nullable().optional(),
   audioDuration: z.number().nonnegative().optional(),
   contenu: z.string(),
   media: z.array(MediaJointSchema).optional(),
-  /** id du commentaire parent (fil de réponses) */
-  reponseA: z.string().optional(),
+  /** id du commentaire parent (fil de réponses) — get_reponse_a renvoie None si racine -> null JSON. */
+  reponseA: z.string().nullable().optional(),
   mentions: z.array(z.string()).optional(),
   reactions: z.record(z.string(), z.number()),
   userReactions: z.array(z.string()).optional(),

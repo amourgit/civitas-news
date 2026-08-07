@@ -21,12 +21,14 @@ export const LienPublicationSchema = z.object({
   sujetId: z.string().optional(),
   urlPublique: z.string(),
   urlCourte: z.string().optional(),
-  qrCode: z.string().optional(),
+  // get_qr_code renvoie None si pas encore généré -> null JSON.
+  qrCode: z.string().nullable().optional(),
   visibilite: z.enum(['public', 'prive', 'limite']),
   motDePasse: z.boolean().optional(),
   expiration: z.string().optional(),
   usageUnique: z.boolean().optional(),
-  scope: LienScopeSchema.optional(),
+  // get_scope renvoie None si aucune restriction de portée -> null JSON.
+  scope: LienScopeSchema.nullable().optional(),
   clics: z.number().int().nonnegative().optional(),
   scans: z.number().int().nonnegative().optional(),
   createdAt: z.string(),

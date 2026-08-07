@@ -25,6 +25,12 @@ export const AuditLogSchema = z.object({
   utilisateur: z.string(),
   cible: z.string(),
   horodatage: z.string(),
-  adresseIP: z.string(),
+  /**
+   * Le convertisseur camelCase backend (common/camel_case.py) est une
+   * regex naïve sans traitement spécial des acronymes :
+   * `adresse_ip` -> `adresseIp` (pas `adresseIP`). Champ nommé pour
+   * matcher la sortie réelle plutôt que la casse "attendue".
+   */
+  adresseIp: z.string(),
 });
 export type AuditLog = z.infer<typeof AuditLogSchema>;

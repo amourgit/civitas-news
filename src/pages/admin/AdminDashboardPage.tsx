@@ -64,7 +64,7 @@ export default function AdminDashboardPage() {
       header: 'Quand',
       render: (item) => formatDateRelative(item.horodatage),
     },
-    { key: 'adresseIP', header: 'Adresse IP' },
+    { key: 'adresseIp', header: 'Adresse IP' },
   ];
 
   return (

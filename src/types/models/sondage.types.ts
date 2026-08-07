@@ -8,7 +8,7 @@ import { z } from 'zod';
 export const ChoixSondageSchema = z.object({
   id: z.string(),
   libelle: z.string(),
-  image: z.string().optional(),
+  image: z.string().nullable().optional(),
   nombreVotes: z.number().int().nonnegative(),
   pourcentage: z.number().min(0).max(100),
 });
@@ -21,7 +21,7 @@ export const SondageSchema = z.object({
   titre: z.string(),
   description: z.string().optional(),
   question: z.string(),
-  image: z.string().optional(),
+  image: z.string().nullable().optional(),
   choix: z.array(ChoixSondageSchema),
   dateDebut: z.string(),
   dateFin: z.string(),

@@ -49,7 +49,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     utilisateur: 'Amina K.',
     cible: 'Plan Transport 2026',
     horodatage: '2026-07-30T14:20:00Z',
-    adresseIP: '197.234.12.89',
+    adresseIp: '197.234.12.89',
   },
   {
     id: 'audit-2',
@@ -57,7 +57,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     utilisateur: 'Secrétariat Général',
     cible: 'Note de cadrage',
     horodatage: '2026-07-29T09:00:00Z',
-    adresseIP: '197.234.10.12',
+    adresseIp: '197.234.10.12',
   },
 ];
 

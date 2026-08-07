@@ -3,12 +3,15 @@
 // Domaine Utilisateur — schéma canonique (Zod) + types dérivés.
 //
 // Note backend (Backend-Core-Base, branche civitas-news) :
-// le modèle User Django actuel ne porte que
-// { id, username, email, first_name, last_name, is_active, date_joined }.
-// Les champs enrichis ci-dessous (avatar, role, badges, stats,
-// etablissement) sont la cible fonctionnelle attendue par le
-// frontend — ils nécessiteront une extension du serializer/modèle
-// côté backend (profil utilisateur) lors de la prochaine phase.
+// le modèle User Django brut ne porte que
+// { id, username, email, first_name, last_name, is_active, date_joined }
+// (voir types/models/backend.types.ts:BackendUserSchema — c'est ce que
+// renvoie /users/v1/users/). Les champs enrichis ci-dessous (avatar,
+// role, badges, stats, etablissement) existent déjà côté backend, mais
+// UNIQUEMENT en tant qu'objet imbriqué en lecture seule
+// (users/api/v1/serializers.py:UtilisateurPublicSerializer), exposé
+// dans news.auteur, commentaire.auteur, signalement.auteurSignalement
+// — jamais comme un endpoint /users/... autonome à ce jour.
 // ============================================================
 
 import { z } from 'zod';
@@ -40,9 +43,13 @@ export const UtilisateurSchema = z.object({
   id: z.string(),
   username: z.string(),
   nomAffiche: z.string(),
-  avatar: z.string().optional(),
+  // get_avatar renvoie None si pas de profile_picture -> null JSON, pas
+  // une clé absente : nullable ET optional (pas juste optional).
+  avatar: z.string().nullable().optional(),
   role: RoleUtilisateurSchema,
-  etablissement: z.string().optional(),
+  // CharField(source='etablissement.nom', default=None) -> null JSON si
+  // l'utilisateur n'a pas d'établissement.
+  etablissement: z.string().nullable().optional(),
   email: z.string().optional(),
   badges: z.array(BadgeSchema),
   stats: UtilisateurStatsSchema,
@@ -52,7 +59,8 @@ export type Utilisateur = z.infer<typeof UtilisateurSchema>;
 export const OrganisationSchema = z.object({
   id: z.string(),
   nom: z.string(),
-  logo: z.string().optional(),
+  // get_logo renvoie None si pas de fichier logo -> null JSON.
+  logo: z.string().nullable().optional(),
   type: z.string(),
   description: z.string().optional(),
 });

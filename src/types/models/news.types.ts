@@ -52,7 +52,7 @@ export const NewsMediaItemSchema = z.object({
   id: z.string(),
   type: NewsMediaTypeSchema,
   url: z.string(),
-  thumbnail: z.string().optional(),
+  thumbnail: z.string().nullable().optional(),
   titre: z.string(),
   description: z.string().optional(),
   duree: z.string().optional(),
@@ -103,10 +103,15 @@ export const NewsSchema = z.object({
   statut: z.enum(['brouillon', 'publie', 'archive', 'signale']),
   visibilite: z.enum(['public', 'prive', 'limite']),
   stats: NewsStatsSchema,
-  sondages: z.array(SondageSchema),
+  // Présents uniquement en détail (NewsSerializer), absents des réponses
+  // de liste (NewsListSerializer, backend news/api/v1/serializers.py) :
+  sondages: z.array(SondageSchema).optional(),
   documents: z.array(DocumentJointSchema).optional(),
   medias: z.array(NewsMediaItemSchema).optional(),
-  lienPublication: LienPublicationSchema.optional(),
+  // Présent en détail mais peut valoir `null` (get_lien_publication
+  // renvoie None si la News n'a pas encore de lien généré) : nullable
+  // ET optional, pas juste optional (JSON `null` != clé absente pour Zod).
+  lienPublication: LienPublicationSchema.nullable().optional(),
   userReaction: TypeReactionSchema.nullable().optional(),
 });
 export type News = z.infer<typeof NewsSchema>;
