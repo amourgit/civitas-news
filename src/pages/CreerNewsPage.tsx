@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stepper } from '../components/ui/Stepper';
 import { Button } from '../components/ui/Button';
 import { DatePicker } from '../components/ui/DatePicker';
 import { newsService } from '../services/api/news.service';
-import { NewsType } from '../types/global.types';
+import { sondagesService } from '../services/api/sondages.service';
+import { referentielsService } from '../services/api/referentiels.service';
+import { NewsType, Categorie, Organisation, Etablissement } from '../types/global.types';
 import { useAuthStore } from '../store/auth.store';
 import { toast } from '../hooks/useToast';
-import { FilePlus, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { FilePlus, ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, X } from 'lucide-react';
 import { RichTextViewer } from '../components/ui/RichTextViewer';
 import { MarkdownToolbar } from '../components/ui/MarkdownToolbar';
 
@@ -17,6 +19,25 @@ const WIZARD_STEPS = [
   { id: 'step-3', title: '3. Sondage (Option)', description: 'Question & Choix' },
   { id: 'step-4', title: '4. Validation', description: 'Aperçu & Publication' },
 ];
+
+/** Les 9 provinces du Gabon (voir news/models.py: Province, côté backend). */
+const PROVINCES_GABON = [
+  'Estuaire',
+  'Haut-Ogooué',
+  'Moyen-Ogooué',
+  'Ngounié',
+  'Nyanga',
+  'Ogooué-Ivindo',
+  'Ogooué-Lolo',
+  'Ogooué-Maritime',
+  'Woleu-Ntem',
+];
+
+/** Formate une Date en valeur compatible avec <input type="datetime-local">. */
+function toDatetimeLocalValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 export default function CreerNewsPage() {
   const navigate = useNavigate();
@@ -29,20 +50,84 @@ export default function CreerNewsPage() {
   const [contenu, setContenu] = useState('');
   const [showPreviewDesc, setShowPreviewDesc] = useState(false);
   const [showPreviewContenu, setShowPreviewContenu] = useState(false);
-  const [province, setProvince] = useState('Kinshasa');
-  const [image, setImage] = useState('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1200&auto=format&fit=crop&q=80');
+  const [province, setProvince] = useState('Estuaire');
+
+  // Référentiels (catégories, organisations, établissements) — peuplés
+  // depuis referentielsService (bascule mock/réel automatique).
+  const [categories, setCategories] = useState<Categorie[]>([]);
+  const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [etablissements, setEtablissements] = useState<Etablissement[]>([]);
+  const [categorieId, setCategorieId] = useState('');
+  const [organisationId, setOrganisationId] = useState('');
+  const [etablissementId, setEtablissementId] = useState('');
+  const [isLoadingReferentiels, setIsLoadingReferentiels] = useState(true);
+
+  // Image de couverture (fichier réel — le backend attend un ImageField, pas une URL).
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   // Poll state inside wizard
   const [addPoll, setAddPoll] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollChoice1, setPollChoice1] = useState('');
   const [pollChoice2, setPollChoice2] = useState('');
+  const [pollDateDebut, setPollDateDebut] = useState(() => toDatetimeLocalValue(new Date()));
+  const [pollDateFin, setPollDateFin] = useState(() => toDatetimeLocalValue(new Date(Date.now() + 30 * 86400 * 1000)));
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      referentielsService.getCategories(),
+      referentielsService.getOrganisations(),
+      referentielsService.getEtablissements(),
+    ])
+      .then(([cats, orgs, etabs]) => {
+        if (cancelled) return;
+        setCategories(cats);
+        setOrganisations(orgs);
+        setEtablissements(etabs);
+        if (cats.length > 0) setCategorieId(cats[0].id);
+      })
+      .catch((error) => console.error('Échec du chargement des référentiels :', error))
+      .finally(() => {
+        if (!cancelled) setIsLoadingReferentiels(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Nettoie l'URL d'objet créée pour la prévisualisation de l'image
+  // lorsqu'un nouveau fichier est choisi ou que la page se démonte.
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    };
+  }, [imagePreviewUrl]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleRemoveImage = () => {
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImageFile(null);
+    setImagePreviewUrl(null);
+  };
 
   const handleNext = () => {
     if (currentStep === 0 && !titre.trim()) {
       toast('warning', 'Champ requis', 'Veuillez saisir un titre pour votre news.');
+      return;
+    }
+    if (currentStep === 0 && !categorieId) {
+      toast('warning', 'Champ requis', 'Veuillez choisir une catégorie.');
       return;
     }
     if (currentStep === 1 && !description.trim()) {
@@ -57,39 +142,48 @@ export default function CreerNewsPage() {
   };
 
   const handlePublish = async () => {
+    const categorie = categories.find((c) => c.id === categorieId);
+    if (!categorie) {
+      toast('warning', 'Catégorie requise', 'Veuillez choisir une catégorie avant de publier.');
+      setCurrentStep(0);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const sondages = addPoll && pollQuestion.trim() ? [
-        {
-          id: `sondage-${Date.now()}`,
-          sujetId: '',
-          newsId: '',
-          titre: pollQuestion,
-          question: pollQuestion,
-          typeVote: 'unique' as const,
-          anonymat: true,
-          visibiliteResultat: 'instantane' as const,
-          statut: 'actif' as const,
-          dateDebut: new Date().toISOString(),
-          dateFin: new Date(Date.now() + 30 * 86400 * 1000).toISOString(),
-          totalVotes: 0,
-          choix: [
-            { id: 'c1', libelle: pollChoice1 || 'Oui', nombreVotes: 0, pourcentage: 0 },
-            { id: 'c2', libelle: pollChoice2 || 'Non', nombreVotes: 0, pourcentage: 0 },
-          ],
-        }
-      ] : [];
-
       const created = await newsService.createNews({
         titre,
         type,
         description,
         contenu,
         province,
-        image,
-        auteur: user,
-        sondages,
+        image: imageFile || undefined,
+        categorie,
+        organisation: organisations.find((o) => o.id === organisationId),
+        etablissement: etablissements.find((e) => e.id === etablissementId),
+        auteur: user || undefined,
       });
+
+      // Le sondage n'est PAS un champ de News côté backend : c'est une
+      // ressource à part (sondages/api/v1/), créée séparément une fois
+      // la News existante, et rattachée via son id.
+      if (addPoll && pollQuestion.trim()) {
+        try {
+          await sondagesService.creerSondage({
+            newsId: created.id,
+            titre: pollQuestion,
+            question: pollQuestion,
+            choix: [pollChoice1.trim() || 'Oui', pollChoice2.trim() || 'Non'],
+            dateDebut: new Date(pollDateDebut).toISOString(),
+            dateFin: new Date(pollDateFin).toISOString(),
+          });
+        } catch (pollError) {
+          // La news est déjà publiée : un échec de création du sondage ne
+          // doit pas faire perdre le travail déjà accompli à l'utilisateur.
+          console.error('Échec de la création du sondage :', pollError);
+          toast('warning', 'News publiée, sondage non créé', 'La publication a réussi mais le sondage associé n’a pas pu être créé.');
+        }
+      }
 
       toast('success', 'News publiée avec succès !', 'Votre actualité est désormais ouverte au débat.');
       navigate(`/news/${created.slug}`);
@@ -162,12 +256,63 @@ export default function CreerNewsPage() {
                   onChange={(e) => setProvince(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm"
                 >
-                  <option value="Kinshasa">Kinshasa</option>
-                  <option value="Haut-Katanga">Haut-Katanga</option>
-                  <option value="Nord-Kivu">Nord-Kivu</option>
-                  <option value="Kongo-Central">Kongo-Central</option>
-                  <option value="Sud-Kivu">Sud-Kivu</option>
-                  <option value="Tshopo">Tshopo</option>
+                  {PROVINCES_GABON.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Catégorie *
+                </label>
+                <select
+                  value={categorieId}
+                  onChange={(e) => setCategorieId(e.target.value)}
+                  disabled={isLoadingReferentiels}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
+                >
+                  {isLoadingReferentiels && <option value="">Chargement…</option>}
+                  {!isLoadingReferentiels && categories.length === 0 && <option value="">Aucune catégorie disponible</option>}
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nom}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Organisation (optionnel)
+                </label>
+                <select
+                  value={organisationId}
+                  onChange={(e) => setOrganisationId(e.target.value)}
+                  disabled={isLoadingReferentiels}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
+                >
+                  <option value="">Aucune</option>
+                  {organisations.map((o) => (
+                    <option key={o.id} value={o.id}>{o.nom}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Établissement (optionnel)
+                </label>
+                <select
+                  value={etablissementId}
+                  onChange={(e) => setEtablissementId(e.target.value)}
+                  disabled={isLoadingReferentiels}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
+                >
+                  <option value="">Aucun</option>
+                  {etablissements.map((e) => (
+                    <option key={e.id} value={e.id}>{e.nom}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -238,6 +383,32 @@ export default function CreerNewsPage() {
                 )}
               </div>
             </div>
+
+            {/* Image de couverture */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                Image de couverture (optionnel)
+              </label>
+              {imagePreviewUrl ? (
+                <div className="relative w-full h-48 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <img src={imagePreviewUrl} alt="Prévisualisation" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80"
+                    title="Retirer l'image"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 w-full h-32 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 cursor-pointer hover:border-[#5B4DFF] hover:text-[#5B4DFF] transition-colors">
+                  <ImagePlus className="w-6 h-6" />
+                  <span className="text-xs font-semibold">Cliquez pour choisir une image</span>
+                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                </label>
+              )}
+            </div>
           </div>
         )}
 
@@ -290,6 +461,10 @@ export default function CreerNewsPage() {
                     className="px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border text-xs"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <DatePicker label="Ouverture du vote" value={pollDateDebut} onChange={setPollDateDebut} />
+                  <DatePicker label="Clôture du vote" value={pollDateFin} onChange={setPollDateFin} min={pollDateDebut} />
+                </div>
               </div>
             )}
           </div>
@@ -302,7 +477,7 @@ export default function CreerNewsPage() {
               Aperçu Général avant Publication
             </h3>
             <div className="p-4 sm:p-5 rounded-2xl bg-gray-50 dark:bg-gray-800 space-y-4 text-xs sm:text-sm border border-gray-200 dark:border-gray-700">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pb-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pb-3 border-b border-gray-200 dark:border-gray-700">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-gray-400 block">Titre</span>
                   <span className="font-extrabold text-gray-900 dark:text-white">{titre || 'Non renseigné'}</span>
@@ -315,7 +490,18 @@ export default function CreerNewsPage() {
                   <span className="text-[10px] uppercase font-bold text-gray-400 block">Province</span>
                   <span className="font-bold">{province}</span>
                 </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Catégorie</span>
+                  <span className="font-bold">{categories.find((c) => c.id === categorieId)?.nom || 'Non renseignée'}</span>
+                </div>
               </div>
+
+              {imagePreviewUrl && (
+                <div>
+                  <span className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Image de couverture</span>
+                  <img src={imagePreviewUrl} alt="Prévisualisation" className="w-full h-40 object-cover rounded-xl border border-gray-200 dark:border-gray-700" />
+                </div>
+              )}
 
               {description && (
                 <div>
@@ -335,6 +521,16 @@ export default function CreerNewsPage() {
                   </span>
                   <div className="p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                     <RichTextViewer content={contenu} />
+                  </div>
+                </div>
+              )}
+
+              {addPoll && pollQuestion && (
+                <div>
+                  <span className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Sondage associé</span>
+                  <div className="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                    <p className="font-bold">{pollQuestion}</p>
+                    <p className="text-gray-500">{pollChoice1 || 'Oui'} / {pollChoice2 || 'Non'}</p>
                   </div>
                 </div>
               )}
@@ -366,4 +562,3 @@ export default function CreerNewsPage() {
 }
 
 export const CreerSujetPage = CreerNewsPage;
-

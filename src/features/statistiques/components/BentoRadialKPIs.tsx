@@ -5,9 +5,15 @@ import { useStatistiquesGlobales } from '../hooks/useStatistiquesGlobales';
 
 /** Unité affichée sous le compteur, selon le statut (vocabulaire UI, pas une donnée métier). */
 const UNITE_PAR_STATUT: Record<string, string> = {
+  // Mode mock — statuts illustratifs.
   adoptee: 'projets',
   analyse: 'dossiers',
   attente: 'débats',
+  // Mode réel — distribution par statut de publication (news/models.py).
+  publie: 'publications',
+  brouillon: 'brouillons',
+  archive: 'archives',
+  signale: 'signalements',
 };
 
 export const BentoRadialKPIs: React.FC = () => {

@@ -57,6 +57,17 @@ export const DOMAIN_ENDPOINTS = {
 // les urls.py/views.py réels de chaque app.
 // ------------------------------------------------------------
 
+/**
+ * Données de référence (app backend `referentiels/`) : catégories
+ * éditoriales, organisations publiantes, établissements. Utilisées pour
+ * peupler les sélecteurs du formulaire de création de News.
+ */
+export const REFERENTIELS_ENDPOINTS = {
+  categories: '/referentiels/v1/categories/',
+  organisations: '/referentiels/v1/organisations/',
+  etablissements: '/referentiels/v1/etablissements/',
+} as const;
+
 export const NEWS_ENDPOINTS = {
   list: '/news/v1/news/',
   detail: (slugOrId: string) => `/news/v1/news/${slugOrId}/`,
@@ -80,6 +91,7 @@ export const COMMENTS_ENDPOINTS = {
 } as const;
 
 export const SONDAGES_ENDPOINTS = {
+  create: '/sondages/v1/sondages/',
   vote: (sondageId: string) => `/sondages/v1/sondages/${sondageId}/vote/`,
 } as const;
 

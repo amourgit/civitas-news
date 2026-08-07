@@ -10,6 +10,23 @@ import type { Signalement, AuditLog, Utilisateur } from '../../../types/global.t
 import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
 export const adminRepository = {
+  /** POST /moderation/v1/signalements/ — ouvert à tout utilisateur connecté (pas seulement les modérateurs). */
+  async creerSignalement(payload: {
+    typeContenu: Signalement['typeContenu'];
+    contenuId: string;
+    titreOuApercu: string;
+    motif: Signalement['motif'];
+    description?: string;
+  }): Promise<Signalement> {
+    const response = await http.post.post<typeof payload, Signalement>({
+      endpoint: ADMIN_ENDPOINTS.signalements,
+      body: payload,
+      responseSchema: SignalementSchema,
+      requireAuth: true,
+    });
+    return response.data;
+  },
+
   async getSignalements(): Promise<Signalement[]> {
     return fetchAllPages<Signalement>(async (page) => {
       const response = await http.get.get({

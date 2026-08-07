@@ -6,6 +6,8 @@ import { Modal } from '../../../components/ui/Modal';
 import { LienQrCode } from '../../liens/components/LienQrCode';
 import { toast } from '../../../hooks/useToast';
 import { useClipboard } from '../../../hooks/useClipboard';
+import { newsService } from '../../../services/api/news.service';
+import { adminService } from '../../../services/api/admin.service';
 
 export interface NewsActionsBarProps {
   news?: News;
@@ -29,7 +31,8 @@ export const NewsActionsBar: React.FC<NewsActionsBarProps> = ({ news, sujet, onU
   const { react } = useNewsReactions(currentItem.id, onUpdate);
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('spam');
+  const [reportReason, setReportReason] = useState<'spam' | 'propos_inappropries' | 'desinformation' | 'harcelement' | 'autre'>('spam');
+  const [isReporting, setIsReporting] = useState(false);
   const { copy } = useClipboard();
 
   const handleShareCopy = async () => {
@@ -37,12 +40,33 @@ export const NewsActionsBar: React.FC<NewsActionsBarProps> = ({ news, sujet, onU
     if (success) {
       toast('success', 'Lien copié !', 'Le lien de la news a été copié dans votre presse-papier.');
     }
+    try {
+      const partages = await newsService.partagerNews(currentItem.id);
+      onUpdate?.({ ...currentItem, stats: { ...currentItem.stats, partages } });
+    } catch (error) {
+      // Le lien est déjà copié pour l'utilisateur : on ne bloque pas
+      // l'expérience si seul le compteur de partages échoue à se mettre à jour.
+      console.error('Échec de l’incrément du compteur de partages :', error);
+    }
   };
 
-  const handleReportSubmit = (e: React.FormEvent) => {
+  const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsReportOpen(false);
-    toast('info', 'Signalement transmis', 'Merci d’aider à préserver un espace d’information sain.');
+    setIsReporting(true);
+    try {
+      await adminService.creerSignalement({
+        typeContenu: 'news',
+        contenuId: currentItem.id,
+        titreOuApercu: currentItem.titre,
+        motif: reportReason,
+      });
+      setIsReportOpen(false);
+      toast('info', 'Signalement transmis', 'Merci d’aider à préserver un espace d’information sain.');
+    } catch (error) {
+      toast('error', 'Échec de l’envoi', 'Le signalement n’a pas pu être transmis. Réessayez.');
+    } finally {
+      setIsReporting(false);
+    }
   };
 
   return (
@@ -115,13 +139,14 @@ export const NewsActionsBar: React.FC<NewsActionsBarProps> = ({ news, sujet, onU
           </p>
           <select
             value={reportReason}
-            onChange={(e) => setReportReason(e.target.value)}
+            onChange={(e) => setReportReason(e.target.value as typeof reportReason)}
             className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm"
           >
             <option value="spam">Spam ou publicité non sollicitée</option>
             <option value="propos_inappropries">Propos inappropriés ou haineux</option>
             <option value="desinformation">Désinformation ou fausse nouvelle</option>
             <option value="harcelement">Harcèlement ciblé</option>
+            <option value="autre">Autre</option>
           </select>
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -133,9 +158,10 @@ export const NewsActionsBar: React.FC<NewsActionsBarProps> = ({ news, sujet, onU
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700"
+              disabled={isReporting}
+              className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 disabled:opacity-60"
             >
-              Envoyer le signalement
+              {isReporting ? 'Envoi…' : 'Envoyer le signalement'}
             </button>
           </div>
         </form>

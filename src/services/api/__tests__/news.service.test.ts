@@ -29,5 +29,29 @@ describe('NewsService', () => {
     const updated = await newsService.reactToNews(newsId, 'coeur');
     expect(updated.userReaction).toBe('coeur');
   });
+
+  it('creates a news item with the new CreerNewsInput contract (categorie object, no sondages field)', async () => {
+    const created = await newsService.createNews({
+      titre: 'Nouvelle annonce de test',
+      type: 'annonce',
+      description: 'Une description de test.',
+      province: 'Estuaire',
+      categorie: { id: 'cat-test', nom: 'Catégorie Test', couleur: '#5B4DFF', icone: 'BookOpen' },
+    });
+    expect(created.titre).toBe('Nouvelle annonce de test');
+    expect(created.categorie.id).toBe('cat-test');
+    expect(created.province).toBe('Estuaire');
+    expect(created.sondages).toEqual([]);
+
+    const all = await newsService.getNewsList();
+    expect(all.some((n) => n.id === created.id)).toBe(true);
+  });
+
+  it('increments the share counter via partagerNews', async () => {
+    const data = await newsService.getNewsList();
+    const before = data[0].stats.partages;
+    const total = await newsService.partagerNews(data[0].id);
+    expect(total).toBe(before + 1);
+  });
 });
 

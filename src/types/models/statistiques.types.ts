@@ -47,9 +47,16 @@ export const StatistiquesGlobalesSchema = z.object({
     })
   ).optional(),
   /** Répartition des consultations selon leur suite gouvernementale (BentoRadialKPIs). */
+  /**
+   * Répartition des consultations par statut (BentoRadialKPIs). En mode
+   * mock : 3 statuts fictifs illustratifs (adoptee/analyse/attente). En
+   * mode réel : distribution réelle des News par `statut` backend
+   * (brouillon/publie/archive/signale, voir news/models.py). D'où un
+   * `statut` en chaîne libre plutôt qu'un enum fixe à 3 valeurs.
+   */
   statutsConsultations: z.array(
     z.object({
-      statut: z.enum(['adoptee', 'analyse', 'attente']),
+      statut: z.string(),
       label: z.string(),
       pourcentage: z.number().min(0).max(100),
       compteur: z.number().int().nonnegative(),

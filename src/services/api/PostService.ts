@@ -148,9 +148,16 @@ export class PostService extends BaseHttpService {
           formData.append(name, file);
         });
   
-        // Ajouter les champs additionnels
+        // Ajouter les champs additionnels. Les valeurs tableau (ex: tags)
+        // sont ajoutées une par une sous la même clé — convention
+        // multipart standard côté Django/DRF pour les champs de type liste.
         Object.entries(additionalFields).forEach(([key, value]) => {
-          formData.append(key, String(value));
+          if (value === undefined || value === null) return;
+          if (Array.isArray(value)) {
+            value.forEach((item) => formData.append(key, String(item)));
+          } else {
+            formData.append(key, String(value));
+          }
         });
   
         // Construire l'URL

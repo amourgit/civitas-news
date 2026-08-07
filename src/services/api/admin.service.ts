@@ -18,6 +18,42 @@ let auditLogsList: AuditLog[] = env.useMockData ? [...MOCK_AUDIT_LOGS] : [];
 let usersList: Utilisateur[] = env.useMockData ? [...MOCK_UTILISATEURS] : [];
 
 export const adminService = {
+  creerSignalement: async (payload: {
+    typeContenu: Signalement['typeContenu'];
+    contenuId: string;
+    titreOuApercu: string;
+    motif: Signalement['motif'];
+    description?: string;
+    /** Utilisé uniquement en mode mock (en mode réel, l'auteur vient du token). */
+    auteur?: Utilisateur;
+  }): Promise<Signalement> => {
+    if (env.useMockData) {
+      const nouveau: Signalement = {
+        id: `signalement-${Date.now()}`,
+        typeContenu: payload.typeContenu,
+        contenuId: payload.contenuId,
+        titreOuApercu: payload.titreOuApercu,
+        motif: payload.motif,
+        description: payload.description,
+        auteurSignalement: payload.auteur || {
+          id: 'usr-student-789',
+          username: 'amina_k',
+          nomAffiche: 'Amina K.',
+          role: 'etudiant',
+          badges: [],
+          stats: { contributions: 1, votes: 0, commentaires: 0 },
+        },
+        statut: 'en_attente',
+        createdAt: new Date().toISOString(),
+      };
+      signalementsList = [nouveau, ...signalementsList];
+      return nouveau;
+    }
+    const created = await adminRepository.creerSignalement(payload);
+    signalementsList = [created, ...signalementsList];
+    return created;
+  },
+
   getSignalements: async (): Promise<Signalement[]> => {
     if (env.useMockData) return signalementsList;
     signalementsList = await adminRepository.getSignalements();

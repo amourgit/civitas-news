@@ -11,7 +11,7 @@
 // ============================================================
 
 import { env } from '../../config/env';
-import type { News, NewsType, TypeReaction } from '../../types/global.types';
+import type { News, NewsType, TypeReaction, Categorie, Organisation, Etablissement, Utilisateur } from '../../types/global.types';
 import { INITIAL_NEWS as MOCK_NEWS } from './mocks/news.mock';
 import { newsRepository } from './repositories/news.repository';
 import type { NewsQueryParams } from './repositories/news.repository';
@@ -52,6 +52,35 @@ function applyFilters(list: News[], params?: NewsQueryParams): News[] {
     );
   }
   return result;
+}
+
+/**
+ * Entrée du formulaire de création — volontairement dans la forme de
+ * LECTURE (`categorie`/`organisation` en objets complets, tels que
+ * sélectionnés dans les listes déroulantes peuplées par
+ * `referentiels.service.ts`) : l'appelant (CreerNewsPage) n'a pas à
+ * connaître la différence entre le contrat mock et le contrat réel.
+ * `newsService.createNews` se charge de l'adapter en interne :
+ *  - mode mock -> objet affiché tel quel ;
+ *  - mode réel -> aplati en IDs de clé étrangère (voir
+ *    news.repository.ts: NewsEcriturePayload).
+ */
+export interface CreerNewsInput {
+  titre: string;
+  type: NewsType;
+  description: string;
+  contenu?: string;
+  province?: string;
+  lieu?: string;
+  /** Fichier image de couverture (optionnel). */
+  image?: File;
+  categorie: Categorie;
+  organisation?: Organisation;
+  etablissement?: Etablissement;
+  tags?: string[];
+  visibilite?: 'public' | 'prive' | 'limite';
+  /** Utilisé uniquement en mode mock (en mode réel, l'auteur vient du token). */
+  auteur?: Utilisateur;
 }
 
 export const newsService = {
@@ -158,19 +187,38 @@ export const newsService = {
     return newsService.reactToNews(sujetId, reactionType);
   },
 
-  createNews: async (newNewsData: Partial<News>): Promise<News> => {
+  /** POST .../partager/ (ou équivalent local en mode mock) — incrémente le compteur de partages. */
+  partagerNews: async (newsId: string): Promise<number> => {
     if (env.useMockData) {
-      const slug =
-        newNewsData.slug || (newNewsData.titre ? newNewsData.titre.toLowerCase().replace(/[^\w-]+/g, '-') : `news-${Date.now()}`);
+      let total = 0;
+      newsMemory = newsMemory.map((n) => {
+        if (n.id === newsId || n.slug === newsId) {
+          total = n.stats.partages + 1;
+          return { ...n, stats: { ...n.stats, partages: total } };
+        }
+        return n;
+      });
+      return total;
+    }
+    const total = await newsRepository.partager(newsId);
+    newsMemory = newsMemory.map((n) => (n.id === newsId ? { ...n, stats: { ...n.stats, partages: total } } : n));
+    return total;
+  },
+
+  createNews: async (input: CreerNewsInput): Promise<News> => {
+    if (env.useMockData) {
+      const slug = input.titre.toLowerCase().trim().replace(/[^\w]+/g, '-').replace(/^-+|-+$/g, '') || `news-${Date.now()}`;
       const created: News = {
         id: `news-${Date.now()}`,
         slug,
-        type: newNewsData.type || 'consultation',
-        titre: newNewsData.titre || 'Sans titre',
-        description: newNewsData.description || '',
-        contenu: newNewsData.contenu || '',
-        image: newNewsData.image || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop&q=80',
-        auteur: newNewsData.auteur || {
+        type: input.type,
+        titre: input.titre,
+        description: input.description,
+        contenu: input.contenu || '',
+        // En mode mock, un fichier sélectionné est affiché via une URL
+        // d'objet locale (pas de véritable upload) ; sinon image par défaut.
+        image: input.image ? URL.createObjectURL(input.image) : 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop&q=80',
+        auteur: input.auteur || {
           id: 'usr-student-789',
           username: 'amina_k',
           nomAffiche: 'Amina K.',
@@ -178,28 +226,44 @@ export const newsService = {
           badges: [],
           stats: { contributions: 1, votes: 0, commentaires: 0 },
         },
-        categorie: newNewsData.categorie || { id: 'cat-general', nom: 'Vie Académique', couleur: '#5B4DFF', icone: 'BookOpen' },
-        tags: newNewsData.tags || ['Nouveau', 'Civitas'],
-        province: newNewsData.province || 'Estuaire',
+        organisation: input.organisation,
+        etablissement: input.etablissement,
+        categorie: input.categorie,
+        tags: input.tags || [],
+        province: input.province || 'Estuaire',
+        lieu: input.lieu,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         statut: 'publie',
-        visibilite: newNewsData.visibilite || 'public',
+        visibilite: input.visibilite || 'public',
         stats: { vues: 1, commentaires: 0, reactions: { coeur: 0, jaime: 0, bravo: 0, youpi: 0, wow: 0, jaimepas: 0 }, votes: 0, partages: 0 },
-        sondages: newNewsData.sondages || [],
-        documents: newNewsData.documents || [],
+        sondages: [],
+        documents: [],
       };
       newsMemory = [created, ...newsMemory];
       return created;
     }
 
-    const created = await newsRepository.create(newNewsData);
+    const created = await newsRepository.create({
+      titre: input.titre,
+      type: input.type,
+      description: input.description,
+      contenu: input.contenu,
+      image: input.image,
+      categorieId: input.categorie.id,
+      organisationId: input.organisation?.id,
+      etablissementId: input.etablissement?.id,
+      tags: input.tags,
+      province: input.province,
+      lieu: input.lieu,
+      visibilite: input.visibilite,
+    });
     newsMemory = [created, ...newsMemory];
     return created;
   },
 
-  createSujet: async (newSujetData: Partial<News>): Promise<News> => {
-    return newsService.createNews(newSujetData);
+  createSujet: async (input: CreerNewsInput): Promise<News> => {
+    return newsService.createNews(input);
   },
 };
 
@@ -214,7 +278,7 @@ export const newsBackendService = {
   getNews: (params?: NewsQueryParams) => newsRepository.list(params),
   getNewsBySlug: (slug: string) => newsRepository.getBySlug(slug),
   reactToNews: (newsId: string, reactionType: TypeReaction) => newsRepository.react(newsId, reactionType),
-  createNews: (data: Partial<News>) => newsRepository.create(data),
+  partagerNews: (newsId: string) => newsRepository.partager(newsId),
 };
 
 export const sujetsBackendService = newsBackendService;

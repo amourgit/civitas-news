@@ -13,6 +13,7 @@ export interface LienGenerateurFormProps {
 export const LienGenerateurForm: React.FC<LienGenerateurFormProps> = ({ sujetId }) => {
   const [visibilite, setVisibilite] = useState<'public' | 'prive' | 'limite'>('public');
   const [hasPassword, setHasPassword] = useState(false);
+  const [password, setPassword] = useState('');
   const [expiration, setExpiration] = useState('');
   const [province, setProvince] = useState('');
   const [generatedLien, setGeneratedLien] = useState<LienPublication | null>(null);
@@ -24,8 +25,8 @@ export const LienGenerateurForm: React.FC<LienGenerateurFormProps> = ({ sujetId 
     try {
       const result = await liensService.genererLien(sujetId, {
         visibilite,
-        motDePasse: hasPassword,
-        expiration,
+        motDePasse: hasPassword && password.trim() ? password : undefined,
+        expiration: expiration || undefined,
         scope: province ? { province } : undefined,
       });
       setGeneratedLien(result);
@@ -82,9 +83,15 @@ export const LienGenerateurForm: React.FC<LienGenerateurFormProps> = ({ sujetId 
               className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             >
               <option value="">Toutes les provinces</option>
-              <option value="Kinshasa">Kinshasa</option>
-              <option value="Haut-Katanga">Haut-Katanga</option>
-              <option value="Nord-Kivu">Nord-Kivu</option>
+              <option value="Estuaire">Estuaire</option>
+              <option value="Haut-Ogooué">Haut-Ogooué</option>
+              <option value="Moyen-Ogooué">Moyen-Ogooué</option>
+              <option value="Ngounié">Ngounié</option>
+              <option value="Nyanga">Nyanga</option>
+              <option value="Ogooué-Ivindo">Ogooué-Ivindo</option>
+              <option value="Ogooué-Lolo">Ogooué-Lolo</option>
+              <option value="Ogooué-Maritime">Ogooué-Maritime</option>
+              <option value="Woleu-Ntem">Woleu-Ntem</option>
             </select>
           </div>
         )}
@@ -101,6 +108,21 @@ export const LienGenerateurForm: React.FC<LienGenerateurFormProps> = ({ sujetId 
             Protéger l’accès par mot de passe
           </label>
         </div>
+
+        {hasPassword && (
+          <div>
+            <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5" /> Mot de passe
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mot de passe requis pour accéder au lien"
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+            />
+          </div>
+        )}
 
         <Button type="submit" variant="primary" size="md" isLoading={isLoading} className="w-full">
           Générer Lien & QR Code

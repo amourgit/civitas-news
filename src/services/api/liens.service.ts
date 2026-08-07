@@ -8,24 +8,26 @@ import { env } from '../../config/env';
 import type { LienPublication } from '../../types/global.types';
 import { INITIAL_LIENS as MOCK_LIENS } from './mocks/liens.mock';
 import { liensRepository } from './repositories/liens.repository';
+import type { LienEcriturePayload } from './repositories/liens.repository';
 
 let liensMemory: LienPublication[] = env.useMockData ? [...MOCK_LIENS] : [];
 
 export const liensService = {
-  genererLien: async (newsId: string, options: Partial<LienPublication>): Promise<LienPublication> => {
+  genererLien: async (newsId: string, payload: LienEcriturePayload): Promise<LienPublication> => {
     if (env.useMockData) {
       const randomHash = Math.random().toString(36).substring(2, 8);
       const newLien: LienPublication = {
         id: `lien-${Date.now()}`,
         newsId,
         sujetId: newsId,
-        urlPublique: options.urlPublique || `https://civitasnews.org/news/${newsId}`,
+        urlPublique: payload.urlPublique || `https://civitasnews.org/news/${newsId}`,
         urlCourte: `https://civit.as/${randomHash}`,
-        visibilite: options.visibilite || 'public',
-        motDePasse: options.motDePasse || false,
-        expiration: options.expiration,
-        usageUnique: options.usageUnique || false,
-        scope: options.scope,
+        visibilite: payload.visibilite,
+        // Lecture = "un mot de passe existe-t-il ?", pas le mot de passe lui-même.
+        motDePasse: Boolean(payload.motDePasse),
+        expiration: payload.expiration,
+        usageUnique: payload.usageUnique || false,
+        scope: payload.scope,
         clics: 0,
         scans: 0,
         createdAt: new Date().toISOString(),
@@ -34,7 +36,7 @@ export const liensService = {
       return newLien;
     }
 
-    const created = await liensRepository.generate(newsId, options);
+    const created = await liensRepository.generate(newsId, payload);
     liensMemory = [created, ...liensMemory];
     return created;
   },
