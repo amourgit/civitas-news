@@ -23,6 +23,7 @@
 interface ImportMetaEnvLike {
   VITE_API_BASE_URL?: string;
   VITE_USE_MOCK_DATA?: string;
+  VITE_GOOGLE_CLIENT_ID?: string;
   DEV?: boolean;
   PROD?: boolean;
   MODE?: string;
@@ -58,6 +59,16 @@ export const env = {
   isDev,
   isProd,
   mode: rawEnv.MODE || 'development',
+
+  /**
+   * OAuth Client ID (type "Web application") créé dans Google Cloud
+   * Console — voir components/auth/GoogleSignInButton.tsx. DOIT être
+   * identique à GOOGLE_OAUTH_CLIENT_ID côté backend (Backend-Core-Base
+   * config/settings.py), c'est l'audience vérifiée sur le id_token.
+   * Chaîne vide -> le bouton Google Sign-In s'affiche désactivé avec un
+   * message clair plutôt que d'échouer silencieusement.
+   */
+  googleClientId: rawEnv.VITE_GOOGLE_CLIENT_ID || '',
 };
 
 export type Env = typeof env;

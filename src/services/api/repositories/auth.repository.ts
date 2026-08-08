@@ -5,11 +5,8 @@
 // exact du backend (endpoints, formes de requête/réponse).
 //
 // État actuel du backend (Backend-Core-Base, branche civitas-news) :
-//  ✅ login / refresh / logout / sessions / check-token fonctionnent
-//  ❌ pas d'endpoint d'inscription publique (UserViewSet.create
-//     exige IsSuperUser) — l'inscription self-service devra être
-//     ajoutée côté backend avant de pouvoir remplacer le flux mock
-//     de RegisterPage.tsx.
+// login / register / google / refresh / logout / sessions / check-token
+// fonctionnent tous — voir token_manager/api/v1/views.py.
 // ============================================================
 
 import { http } from './httpClient';
@@ -18,12 +15,57 @@ import { AUTH_ENDPOINTS } from '../endpoints';
 import { TokenPairSchema, AccessTokenResponseSchema, SessionsListResponseSchema } from '../../../types/models/backend.types';
 import type { TokenPair, SessionInfo } from '../../../types/models/backend.types';
 
+export interface RegisterPayload {
+  username: string;
+  password: string;
+  password2: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 export const authRepository = {
   /** POST /token/v1/ — authentifie l'utilisateur et stocke les tokens. */
   async login(username: string, password: string): Promise<TokenPair> {
     const response = await http.post.post<{ username: string; password: string }, TokenPair>({
       endpoint: AUTH_ENDPOINTS.login,
       body: { username, password },
+      responseSchema: TokenPairSchema,
+      requireAuth: false,
+    });
+    tokenStore.setTokens({ access: response.data.access, refresh: response.data.refresh });
+    return response.data;
+  },
+
+  /**
+   * POST /token/v1/register/ — crée le compte puis auto-connecte
+   * (même forme de réponse que login : {access, refresh, device_info}).
+   * `password`/`password2` doivent être identiques (revalidé côté
+   * backend par UserCreateSerializer, mais autant échouer vite côté
+   * formulaire aussi).
+   */
+  async register(payload: RegisterPayload): Promise<TokenPair> {
+    const response = await http.post.post<RegisterPayload, TokenPair>({
+      endpoint: AUTH_ENDPOINTS.register,
+      body: payload,
+      responseSchema: TokenPairSchema,
+      requireAuth: false,
+    });
+    tokenStore.setTokens({ access: response.data.access, refresh: response.data.refresh });
+    return response.data;
+  },
+
+  /**
+   * POST /token/v1/google/ — connexion ou inscription via Google
+   * Identity Services. `credential` est le id_token JWT tel que reçu
+   * du callback GSI côté frontend (voir components/auth/GoogleSignInButton.tsx) ;
+   * sa signature et son audience sont vérifiées côté serveur avant
+   * toute confiance dans son contenu.
+   */
+  async loginWithGoogle(credential: string): Promise<TokenPair> {
+    const response = await http.post.post<{ credential: string }, TokenPair>({
+      endpoint: AUTH_ENDPOINTS.googleLogin,
+      body: { credential },
       responseSchema: TokenPairSchema,
       requireAuth: false,
     });

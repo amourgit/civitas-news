@@ -1,29 +1,20 @@
 // ============================================================
 // src/services/api/auth.service.ts
-// Service Authentification — contrairement aux domaines de contenu
-// (news, commentaires, ...), l'authentification a un backend RÉEL
-// et fonctionnel dès aujourd'hui (Backend-Core-Base : token_manager
-// + users). Ce service appelle donc toujours le vrai backend via
-// services/api/repositories/, indépendamment de env.useMockData.
+// Service Authentification — façade fine au-dessus de
+// services/api/repositories/{auth,users}.repository.ts.
 //
-// Important : ce service n'est PAS encore branché sur le flux de
-// connexion actuel de l'application (src/store/auth.store.ts, qui
-// reste en mode démo avec des utilisateurs prédéfinis). Deux raisons :
-//   1) Le backend n'expose aujourd'hui aucun endpoint d'inscription
-//      publique (users/api/v1/views.py : UserViewSet.create exige
-//      IsSuperUser) — il faudra l'ajouter côté backend avant de
-//      pouvoir remplacer le flux de RegisterPage.tsx.
-//   2) Le modèle User du backend n'a pas encore les champs enrichis
-//      attendus par le frontend (avatar, role, badges, stats,
-//      etablissement) — voir types/models/backend.types.ts.
-//
-// Ce service est en revanche entièrement fonctionnel et prêt à être
-// branché dès que ces deux points seront traités côté backend.
+// src/store/auth.store.ts (consommé par les composants React) appelle
+// directement ces repositories plutôt que ce service, pour garder son
+// cycle login -> hydratation du profil -> notification des listeners
+// atomique. Ce service reste utile hors contexte React (scripts,
+// tests, code non-composant) où le hook useAuthStore() ne s'applique
+// pas.
 // ============================================================
 
-import { authRepository } from './repositories/auth.repository';
+import { authRepository, type RegisterPayload } from './repositories/auth.repository';
 import { usersRepository } from './repositories/users.repository';
-import type { BackendUser, TokenPair, SessionInfo } from '../../types/models/backend.types';
+import type { Utilisateur } from '../../types/models/user.types';
+import type { TokenPair, SessionInfo } from '../../types/models/backend.types';
 
 export const authService = {
   /** Authentifie via /token/v1/ (username + password) et stocke les tokens. */
@@ -31,12 +22,22 @@ export const authService = {
     return authRepository.login(username, password);
   },
 
+  /** Inscription self-service via /token/v1/register/ (auto-connexion). */
+  async register(payload: RegisterPayload): Promise<TokenPair> {
+    return authRepository.register(payload);
+  },
+
+  /** Connexion/inscription via /token/v1/google/ (id_token Google Identity Services). */
+  async loginWithGoogle(credential: string): Promise<TokenPair> {
+    return authRepository.loginWithGoogle(credential);
+  },
+
   async logout(): Promise<void> {
     return authRepository.logout();
   },
 
-  /** Profil brut de l'utilisateur authentifié (GET /users/v1/users/me/). */
-  async getCurrentUser(): Promise<BackendUser | null> {
+  /** Profil enrichi de l'utilisateur authentifié (GET /users/v1/users/me/ -> UtilisateurPublicSerializer). */
+  async getCurrentUser(): Promise<Utilisateur | null> {
     if (!authRepository.isAuthenticated()) return null;
     try {
       return await usersRepository.me();

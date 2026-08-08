@@ -21,6 +21,10 @@ export const AUTH_ENDPOINTS = {
 
   /** POST { username, password } -> { access, refresh, device_info } */
   login: '/token/v1/',
+  /** POST { username, password, password2, email?, first_name?, last_name? } -> { access, refresh, device_info } (auto-connexion après création). */
+  register: '/token/v1/register/',
+  /** POST { credential: <id_token Google Identity Services> } -> { access, refresh, device_info } */
+  googleLogin: '/token/v1/google/',
   /** POST { refresh } -> { access } */
   refresh: '/token/v1/refresh/',
   /** POST -> déconnexion + révocation du token courant */

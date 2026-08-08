@@ -6,14 +6,22 @@
 import { http } from './httpClient';
 import { USERS_ENDPOINTS } from '../endpoints';
 import { BackendUserSchema, type BackendUser } from '../../../types/models/backend.types';
+import { UtilisateurSchema, type Utilisateur } from '../../../types/models/user.types';
 import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
 export const usersRepository = {
-  /** GET /users/v1/users/me/ — profil de l'utilisateur authentifié courant. */
-  async me(): Promise<BackendUser> {
-    const response = await http.get.get<BackendUser>({
+  /**
+   * GET /users/v1/users/me/ — profil de l'utilisateur authentifié
+   * courant. Cette action utilise UtilisateurPublicSerializer côté
+   * backend (users/api/v1/views.py:UserViewSet.me), PAS UserSerializer
+   * — la réponse a donc la forme riche (role, badges, stats,
+   * nomAffiche, avatar), pas la forme brute des autres actions du
+   * ModelViewSet (list/retrieve/update -> UserSerializer).
+   */
+  async me(): Promise<Utilisateur> {
+    const response = await http.get.get<Utilisateur>({
       endpoint: USERS_ENDPOINTS.me,
-      schema: BackendUserSchema,
+      schema: UtilisateurSchema,
       requireAuth: true,
     });
     return response.data;

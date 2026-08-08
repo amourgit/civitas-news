@@ -6,40 +6,34 @@
 //
 // Le backend (token_manager) émet un couple { access, refresh } —
 // voir Backend-Core-Base/token_manager/api/v1/views.py.
+//
+// Stockage : cookies (voir cookies.ts pour le pourquoi), avec une
+// durée de vie calculée depuis le vrai `exp` de chaque JWT (jwt.ts) —
+// pas une valeur arbitraire côté client qui pourrait diverger de la
+// config réelle (TokenSettings.access_token_lifetime /
+// refresh_token_lifetime, modifiable côté backend sans redéploiement
+// frontend).
 // ============================================================
+
+import { getCookie, setCookie, deleteCookie } from './cookies';
+import { getJwtRemainingSeconds } from './jwt';
 
 const ACCESS_TOKEN_KEY = 'civitas_access_token';
 const REFRESH_TOKEN_KEY = 'civitas_refresh_token';
+
+// Filet de sécurité si le JWT est illisible (ne devrait pas arriver en
+// pratique) : mieux vaut une expiration courte-mais-fonctionnelle qu'un
+// cookie sans max-age qui redeviendrait un cookie de session classique.
+const FALLBACK_ACCESS_TTL_SECONDS = 5 * 60;
+const FALLBACK_REFRESH_TTL_SECONDS = 24 * 60 * 60;
 
 type TokenListener = (accessToken: string | null) => void;
 
 const listeners = new Set<TokenListener>();
 
-// Cache mémoire pour éviter de repasser par localStorage à chaque requête.
+// Cache mémoire pour éviter de reparser document.cookie à chaque requête.
 let accessTokenCache: string | null | undefined = undefined;
 let refreshTokenCache: string | null | undefined = undefined;
-
-function readStorage(key: string): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(key: string, value: string | null): void {
-  if (typeof window === 'undefined') return;
-  try {
-    if (value === null) {
-      window.localStorage.removeItem(key);
-    } else {
-      window.localStorage.setItem(key, value);
-    }
-  } catch {
-    // Stockage indisponible (mode privé, quota...) — on continue en mémoire uniquement.
-  }
-}
 
 function notify(accessToken: string | null): void {
   listeners.forEach((listener) => listener(accessToken));
@@ -48,25 +42,27 @@ function notify(accessToken: string | null): void {
 export const tokenStore = {
   getAccessToken(): string | null {
     if (accessTokenCache === undefined) {
-      accessTokenCache = readStorage(ACCESS_TOKEN_KEY);
+      accessTokenCache = getCookie(ACCESS_TOKEN_KEY);
     }
     return accessTokenCache;
   },
 
   getRefreshToken(): string | null {
     if (refreshTokenCache === undefined) {
-      refreshTokenCache = readStorage(REFRESH_TOKEN_KEY);
+      refreshTokenCache = getCookie(REFRESH_TOKEN_KEY);
     }
     return refreshTokenCache;
   },
 
   setTokens(tokens: { access: string; refresh?: string }): void {
     accessTokenCache = tokens.access;
-    writeStorage(ACCESS_TOKEN_KEY, tokens.access);
+    const accessTtl = getJwtRemainingSeconds(tokens.access) || FALLBACK_ACCESS_TTL_SECONDS;
+    setCookie(ACCESS_TOKEN_KEY, tokens.access, accessTtl);
 
     if (tokens.refresh) {
       refreshTokenCache = tokens.refresh;
-      writeStorage(REFRESH_TOKEN_KEY, tokens.refresh);
+      const refreshTtl = getJwtRemainingSeconds(tokens.refresh) || FALLBACK_REFRESH_TTL_SECONDS;
+      setCookie(REFRESH_TOKEN_KEY, tokens.refresh, refreshTtl);
     }
 
     notify(tokens.access);
@@ -75,8 +71,8 @@ export const tokenStore = {
   clear(): void {
     accessTokenCache = null;
     refreshTokenCache = null;
-    writeStorage(ACCESS_TOKEN_KEY, null);
-    writeStorage(REFRESH_TOKEN_KEY, null);
+    deleteCookie(ACCESS_TOKEN_KEY);
+    deleteCookie(REFRESH_TOKEN_KEY);
     notify(null);
   },
 

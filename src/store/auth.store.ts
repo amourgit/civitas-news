@@ -1,127 +1,177 @@
-import { useState, useEffect } from 'react';
-import type { Utilisateur } from '../types/global.types';
-import { MOCK_ANONYMOUS_USER, MOCK_STUDENT_USER, MOCK_ADMIN_USER } from '../services/api/mocks/auth.mock';
+// ============================================================
+// src/store/auth.store.ts
+// Store d'authentification réel — remplace l'ancien mode démo
+// (loginAsStudent/loginAsAdmin/loginAsAnonymous, utilisateurs fabriqués
+// en mémoire) par de vrais appels à token_manager/users côté backend.
+//
+// Pattern : même "store maison" (pas de lib externe) que tokenStore.ts
+// — un état de module partagé, notifié à un Set de listeners React via
+// useState+useEffect. `user` reste TOUJOURS défini (jamais null) avec
+// un objet ANONYMOUS_USER par défaut : c'est le contrat déjà attendu
+// par usePermissions.ts, CommentThread.tsx, CreerNewsPage.tsx, qui
+// lisent `user.role` sans vérification de nullité.
+// ============================================================
+
+import { useEffect, useState } from 'react';
+import type { Utilisateur } from '../types/models/user.types';
+import { authRepository, type RegisterPayload } from '../services/api/repositories/auth.repository';
+import { usersRepository } from '../services/api/repositories/users.repository';
+import { tokenStore } from '../services/api/token/tokenStore';
 import { hasPermission, hasAnyPermission, canOnResource } from '../lib/permissions/hasPermission';
 import type { Permission } from '../lib/permissions/permissions.catalog';
 
-export { MOCK_ANONYMOUS_USER, MOCK_STUDENT_USER, MOCK_ADMIN_USER };
-
-const getInitialUser = (): Utilisateur => {
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem('civitas_auth_user');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.id && parsed.role) {
-          return parsed;
-        }
-      }
-    } catch {
-      // Ignore read errors
-    }
-  }
-  return MOCK_ANONYMOUS_USER;
+export const ANONYMOUS_USER: Utilisateur = {
+  id: 'anonyme',
+  username: 'anonyme',
+  nomAffiche: 'Visiteur',
+  role: 'anonyme',
+  badges: [],
+  stats: { contributions: 0, votes: 0, commentaires: 0 },
 };
 
-let currentUser: Utilisateur = getInitialUser();
+/**
+ * - 'idle'    : rien n'a encore été tenté (état initial, avant montage).
+ * - 'loading' : hydratation initiale OU login/register/logout en cours.
+ * - 'ready'   : état stable, `user` reflète la session réelle (authentifiée ou non).
+ */
+export type AuthStatus = 'idle' | 'loading' | 'ready';
+
+let currentUser: Utilisateur = ANONYMOUS_USER;
+let currentStatus: AuthStatus = 'idle';
+let hydrationStarted = false;
 const listeners = new Set<() => void>();
 
-function notify() {
-  listeners.forEach((l) => l());
+function notify(): void {
+  listeners.forEach((listener) => listener());
 }
 
-function persistUser(user: Utilisateur) {
-  if (typeof window !== 'undefined') {
-    try {
-      if (user.role === 'anonyme') {
-        localStorage.removeItem('civitas_auth_user');
-      } else {
-        localStorage.setItem('civitas_auth_user', JSON.stringify(user));
-      }
-    } catch {
-      // Ignore write errors
-    }
-  }
-}
-
-export function getCurrentUser(): Utilisateur {
-  return currentUser;
-}
-
-export function setCurrentUser(user: Utilisateur) {
+function setState(user: Utilisateur, status: AuthStatus): void {
   currentUser = user;
-  persistUser(user);
+  currentStatus = status;
   notify();
 }
 
+/**
+ * Restaure la session depuis le token stocké (cookie, voir
+ * services/api/token/tokenStore.ts) au démarrage de l'app. Idempotente
+ * et auto-déclenchée par le premier composant qui monte
+ * useAuthStore() — inutile de l'appeler manuellement.
+ */
+async function hydrate(): Promise<void> {
+  if (hydrationStarted) return;
+  hydrationStarted = true;
+
+  if (!tokenStore.isAuthenticated()) {
+    setState(ANONYMOUS_USER, 'ready');
+    return;
+  }
+
+  setState(currentUser, 'loading');
+  try {
+    const profile = await usersRepository.me();
+    setState(profile, 'ready');
+  } catch {
+    // Token illisible et refresh impossible (authFetchInterceptor a déjà
+    // tenté un refresh silencieux avant que cette erreur ne remonte ici,
+    // voir authFetchInterceptor.ts) -> session considérée terminée.
+    tokenStore.clear();
+    setState(ANONYMOUS_USER, 'ready');
+  }
+}
+
+// Une session peut se terminer de façon EXTERNE à une action explicite
+// de ce store : refresh token expiré pendant l'utilisation (l'intercepteur
+// fetch appelle tokenStore.clear() dans ce cas). On réagit pour que
+// l'UI retombe immédiatement en état anonyme plutôt que de continuer à
+// afficher un utilisateur dont la session n'existe plus côté serveur.
+tokenStore.subscribe((accessToken) => {
+  if (!accessToken && currentUser.role !== 'anonyme') {
+    setState(ANONYMOUS_USER, 'ready');
+  }
+});
+
 export function useAuthStore() {
-  const [user, setUser] = useState<Utilisateur>(currentUser);
+  const [, forceRender] = useState(0);
 
   useEffect(() => {
-    const handleChange = () => setUser(currentUser);
+    const handleChange = () => forceRender((n) => n + 1);
     listeners.add(handleChange);
+    void hydrate();
     return () => {
       listeners.delete(handleChange);
     };
   }, []);
 
-  const loginAsStudent = () => setCurrentUser(MOCK_STUDENT_USER);
-  const loginAsAdmin = () => setCurrentUser(MOCK_ADMIN_USER);
-  const loginAsAnonymous = () => setCurrentUser(MOCK_ANONYMOUS_USER);
+  const user = currentUser;
+  const status = currentStatus;
 
-  const loginWithGoogle = (payload?: { name?: string; email?: string; picture?: string }) => {
-    const email = payload?.email || 'citoyen.google@gmail.com';
-    const username = email.split('@')[0].replace(/[^\w]/g, '_');
-    const googleUser: Utilisateur = {
-      id: `usr-google-${Date.now()}`,
-      username,
-      nomAffiche: payload?.name || 'Samuel (Compte Google)',
-      avatar:
-        payload?.picture ||
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      role: 'etudiant',
-      email,
-      etablissement: 'Compte Authentifié Google',
-      badges: [
-        { id: 'b-google', nom: 'Vérifié Google', icone: '🌐', description: 'Compte authentifié avec Google' },
-        { id: 'b-citoyen', nom: 'Citoyen Actif', icone: '🗳️', description: 'Membre de la communauté CIVITAS' },
-      ],
-      stats: { contributions: 3, votes: 15, commentaires: 8 },
-    };
-    setCurrentUser(googleUser);
-    return googleUser;
+  /** POST /token/v1/ puis GET /users/v1/users/me/. Lève une ApiError (message lisible) en cas d'échec. */
+  const login = async (username: string, password: string): Promise<Utilisateur> => {
+    setState(currentUser, 'loading');
+    try {
+      await authRepository.login(username, password);
+      const profile = await usersRepository.me();
+      setState(profile, 'ready');
+      return profile;
+    } catch (error) {
+      setState(currentUser, 'ready');
+      throw error;
+    }
   };
 
-  const loginWithEmail = (data: { email: string; nomAffiche?: string; etablissement?: string }) => {
-    const username = data.email.split('@')[0].replace(/[^\w]/g, '_');
-    const customUser: Utilisateur = {
-      id: `usr-custom-${Date.now()}`,
-      username,
-      nomAffiche: data.nomAffiche || data.email.split('@')[0],
-      role: 'etudiant',
-      email: data.email,
-      etablissement: data.etablissement || 'Établissement Enregistré',
-      badges: [{ id: 'b-compte', nom: 'Membre Vérifié', icone: '✅', description: 'Compte civique enregistré' }],
-      stats: { contributions: 1, votes: 5, commentaires: 2 },
-    };
-    setCurrentUser(customUser);
-    return customUser;
+  /** POST /token/v1/register/ (auto-connexion) puis GET /users/v1/users/me/. */
+  const register = async (payload: RegisterPayload): Promise<Utilisateur> => {
+    setState(currentUser, 'loading');
+    try {
+      await authRepository.register(payload);
+      const profile = await usersRepository.me();
+      setState(profile, 'ready');
+      return profile;
+    } catch (error) {
+      setState(currentUser, 'ready');
+      throw error;
+    }
   };
 
-  const logout = () => {
-    setCurrentUser(MOCK_ANONYMOUS_USER);
+  /** POST /token/v1/google/ avec le id_token Google Identity Services. */
+  const loginWithGoogle = async (credential: string): Promise<Utilisateur> => {
+    setState(currentUser, 'loading');
+    try {
+      await authRepository.loginWithGoogle(credential);
+      const profile = await usersRepository.me();
+      setState(profile, 'ready');
+      return profile;
+    } catch (error) {
+      setState(currentUser, 'ready');
+      throw error;
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    setState(currentUser, 'loading');
+    try {
+      await authRepository.logout(); // révoque le token côté serveur puis tokenStore.clear()
+    } catch {
+      // Le serveur est peut-être injoignable — on efface quand même la
+      // session localement, mieux vaut un faux-négatif (déconnecté côté
+      // client, encore actif côté serveur jusqu'à expiration naturelle)
+      // qu'un utilisateur bloqué en session "zombie".
+      tokenStore.clear();
+    } finally {
+      setState(ANONYMOUS_USER, 'ready');
+    }
   };
 
   return {
     user,
+    status,
+    isHydrating: status === 'idle' || status === 'loading',
     isAuthenticated: user.role !== 'anonyme',
     isAnonymous: user.role === 'anonyme',
     isAdmin: user.role === 'administrateur' || user.role === 'moderateur',
-    loginAsStudent,
-    loginAsAdmin,
-    loginAsAnonymous,
+    login,
+    register,
     loginWithGoogle,
-    loginWithEmail,
     logout,
     /** Vérification fine des permissions — voir src/lib/permissions/. */
     can: (permission: Permission) => hasPermission(user, permission),
@@ -130,4 +180,3 @@ export function useAuthStore() {
       canOnResource(user, baseAction, resourceOwnerId),
   };
 }
-

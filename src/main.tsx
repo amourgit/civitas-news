@@ -2,6 +2,8 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { installAuthFetchInterceptor } from './services/api/token/authFetchInterceptor';
+import { env } from './config/env';
 
 if (typeof window !== 'undefined') {
   try {
@@ -31,6 +33,10 @@ if (typeof window !== 'undefined') {
     // ignore
   }
 }
+
+// Refresh automatique et transparent des tokens expirés — voir
+// authFetchInterceptor.ts pour le pourquoi de cette approche globale.
+installAuthFetchInterceptor(env.apiBaseUrl);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

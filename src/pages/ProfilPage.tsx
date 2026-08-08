@@ -41,17 +41,16 @@ import { toast } from '../hooks/useToast';
 
 export default function ProfilPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isAdmin, loginAsStudent, loginAsAdmin, loginAsAnonymous, logout } =
-    useAuthStore();
+  const { user, isAuthenticated, isAdmin, logout } = useAuthStore();
   const { theme, toggleTheme } = useUiStore();
 
   const [activeTab, setActiveTab] = useState<'activite' | 'votes' | 'sujets' | 'info' | 'badges'>('activite');
   const [rightSearchQuery, setRightSearchQuery] = useState('');
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast('info', 'Déconnexion effectuée. Redirection vers la page de connexion...');
-    navigate('/connexion');
+    navigate('/auth/login');
   };
 
   // Check if user has rank/grade permission to create topics
@@ -234,41 +233,34 @@ export default function ProfilPage() {
                   )}
                 </div>
 
-                {/* Role Switcher Pills for quick testing */}
+                {/* Grade / rôle actuel — en lecture seule, déterminé par le backend */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-2 sm:mt-0">
                   <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1">
                     Grade :
                   </span>
-                  <button
-                    onClick={loginAsStudent}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all ${
-                      user.role === 'etudiant'
-                        ? 'bg-[#5B4DFF] text-white shadow-xs'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-                    }`}
-                  >
-                    Étudiant
-                  </button>
-                  <button
-                    onClick={loginAsAdmin}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all ${
-                      user.role === 'administrateur'
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
+                      user.role === 'administrateur' || user.role === 'moderateur'
                         ? 'bg-purple-600 text-white shadow-xs'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                        : user.role === 'anonyme'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-[#5B4DFF] text-white shadow-xs'
                     }`}
                   >
-                    Admin / Délégué
-                  </button>
-                  <button
-                    onClick={loginAsAnonymous}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all ${
-                      user.role === 'anonyme'
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-                    }`}
-                  >
-                    Anonyme
-                  </button>
+                    {user.role === 'etudiant' && 'Étudiant'}
+                    {user.role === 'moderateur' && 'Modérateur'}
+                    {user.role === 'administrateur' && 'Administrateur'}
+                    {user.role === 'organisation' && 'Organisation'}
+                    {user.role === 'anonyme' && 'Anonyme'}
+                  </span>
+                  {user.role === 'anonyme' && (
+                    <Link
+                      to="/auth/login"
+                      className="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition-all"
+                    >
+                      Se connecter
+                    </Link>
+                  )}
                 </div>
               </div>
 
@@ -577,18 +569,12 @@ export default function ProfilPage() {
                         La publication directe de propositions nécessite un Grade Civique vérifié (Étudiant inscrit, Modérateur ou Délégué d'établissement).
                       </p>
                       <div className="pt-2 flex flex-wrap justify-center gap-2">
-                        <button
-                          onClick={loginAsStudent}
+                        <Link
+                          to="/auth/login"
                           className="px-4 py-2 rounded-xl bg-[#5B4DFF] hover:bg-[#5B4DFF]/90 text-white text-xs font-bold shadow-xs transition-all"
                         >
-                          Passer au statut Étudiant Vérifié
-                        </button>
-                        <button
-                          onClick={loginAsAdmin}
-                          className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-all"
-                        >
-                          Statut Administrateur
-                        </button>
+                          Se connecter avec un compte vérifié
+                        </Link>
                       </div>
                     </div>
                   )}
@@ -628,7 +614,7 @@ export default function ProfilPage() {
                         <Building2 className="w-3 h-3 text-[#5B4DFF]" /> Établissement Rattaché
                       </div>
                       <div className="font-extrabold text-gray-900 dark:text-white">
-                        {user.etablissement || 'Université Centrale de Kinshasa'}
+                        {user.etablissement || 'Non renseigné'}
                       </div>
                     </div>
 
