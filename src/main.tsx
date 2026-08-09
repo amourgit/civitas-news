@@ -34,9 +34,9 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// Refresh automatique et transparent des tokens expirés — voir
-// authFetchInterceptor.ts pour le pourquoi de cette approche globale.
-installAuthFetchInterceptor(env.apiBaseUrl);
+// Refresh automatique et transparent des tokens expirés, + en-tête
+// X-Tenant-Domain sur chaque requête — voir authFetchInterceptor.ts.
+installAuthFetchInterceptor(env.apiBaseUrl, env.tenantHost);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

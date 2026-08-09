@@ -1,22 +1,30 @@
 // ============================================================
 // src/services/api/token/authFetchInterceptor.ts
-// Refresh automatique et transparent du token sur une réponse 401.
+// Deux responsabilités, toutes deux nécessitant d'intercepter TOUS les
+// appels fetch existants (GetService/PostService/UpdateService/
+// DeleteService en font des dizaines, dispersés — upload, batch,
+// suppression douce...) sans toucher au code de ces 4 services :
 //
-// GetService/PostService/UpdateService/DeleteService appellent toutes
-// `fetch()` directement, à de nombreux endroits (upload, batch,
-// suppression douce, vérification de dépendances...). Plutôt que de
-// dupliquer une logique de retry dans chacun de ces appels (risque de
-// régression élevé sur du code déjà volumineux), on intercepte au
-// niveau du navigateur : `window.fetch` est remplacé UNE SEULE FOIS,
-// au démarrage de l'app (voir installAuthFetchInterceptor(), appelé
-// depuis main.tsx), par une version qui sait rejouer silencieusement
-// une requête après un refresh réussi. Tous les appels existants en
-// bénéficient automatiquement, sans qu'aucun service n'ait à changer.
+//  1. Refresh automatique et transparent du token sur une réponse 401.
+//     Sans ceci, un access token expiré (durée de vie courte par
+//     design — TokenSettings.access_token_lifetime) ferait échouer en
+//     401 la PROCHAINE requête de l'utilisateur, qui devrait alors se
+//     reconnecter manuellement même si sa session (refresh token) est
+//     encore valide.
 //
-// Sans ceci, un access token expiré (durée de vie courte par design —
-// TokenSettings.access_token_lifetime) ferait échouer en 401 la
-// PROCHAINE requête de l'utilisateur, qui devrait alors se reconnecter
-// manuellement même si sa session (refresh token) est encore valide.
+//  2. En-tête X-Tenant-Domain sur chaque requête vers notre API,
+//     portant le hostname RÉELLEMENT affiché dans le navigateur (voir
+//     config/tenantHost.ts). Mécanisme alternatif au sous-domaine
+//     porté par le Host HTTP standard — le backend
+//     (config/fonction.py:resolve_request_hostname) le préfère quand
+//     présent. Utile même quand apiBaseUrl cible une origine fixe
+//     (VITE_API_BASE_URL explicite) : dans ce cas le Host effectivement
+//     reçu par Django serait celui de cette URL fixe, pas celui du
+//     navigateur — l'en-tête reste alors la seule façon fiable de
+//     faire remonter le vrai sous-domaine tenant.
+//
+// `window.fetch` est remplacé UNE SEULE FOIS, au démarrage de l'app
+// (voir installAuthFetchInterceptor(), appelé depuis main.tsx).
 // ============================================================
 
 import { tokenStore } from './tokenStore';
@@ -45,14 +53,14 @@ function isRefreshEndpoint(input: RequestInfo | URL): boolean {
   return url.includes('/token/v1/refresh');
 }
 
-async function performRefresh(apiBaseUrl: string): Promise<string | null> {
+async function performRefresh(apiBaseUrl: string, tenantHost: string | null): Promise<string | null> {
   const refreshToken = tokenStore.getRefreshToken();
   if (!refreshToken || !originalFetch) return null;
 
   try {
     const response = await originalFetch(`${apiBaseUrl}/token/v1/refresh/`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: withTenantHeader({ 'Content-Type': 'application/json' }, tenantHost),
       body: JSON.stringify({ refresh: refreshToken }),
     });
     if (!response.ok) {
@@ -74,42 +82,52 @@ async function performRefresh(apiBaseUrl: string): Promise<string | null> {
   }
 }
 
-function withAuthorization(init: RequestInit | undefined, accessToken: string): RequestInit {
-  const headers = new Headers(init?.headers);
+function withTenantHeader(headers: HeadersInit | undefined, tenantHost: string | null): Headers {
+  const result = new Headers(headers);
+  if (tenantHost && !result.has('X-Tenant-Domain')) {
+    result.set('X-Tenant-Domain', tenantHost);
+  }
+  return result;
+}
+
+function withAuthorization(init: RequestInit | undefined, accessToken: string, tenantHost: string | null): RequestInit {
+  const headers = withTenantHeader(init?.headers, tenantHost);
   headers.set('Authorization', `Bearer ${accessToken}`);
   return { ...init, headers };
 }
 
 /**
  * Installe l'intercepteur. Idempotent — un second appel ne fait rien.
- * `apiBaseUrl` doit être la même valeur que `env.apiBaseUrl` (utilisée
- * par UrlBuilder pour construire les URLs relatives des services).
+ * `apiBaseUrl`/`tenantHost` doivent être `env.apiBaseUrl`/`env.tenantHost`.
  */
-export function installAuthFetchInterceptor(apiBaseUrl: string): void {
+export function installAuthFetchInterceptor(apiBaseUrl: string, tenantHost: string | null): void {
   if (installed || typeof window === 'undefined') return;
   installed = true;
   originalFetch = window.fetch.bind(window);
   const baseFetch = originalFetch;
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const response = await baseFetch(input, init);
+    const isOwn = isOwnApiRequest(input, apiBaseUrl);
+    const requestInit = isOwn ? { ...init, headers: withTenantHeader(init?.headers, tenantHost) } : init;
+
+    const response = await baseFetch(input, requestInit);
 
     const eligible =
       response.status === 401 &&
-      isOwnApiRequest(input, apiBaseUrl) &&
+      isOwn &&
       !isRefreshEndpoint(input) &&
       Boolean(tokenStore.getRefreshToken());
 
     if (!eligible) return response;
 
     if (!refreshPromise) {
-      refreshPromise = performRefresh(apiBaseUrl).finally(() => {
+      refreshPromise = performRefresh(apiBaseUrl, tenantHost).finally(() => {
         refreshPromise = null;
       });
     }
     const newAccessToken = await refreshPromise;
     if (!newAccessToken) return response; // refresh échoué -> on propage le 401 d'origine
 
-    return baseFetch(input, withAuthorization(init, newAccessToken));
+    return baseFetch(input, withAuthorization(requestInit, newAccessToken, tenantHost));
   };
 }

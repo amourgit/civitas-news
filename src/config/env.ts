@@ -22,12 +22,15 @@
 
 interface ImportMetaEnvLike {
   VITE_API_BASE_URL?: string;
+  VITE_API_PORT?: string;
   VITE_USE_MOCK_DATA?: string;
   VITE_GOOGLE_CLIENT_ID?: string;
   DEV?: boolean;
   PROD?: boolean;
   MODE?: string;
 }
+
+import { getCurrentTenantHost, getCurrentProtocol } from './tenantHost';
 
 const rawEnv = ((import.meta as unknown as { env?: ImportMetaEnvLike }).env ?? {}) as ImportMetaEnvLike;
 
@@ -43,9 +46,54 @@ const isDev = Boolean(rawEnv.DEV) || !isProd;
 const explicitMockFlag = parseBoolean(rawEnv.VITE_USE_MOCK_DATA);
 const useMockData = explicitMockFlag !== undefined ? explicitMockFlag : isDev;
 
+const tenantHost = getCurrentTenantHost();
+
+/**
+ * Détermine apiBaseUrl :
+ *  1. VITE_API_BASE_URL explicite -> toujours prioritaire (override total,
+ *     ex: une API sur un domaine complètement distinct du frontend).
+ *  2. En PRODUCTION sans override -> chemin relatif '/api'. Frontend et
+ *     backend sont censés partager la même origine derrière un reverse
+ *     proxy commun ; un chemin relatif hérite alors automatiquement du
+ *     bon sous-domaine tenant, sans rien construire.
+ *  3. En DÉVELOPPEMENT sans override -> reconstruit l'URL à partir du
+ *     hostname RÉELLEMENT affiché dans le navigateur (ex:
+ *     "civitas.localhost") + VITE_API_PORT (Django tourne sur un port
+ *     différent de Vite : :8000 vs :3000, deux origines distinctes,
+ *     un chemin relatif ne suffit pas). C'est ce qui fait qu'ouvrir le
+ *     frontend sur civitas.localhost:3000 cible bien
+ *     civitas.localhost:8000/api côté backend, au lieu de toujours
+ *     retomber sur le domaine racine.
+ */
+function resolveApiBaseUrl(): string {
+  if (rawEnv.VITE_API_BASE_URL) return rawEnv.VITE_API_BASE_URL;
+  if (isProd || !tenantHost) return '/api';
+  const port = rawEnv.VITE_API_PORT || '8000';
+  return `${getCurrentProtocol()}//${tenantHost}:${port}/api`;
+}
+
 export const env = {
-  /** Base URL de l'API backend (Backend-Core-Base). Ex: https://tenant1.civitasnews.org/api */
-  apiBaseUrl: rawEnv.VITE_API_BASE_URL || '/api',
+  /**
+   * Base URL de l'API backend (Backend-Core-Base). En dev, reconstruite
+   * dynamiquement depuis le hostname courant du navigateur (voir
+   * resolveApiBaseUrl ci-dessus) — pas une valeur figée une fois pour
+   * toutes, précisément pour que le sous-domaine tenant affiché dans la
+   * barre d'adresse soit celui réellement ciblé côté backend.
+   */
+  apiBaseUrl: resolveApiBaseUrl(),
+
+  /**
+   * Hostname courant du navigateur (ex: "civitas.localhost"), sans le
+   * port. Envoyé sur chaque requête via l'en-tête X-Tenant-Domain (voir
+   * services/api/token/authFetchInterceptor.ts) comme mécanisme
+   * ALTERNATIF de résolution du tenant côté backend
+   * (config/fonction.py:resolve_request_hostname), utile même quand
+   * apiBaseUrl est explicitement fixé par VITE_API_BASE_URL (auquel cas
+   * l'en-tête reste la seule façon fiable de faire remonter le vrai
+   * sous-domaine, puisque le Host effectivement reçu par Django serait
+   * alors celui de l'URL fixe, pas celui du navigateur).
+   */
+  tenantHost,
 
   /**
    * true  -> les services lisent/écrivent dans les données mock locales
