@@ -66,10 +66,42 @@ const tenantHost = getCurrentTenantHost();
  *     retomber sur le domaine racine.
  */
 function resolveApiBaseUrl(): string {
-  if (rawEnv.VITE_API_BASE_URL) return rawEnv.VITE_API_BASE_URL;
+  if (rawEnv.VITE_API_BASE_URL) {
+    warnIfApiBaseUrlMismatchesBrowserTenant(rawEnv.VITE_API_BASE_URL);
+    return rawEnv.VITE_API_BASE_URL;
+  }
   if (isProd || !tenantHost) return '/api';
   const port = rawEnv.VITE_API_PORT || '8000';
   return `${getCurrentProtocol()}//${tenantHost}:${port}/api`;
+}
+
+/**
+ * VITE_API_BASE_URL explicite écrase la construction dynamique — utile
+ * en soi (override volontaire), mais piège classique s'il traîne d'un
+ * .env plus ancien (voir .env.example) : le navigateur affiche un
+ * sous-domaine tenant (ex: civitas.localhost:3000) tandis que toutes
+ * les requêtes partent silencieusement vers une origine FIXE différente
+ * (ex: localhost:8000, le domaine racine) — le backend les rejette
+ * (tenants/middleware.py, 400 TENANT_REQUIRED) ou CORS les bloque, sans
+ * qu'aucun message n'indique la vraie cause. Avertit explicitement
+ * plutôt que de laisser deviner.
+ */
+function warnIfApiBaseUrlMismatchesBrowserTenant(fixedApiBaseUrl: string): void {
+  if (!tenantHost || typeof console === 'undefined') return;
+  try {
+    const fixedHost = new URL(fixedApiBaseUrl, `${getCurrentProtocol()}//${tenantHost}`).hostname;
+    if (fixedHost !== tenantHost) {
+      console.warn(
+        `[env] VITE_API_BASE_URL ("${fixedApiBaseUrl}") cible l'hôte "${fixedHost}", ` +
+          `différent du sous-domaine affiché dans le navigateur ("${tenantHost}"). ` +
+          `Si ce n'est pas un override volontaire, retirez VITE_API_BASE_URL de votre ` +
+          `.env local pour laisser l'URL se reconstruire automatiquement depuis l'URL ` +
+          `courante (voir .env.example).`
+      );
+    }
+  } catch {
+    // URL malformée -> pas notre rôle de le signaler ici, le fetch échouera explicitement.
+  }
 }
 
 export const env = {

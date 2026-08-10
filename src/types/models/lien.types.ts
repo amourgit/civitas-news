@@ -25,7 +25,7 @@ export const LienPublicationSchema = z.object({
   qrCode: z.string().nullable().optional(),
   visibilite: z.enum(['public', 'prive', 'limite']),
   motDePasse: z.boolean().optional(),
-  expiration: z.string().optional(),
+  expiration: z.string().nullable().optional(),
   usageUnique: z.boolean().optional(),
   // get_scope renvoie None si aucune restriction de portée -> null JSON.
   scope: LienScopeSchema.nullable().optional(),
