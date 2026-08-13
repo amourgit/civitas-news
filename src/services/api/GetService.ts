@@ -192,6 +192,21 @@ export class GetService extends BaseHttpService {
 
     if (requireAuth || authConfig) {
       await this.addAuthenticationHeaders(requestHeaders, authConfig);
+    } else {
+      // Propagation OPPORTUNISTE du token même sur une route publique
+      // (requireAuth=false, ex: liste des News/Commentaires — lecture
+      // publique par design côté backend, voir config/config.py:
+      // TENANT_PUBLIC_ROUTES). Le backend authentifie quand même le
+      // Bearer token s'il est présent (JWTAuthentication est dans
+      // DEFAULT_AUTHENTICATION_CLASSES, indépendamment du classement
+      // de route) pour personnaliser la réponse (userReaction,
+      // userVoteStatus, userReactions...). Sans cet envoi, un
+      // utilisateur connecté était traité comme anonyme sur TOUTES les
+      // lectures publiques, faute de header Authorization.
+      const token = this.getToken();
+      if (token) {
+        requestHeaders['Authorization'] = `Bearer ${token}`;
+      }
     }
 
     // Ajouter les cookies spécifiques si demandés

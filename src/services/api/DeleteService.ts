@@ -694,11 +694,11 @@ export class DeleteService extends BaseHttpService {
     ): Promise<HeadersInit> {
       const requestHeaders = { ...this.defaultHeaders, ...headers };
   
-      if (requireAuth) {
-        const token = await this.getAuthToken();
-        if (token) {
-          (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-        }
+      // Propagation opportuniste du token, indépendamment de `requireAuth`
+      // (voir GetService.buildGetHeaders pour le raisonnement complet).
+      const token = await this.getAuthToken();
+      if (token) {
+        (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
       }
   
       if (confirmationToken) {

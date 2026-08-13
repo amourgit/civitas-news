@@ -465,11 +465,14 @@ export class PostService extends BaseHttpService {
     ): Promise<HeadersInit> {
       const requestHeaders = { ...this.defaultHeaders, ...headers };
   
-      if (requireAuth) {
-        const token = await this.getAuthToken();
-        if (token) {
-          (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-        }
+      // Propagation opportuniste du token : dès qu'il existe (utilisateur
+      // connecté), il part avec la requête, que la route soit strictement
+      // `requireAuth` ou non (ex: POST .../reactions/ sur une route
+      // TENANT_PUBLIC — voir GetService.buildGetHeaders pour le
+      // raisonnement complet, identique ici).
+      const token = await this.getAuthToken();
+      if (token) {
+        (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
       }
   
       if (idempotencyKey) {
@@ -484,11 +487,10 @@ export class PostService extends BaseHttpService {
         // Pas de Content-Type pour FormData, le navigateur le gère
       };
   
-      if (requireAuth) {
-        const token = await this.getAuthToken();
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
+      // Propagation opportuniste du token (voir buildPostHeaders ci-dessus).
+      const token = await this.getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
   
       return headers;
