@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bell, Sun, Moon, HelpCircle, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Search, Bell, Sun, Moon, HelpCircle, ChevronLeft, ChevronRight, Sparkles, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUiStore } from '../../store/ui.store';
 import { useNotificationsStore } from '../../store/notifications.store';
+import { useAuthStore } from '../../store/auth.store';
 import topbarPatternImg from '../../assets/images/topbar_pattern_1785532678470.jpg';
 
 const CAROUSEL_INFO = [
@@ -51,6 +52,13 @@ export const Header: React.FC = () => {
 
   const { theme, toggleTheme, searchQuery, setSearchQuery } = useUiStore();
   const { unreadCount } = useNotificationsStore();
+  // La topbar est montée globalement (voir App.tsx : hors /auth/*, elle
+  // enveloppe TOUTES les pages) — c'est donc l'endroit naturel pour
+  // vérifier l'état d'authentification et exposer l'action de connexion
+  // de façon uniforme, plutôt que de dupliquer cette logique page par
+  // page. `useAuthStore` s'hydrate lui-même depuis le token stocké (voir
+  // store/auth.store.ts) : aucun appel réseau supplémentaire à faire ici.
+  const { user, isAuthenticated, isHydrating } = useAuthStore();
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   // Carousel state for Homepage expanded header
@@ -193,6 +201,42 @@ export const Header: React.FC = () => {
               </span>
             )}
           </Link>
+
+          {/* Connexion / Profil — la topbar est la source de vérité de
+              l'état d'authentification, affichée sur toutes les pages
+              (voir App.tsx). Pendant l'hydratation initiale (lecture du
+              token stocké, voir auth.store.ts), on affiche un espace
+              neutre plutôt que de flasher "Se connecter" puis basculer
+              vers l'avatar une fois la session restaurée. */}
+          {isHydrating ? (
+            <div className="w-6 h-6 rounded-full bg-white/15 animate-pulse shrink-0" aria-hidden="true" />
+          ) : isAuthenticated ? (
+            <Link
+              to="/profil"
+              className="flex items-center justify-center w-6 h-6 rounded-full overflow-hidden border border-white/30 hover:border-white/70 transition-colors shrink-0"
+              title={user.nomAffiche}
+            >
+              {user.avatar ? (
+                <img src={user.avatar} alt={user.nomAffiche} className="w-full h-full object-cover" />
+              ) : (
+                <span className="w-full h-full flex items-center justify-center bg-white/15 text-white text-[10px] font-bold uppercase">
+                  {user.nomAffiche.charAt(0)}
+                </span>
+              )}
+            </Link>
+          ) : (
+            <Link
+              // `state.from` est relu par LoginPage (voir goAfterLogin)
+              // pour ramener l'utilisateur exactement où il était après
+              // connexion, plutôt que de toujours atterrir sur l'accueil.
+              to="/auth/login"
+              state={{ from: `${location.pathname}${location.search}` }}
+              className="flex p-1 rounded text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+              title="Se connecter"
+            >
+              <LogIn className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </div>
 
