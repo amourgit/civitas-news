@@ -16,7 +16,7 @@ export interface CommentNodeProps {
   parentAuthorName?: string;
   depth?: number;
   replyTargetId?: string | null;
-  onSubmitReply?: (text: string, parentId: string) => void;
+  onSubmitReply?: (text: string, parentId: string) => void | Promise<void>;
   onCancelReply?: () => void;
 }
 
@@ -73,11 +73,11 @@ export const CommentNode: React.FC<CommentNodeProps> = ({
           >
             <div className="mt-1.5 ml-2.5 sm:ml-8 pl-2 sm:pl-3 border-l-2 border-[#5B4DFF] dark:border-sky-500">
               <CommentComposer
-                onSubmit={(text) => {
-                  if (onSubmitReply) {
-                    onSubmitReply(text, comment.id);
-                  }
-                }}
+                // Doit RETOURNER la promesse (pas juste l'invoquer) --
+                // CommentComposer.handleSubmit fait `await onSubmit(...)`
+                // pour savoir si l'envoi a réellement réussi avant
+                // d'effacer le champ (voir son implémentation).
+                onSubmit={(text) => onSubmitReply?.(text, comment.id)}
                 replyToName={comment.auteur.nomAffiche}
                 onCancelReply={onCancelReply}
                 autoFocus={true}

@@ -4,6 +4,7 @@ interface UiState {
   theme: 'light' | 'dark';
   mobileMenuOpen: boolean;
   searchQuery: string;
+  loginModalOpen: boolean;
 }
 
 const getInitialTheme = (): 'light' | 'dark' => {
@@ -47,6 +48,7 @@ let state: UiState = {
   theme: initialTheme,
   mobileMenuOpen: false,
   searchQuery: '',
+  loginModalOpen: false,
 };
 
 const listeners = new Set<() => void>();
@@ -95,6 +97,22 @@ export function useUiStore() {
     notify();
   };
 
+  /**
+   * Connexion en popup (voir components/auth/LoginModal.tsx) — plus de
+   * page /auth/login dédiée : ce store pilote son ouverture/fermeture
+   * depuis n'importe quel point de l'app (topbar, ProfilPage après
+   * déconnexion, etc.), pas seulement Header.
+   */
+  const openLoginModal = () => {
+    state.loginModalOpen = true;
+    notify();
+  };
+
+  const closeLoginModal = () => {
+    state.loginModalOpen = false;
+    notify();
+  };
+
   return {
     ...ui,
     toggleTheme,
@@ -102,5 +120,7 @@ export function useUiStore() {
     toggleMobileMenu,
     setMobileMenuOpen,
     setSearchQuery,
+    openLoginModal,
+    closeLoginModal,
   };
 }

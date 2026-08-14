@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export interface CommentComposerProps {
-  onSubmit: (text: string) => void;
+  onSubmit: (text: string) => void | Promise<void>;
   replyToName?: string;
   onCancelReply?: () => void;
   autoFocus?: boolean;
@@ -30,6 +30,10 @@ export const CommentComposer: React.FC<CommentComposerProps> = ({
 }) => {
   const [text, setText] = useState('');
   const [showEmojiModal, setShowEmojiModal] = useState(false);
+  // Vrai le temps de la requête réelle vers le backend (voir
+  // handleSubmit) -- empêche un double-envoi et donne un retour visuel
+  // pendant que le commentaire part réellement en arrière-plan.
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Audio Recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -219,16 +223,28 @@ export const CommentComposer: React.FC<CommentComposerProps> = ({
     }
   };
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || isSubmitting) return;
 
-    onSubmit(trimmed);
-    setText('');
-
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+    setIsSubmitting(true);
+    try {
+      // Requête réelle vers le backend (voir useComments.ts) -- on
+      // n'efface le champ QU'APRÈS confirmation du succès, pour ne
+      // jamais faire croire à un envoi qui a en réalité échoué.
+      await onSubmit(trimmed);
+      setText('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+    } catch {
+      // Le toast d'erreur est déjà affiché par l'appelant (voir
+      // useComments.ts:toastEchec) -- on garde volontairement le texte
+      // saisi pour que l'utilisateur ne perde pas son message et puisse
+      // simplement réessayer.
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -370,7 +386,8 @@ export const CommentComposer: React.FC<CommentComposerProps> = ({
           {text.trim() ? (
             <button
               type="submit"
-              className="w-9 h-9 rounded-full bg-[#00A884] hover:bg-[#008f6f] text-white flex items-center justify-center shrink-0 shadow-sm transition-all active:scale-95 cursor-pointer"
+              disabled={isSubmitting}
+              className="w-9 h-9 rounded-full bg-[#00A884] hover:bg-[#008f6f] text-white flex items-center justify-center shrink-0 shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               title="Envoyer le message"
             >
               <Send className="w-4 h-4 ml-0.5" />

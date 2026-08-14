@@ -50,35 +50,15 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const isHome = location.pathname === '/' || location.pathname === '';
 
-  const { theme, toggleTheme, searchQuery, setSearchQuery } = useUiStore();
+  const { theme, toggleTheme, searchQuery, setSearchQuery, openLoginModal } = useUiStore();
   const { unreadCount } = useNotificationsStore();
-  // La topbar est montée globalement (voir App.tsx : hors /auth/*, elle
-  // enveloppe TOUTES les pages) — c'est donc l'endroit naturel pour
-  // vérifier l'état d'authentification et exposer l'action de connexion
-  // de façon uniforme, plutôt que de dupliquer cette logique page par
-  // page. `useAuthStore` s'hydrate lui-même depuis le token stocké (voir
-  // store/auth.store.ts) : aucun appel réseau supplémentaire à faire ici.
+  // La connexion est STRICTEMENT OPTIONNELLE : aucune route ni requête
+  // n'exige de session (voir LoginModal.tsx). `useAuthStore` sert donc
+  // uniquement ici à savoir QUOI afficher dans ce coin de la topbar
+  // (avatar si connecté, bouton "Se connecter" sinon) -- jamais à
+  // bloquer l'accès à quoi que ce soit.
   const { user, isAuthenticated, isHydrating } = useAuthStore();
   const [localSearch, setLocalSearch] = useState(searchQuery);
-
-  // Garde d'authentification globale : dès que l'hydratation de la
-  // session est terminée (isHydrating passe à false) et qu'aucune
-  // session valide n'a été restaurée, on renvoie IMMÉDIATEMENT vers
-  // /login, sans confirmation ni délai. `state.from` permet à LoginPage
-  // (voir goAfterLogin) de ramener l'utilisateur exactement où il
-  // voulait aller une fois connecté, plutôt que de toujours retomber
-  // sur l'accueil. Dépendre de `location.pathname`/`location.search`
-  // (en plus de isAuthenticated/isHydrating) garantit que la
-  // vérification est re-synchronisée à chaque navigation, même si ce
-  // Header reste monté d'une page à l'autre (il est rendu une seule
-  // fois par App.tsx, en dehors des <Routes> internes).
-  useEffect(() => {
-    if (isHydrating || isAuthenticated) return;
-    navigate('/auth/login', {
-      replace: true,
-      state: { from: `${location.pathname}${location.search}` },
-    });
-  }, [isHydrating, isAuthenticated, location.pathname, location.search, navigate]);
 
   // Carousel state for Homepage expanded header
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -244,17 +224,14 @@ export const Header: React.FC = () => {
               )}
             </Link>
           ) : (
-            <Link
-              // `state.from` est relu par LoginPage (voir goAfterLogin)
-              // pour ramener l'utilisateur exactement où il était après
-              // connexion, plutôt que de toujours atterrir sur l'accueil.
-              to="/auth/login"
-              state={{ from: `${location.pathname}${location.search}` }}
+            <button
+              type="button"
+              onClick={openLoginModal}
               className="flex p-1 rounded text-white/90 hover:text-white hover:bg-white/15 transition-colors"
               title="Se connecter"
             >
               <LogIn className="w-4 h-4" />
-            </Link>
+            </button>
           )}
         </div>
       </div>

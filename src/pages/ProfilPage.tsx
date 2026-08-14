@@ -42,15 +42,18 @@ import { toast } from '../hooks/useToast';
 export default function ProfilPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isAdmin, logout } = useAuthStore();
-  const { theme, toggleTheme } = useUiStore();
+  const { theme, toggleTheme, openLoginModal } = useUiStore();
 
   const [activeTab, setActiveTab] = useState<'activite' | 'votes' | 'sujets' | 'info' | 'badges'>('activite');
   const [rightSearchQuery, setRightSearchQuery] = useState('');
 
   const handleLogout = async () => {
     await logout();
-    toast('info', 'Déconnexion effectuée. Redirection vers la page de connexion...');
-    navigate('/auth/login');
+    // Plus de redirection forcée : la connexion est optionnelle (voir
+    // LoginModal.tsx) -- on reste simplement sur /profil, qui gère déjà
+    // très bien l'état anonyme (badge "Anonyme" + bouton "Se connecter"
+    // ci-dessous), plutôt que de router vers une page qui n'existe plus.
+    toast('info', 'Déconnexion effectuée.');
   };
 
   // Check if user has rank/grade permission to create topics
@@ -254,12 +257,13 @@ export default function ProfilPage() {
                     {user.role === 'anonyme' && 'Anonyme'}
                   </span>
                   {user.role === 'anonyme' && (
-                    <Link
-                      to="/auth/login"
+                    <button
+                      type="button"
+                      onClick={openLoginModal}
                       className="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition-all"
                     >
                       Se connecter
-                    </Link>
+                    </button>
                   )}
                 </div>
               </div>
@@ -569,12 +573,13 @@ export default function ProfilPage() {
                         La publication directe de propositions nécessite un Grade Civique vérifié (Étudiant inscrit, Modérateur ou Délégué d'établissement).
                       </p>
                       <div className="pt-2 flex flex-wrap justify-center gap-2">
-                        <Link
-                          to="/auth/login"
+                        <button
+                          type="button"
+                          onClick={openLoginModal}
                           className="px-4 py-2 rounded-xl bg-[#5B4DFF] hover:bg-[#5B4DFF]/90 text-white text-xs font-bold shadow-xs transition-all"
                         >
                           Se connecter avec un compte vérifié
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   )}

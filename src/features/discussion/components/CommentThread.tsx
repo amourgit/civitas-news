@@ -22,12 +22,19 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ newsId, sujetId })
   );
   const { user, isAdmin } = useAuthStore();
 
-  const handleCreateGeneralComment = (text: string) => {
-    addComment(text, user, undefined);
+  const handleCreateGeneralComment = async (text: string) => {
+    // Le toast d'erreur éventuel est déjà géré par useComments.ts --
+    // on laisse simplement l'erreur remonter pour que CommentComposer
+    // (voir son handleSubmit) sache ne PAS effacer le texte saisi.
+    await addComment(text, user, undefined);
   };
 
-  const handleCreateReplyComment = (text: string, parentId: string) => {
-    addComment(text, user, parentId);
+  const handleCreateReplyComment = async (text: string, parentId: string) => {
+    await addComment(text, user, parentId);
+    // Ferme le composer de réponse UNIQUEMENT si l'envoi a réellement
+    // réussi (sinon `await` ci-dessus a déjà levé et cette ligne n'est
+    // jamais atteinte) -- sans quoi un échec silencieux fermerait quand
+    // même la réponse en cours de rédaction.
     setReplyTarget(null);
   };
 
