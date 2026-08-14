@@ -106,10 +106,10 @@ export function useAuthStore() {
   const status = currentStatus;
 
   /** POST /token/v1/ puis GET /users/v1/users/me/. Lève une ApiError (message lisible) en cas d'échec. */
-  const login = async (username: string, password: string): Promise<Utilisateur> => {
+  const login = async (identifiant: string, password: string): Promise<Utilisateur> => {
     setState(currentUser, 'loading');
     try {
-      await authRepository.login(username, password);
+      await authRepository.login(identifiant, password);
       const profile = await usersRepository.me();
       setState(profile, 'ready');
       return profile;

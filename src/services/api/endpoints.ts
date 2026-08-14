@@ -19,9 +19,9 @@
 /** Endpoints réellement exposés par Backend-Core-Base aujourd'hui. */
 export const AUTH_ENDPOINTS = {
 
-  /** POST { username, password } -> { access, refresh, device_info } */
+  /** POST { identifiant: string (email OU téléphone), password } -> { access, refresh, device_info }. 404 code='ACCOUNT_NOT_FOUND' si l'identifiant n'existe pas, 401 code='INVALID_CREDENTIALS' si le mot de passe est erroné. */
   login: '/token/v1/',
-  /** POST { username, password, password2, email?, first_name?, last_name? } -> { access, refresh, device_info } (auto-connexion après création). */
+  /** POST { identifiant: string (email OU téléphone), password } -> { access, refresh, device_info } (auto-connexion après création). */
   register: '/token/v1/register/',
   /** POST { credential: <id_token Google Identity Services> } -> { access, refresh, device_info } */
   googleLogin: '/token/v1/google/',

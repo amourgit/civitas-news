@@ -1,8 +1,12 @@
 // ============================================================
 // src/pages/auth/RegisterPage.tsx
-// Inscription réelle (POST /token/v1/register/, auto-connexion) ou
-// Google (POST /token/v1/google/). Remplace l'ancien alias vers
-// LoginPage.tsx (aucun vrai formulaire d'inscription n'existait).
+// Inscription réelle, volontairement réduite à deux champs — email OU
+// numéro de téléphone (`identifiant`, détecté automatiquement côté
+// backend) + un mot de passe (POST /token/v1/register/, auto-connexion)
+// — ou Google (POST /token/v1/google/). Pas de confirmation de mot de
+// passe : simplicité et rapidité d'inscription voulues, quitte à ce
+// qu'une faute de frappe se corrige ensuite via "mot de passe oublié"
+// plutôt qu'en amont via un second champ.
 // ============================================================
 
 import { useState, type FormEvent } from 'react';
@@ -17,19 +21,15 @@ import { toast } from '../../hooks/useToast';
 import { ApiError } from '../../services/api/errors';
 
 interface FieldErrors {
-  username?: string;
-  email?: string;
+  identifiant?: string;
   password?: string;
-  password2?: string;
-  first_name?: string;
-  last_name?: string;
 }
 
 /**
  * DRF renvoie les erreurs de validation par champ :
- * { "username": ["Un utilisateur avec ce nom existe déjà."], ... }
- * (voir UserCreateSerializer côté backend). On les remonte sous chaque
- * champ plutôt que d'afficher un message générique inutilisable.
+ * { "identifiant": ["Un compte existe déjà avec cet identifiant."], ... }
+ * (voir IdentifiantRegisterSerializer côté backend). On les remonte
+ * sous chaque champ plutôt que d'afficher un message générique.
  */
 function extractFieldErrors(details: unknown): FieldErrors {
   if (!details || typeof details !== 'object') return {};
@@ -46,12 +46,8 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { register, loginWithGoogle } = useAuthStore();
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
+  const [identifiant, setIdentifiant] = useState('');
   const [password, setPassword] = useState('');
-  const [password2, setPassword2] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -66,8 +62,8 @@ export default function RegisterPage() {
     setFormError(null);
     setFieldErrors({});
 
-    if (password !== password2) {
-      setFieldErrors({ password2: 'Les mots de passe ne correspondent pas.' });
+    if (!identifiant.trim()) {
+      setFieldErrors({ identifiant: 'Entrez un email ou un numéro de téléphone.' });
       return;
     }
     if (password.length < 8) {
@@ -77,14 +73,7 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
-      const profile = await register({
-        username: username.trim(),
-        email: email.trim() || undefined,
-        first_name: firstName.trim() || undefined,
-        last_name: lastName.trim() || undefined,
-        password,
-        password2,
-      });
+      const profile = await register({ identifiant: identifiant.trim(), password });
       goAfterRegister(profile.nomAffiche);
     } catch (error) {
       if (error instanceof ApiError && error.status === 400) {
@@ -140,76 +129,26 @@ export default function RegisterPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="first_name" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
-              Prénom
-            </label>
-            <input
-              id="first_name"
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              autoComplete="given-name"
-              className="w-full px-3.5 py-2.75 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5B4DFF]/30 focus:border-[#5B4DFF] transition-all"
-            />
-          </div>
-          <div>
-            <label htmlFor="last_name" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
-              Nom
-            </label>
-            <input
-              id="last_name"
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              autoComplete="family-name"
-              className="w-full px-3.5 py-2.75 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5B4DFF]/30 focus:border-[#5B4DFF] transition-all"
-            />
-          </div>
-        </div>
-
         <div>
-          <label htmlFor="reg_username" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
-            Identifiant
+          <label htmlFor="reg_identifiant" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+            Email ou téléphone
           </label>
           <input
-            id="reg_username"
+            id="reg_identifiant"
             type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="nom d'utilisateur"
+            value={identifiant}
+            onChange={(e) => setIdentifiant(e.target.value)}
+            placeholder="vous@exemple.com ou 074 12 34 56"
             autoComplete="username"
             required
-            aria-invalid={Boolean(fieldErrors.username)}
+            aria-invalid={Boolean(fieldErrors.identifiant)}
             className={`w-full px-3.5 py-2.75 rounded-xl border text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${
-              fieldErrors.username
+              fieldErrors.identifiant
                 ? 'border-red-400 focus:ring-red-200 dark:focus:ring-red-900'
                 : 'border-gray-200 dark:border-gray-700 focus:ring-[#5B4DFF]/30 focus:border-[#5B4DFF]'
             }`}
           />
-          {fieldErrors.username && <p className="mt-1 text-xs font-medium text-red-500">{fieldErrors.username}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="reg_email" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
-            Email <span className="normal-case font-medium text-gray-400">(optionnel)</span>
-          </label>
-          <input
-            id="reg_email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="vous@exemple.com"
-            autoComplete="email"
-            aria-invalid={Boolean(fieldErrors.email)}
-            className={`w-full px-3.5 py-2.75 rounded-xl border text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${
-              fieldErrors.email
-                ? 'border-red-400 focus:ring-red-200 dark:focus:ring-red-900'
-                : 'border-gray-200 dark:border-gray-700 focus:ring-[#5B4DFF]/30 focus:border-[#5B4DFF]'
-            }`}
-          />
-          {fieldErrors.email && <p className="mt-1 text-xs font-medium text-red-500">{fieldErrors.email}</p>}
+          {fieldErrors.identifiant && <p className="mt-1 text-xs font-medium text-red-500">{fieldErrors.identifiant}</p>}
         </div>
 
         <PasswordField
@@ -220,16 +159,6 @@ export default function RegisterPage() {
           autoComplete="new-password"
           required
           error={fieldErrors.password}
-        />
-
-        <PasswordField
-          id="reg_password2"
-          label="Confirmer le mot de passe"
-          value={password2}
-          onChange={setPassword2}
-          autoComplete="new-password"
-          required
-          error={fieldErrors.password2}
         />
 
         {formError && (

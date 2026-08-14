@@ -61,6 +61,25 @@ export const Header: React.FC = () => {
   const { user, isAuthenticated, isHydrating } = useAuthStore();
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
+  // Garde d'authentification globale : dès que l'hydratation de la
+  // session est terminée (isHydrating passe à false) et qu'aucune
+  // session valide n'a été restaurée, on renvoie IMMÉDIATEMENT vers
+  // /login, sans confirmation ni délai. `state.from` permet à LoginPage
+  // (voir goAfterLogin) de ramener l'utilisateur exactement où il
+  // voulait aller une fois connecté, plutôt que de toujours retomber
+  // sur l'accueil. Dépendre de `location.pathname`/`location.search`
+  // (en plus de isAuthenticated/isHydrating) garantit que la
+  // vérification est re-synchronisée à chaque navigation, même si ce
+  // Header reste monté d'une page à l'autre (il est rendu une seule
+  // fois par App.tsx, en dehors des <Routes> internes).
+  useEffect(() => {
+    if (isHydrating || isAuthenticated) return;
+    navigate('/auth/login', {
+      replace: true,
+      state: { from: `${location.pathname}${location.search}` },
+    });
+  }, [isHydrating, isAuthenticated, location.pathname, location.search, navigate]);
+
   // Carousel state for Homepage expanded header
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);

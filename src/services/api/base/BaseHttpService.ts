@@ -98,7 +98,13 @@ export abstract class BaseHttpService {
         (typeof body === 'object' && body !== null && (body as Record<string, unknown>).message) ||
         response.statusText ||
         `Erreur HTTP ${response.status}`;
-      throw new ApiError(String(message), response.status, undefined, endpoint, body);
+      // `code` (ex: 'ACCOUNT_NOT_FOUND', voir CustomTokenObtainPairView
+      // côté backend) permet à l'appelant de distinguer des scénarios
+      // métier précis sans avoir à parser le texte du message — voir
+      // LoginPage.tsx, qui propose la création de compte UNIQUEMENT sur
+      // ce code, jamais sur un simple statut 4xx générique.
+      const code = typeof body === 'object' && body !== null ? (body as Record<string, unknown>).code : undefined;
+      throw new ApiError(String(message), response.status, typeof code === 'string' ? code : undefined, endpoint, body);
     }
 
     if (response.status === 204) {

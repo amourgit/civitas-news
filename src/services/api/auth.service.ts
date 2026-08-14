@@ -17,9 +17,9 @@ import type { Utilisateur } from '../../types/models/user.types';
 import type { TokenPair, SessionInfo } from '../../types/models/backend.types';
 
 export const authService = {
-  /** Authentifie via /token/v1/ (username + password) et stocke les tokens. */
-  async loginWithPassword(username: string, password: string): Promise<TokenPair> {
-    return authRepository.login(username, password);
+  /** Authentifie via /token/v1/ (identifiant email/téléphone + password) et stocke les tokens. */
+  async loginWithPassword(identifiant: string, password: string): Promise<TokenPair> {
+    return authRepository.login(identifiant, password);
   },
 
   /** Inscription self-service via /token/v1/register/ (auto-connexion). */

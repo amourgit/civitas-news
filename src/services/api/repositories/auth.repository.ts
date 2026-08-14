@@ -16,20 +16,31 @@ import { TokenPairSchema, AccessTokenResponseSchema, SessionsListResponseSchema 
 import type { TokenPair, SessionInfo } from '../../../types/models/backend.types';
 
 export interface RegisterPayload {
-  username: string;
+  identifiant: string;
   password: string;
-  password2: string;
-  email?: string;
-  first_name?: string;
-  last_name?: string;
 }
 
 export const authRepository = {
-  /** POST /token/v1/ — authentifie l'utilisateur et stocke les tokens. */
-  async login(username: string, password: string): Promise<TokenPair> {
-    const response = await http.post.post<{ username: string; password: string }, TokenPair>({
+  /**
+   * POST /token/v1/ — authentifie l'utilisateur et stocke les tokens.
+   * `identifiant` est un email OU un numéro de téléphone (le backend
+   * détermine automatiquement lequel, voir
+   * users/api/v1/services.py:get_user_by_identifiant côté backend) — un
+   * SEUL champ, pas de distinction à faire côté frontend.
+   *
+   * Si aucun compte ne correspond à `identifiant`, le backend répond
+   * 404 avec `code: 'ACCOUNT_NOT_FOUND'` (propagé sur `ApiError.code`,
+   * voir BaseHttpService.handleResponse) — LoginPage s'en sert pour
+   * proposer la création du compte plutôt que d'afficher une simple
+   * erreur, mais SEULEMENT dans ce cas précis (jamais sur un mot de
+   * passe incorrect pour un identifiant existant, `code:
+   * 'INVALID_CREDENTIALS'`, pour ne jamais créer de doublon quand
+   * l'utilisateur a juste oublié son mot de passe).
+   */
+  async login(identifiant: string, password: string): Promise<TokenPair> {
+    const response = await http.post.post<{ identifiant: string; password: string }, TokenPair>({
       endpoint: AUTH_ENDPOINTS.login,
-      body: { username, password },
+      body: { identifiant, password },
       responseSchema: TokenPairSchema,
       requireAuth: false,
     });
@@ -40,9 +51,8 @@ export const authRepository = {
   /**
    * POST /token/v1/register/ — crée le compte puis auto-connecte
    * (même forme de réponse que login : {access, refresh, device_info}).
-   * `password`/`password2` doivent être identiques (revalidé côté
-   * backend par UserCreateSerializer, mais autant échouer vite côté
-   * formulaire aussi).
+   * Inscription simplifiée à un seul `identifiant` (email OU téléphone)
+   * + mot de passe — voir IdentifiantRegisterSerializer côté backend.
    */
   async register(payload: RegisterPayload): Promise<TokenPair> {
     const response = await http.post.post<RegisterPayload, TokenPair>({
