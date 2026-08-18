@@ -42,6 +42,14 @@ export const sondagesRepository = {
     return response.data;
   },
 
+  /**
+   * Remplace intégralement la sélection courante de l'utilisateur sur ce
+   * sondage (backend : sondages/api/v1/services.py:enregistrer_vote) --
+   * PAS un simple ajout : les choix absents de `choixIds` mais
+   * précédemment votés sont retirés côté serveur. `choixIds: []` retire
+   * donc entièrement le vote (voir `retirerVote` ci-dessous, équivalent
+   * explicite pour ce cas précis).
+   */
   async vote(sondageId: string, choixIds: string[]): Promise<Sondage> {
     const response = await http.post.post<{ choixIds: string[] }, Sondage>({
       endpoint: SONDAGES_ENDPOINTS.vote(sondageId),
@@ -50,5 +58,10 @@ export const sondagesRepository = {
       requireAuth: true,
     });
     return response.data;
+  },
+
+  /** Annule intégralement le vote de l'utilisateur sur ce sondage. */
+  async retirerVote(sondageId: string): Promise<Sondage> {
+    return sondagesRepository.vote(sondageId, []);
   },
 };

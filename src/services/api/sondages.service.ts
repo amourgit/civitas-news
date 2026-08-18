@@ -55,6 +55,15 @@ export const sondagesService = {
     return sondage;
   },
 
+  /**
+   * Remplace la sélection de l'utilisateur (comme le fait le backend réel
+   * -- voir sondagesRepository.vote) : les choix retirés de `choixIds`
+   * voient leur compteur décrémenté, pas seulement les nouveaux choix
+   * incrémentés. `totalVotes` (votants distincts) ne bouge que quand
+   * l'utilisateur simulé vote pour la toute première fois ou retire
+   * entièrement son vote -- changer son choix ne change pas le nombre de
+   * votants, seulement leur répartition.
+   */
   voteSondage: async (sondageId: string, choixIds: string[]): Promise<Sondage | null> => {
     if (!env.useMockData) {
       return sondagesRepository.vote(sondageId, choixIds);
@@ -65,35 +74,39 @@ export const sondagesService = {
 
     newsList.forEach((newsItem) => {
       const sondageIndex = newsItem.sondages.findIndex((s) => s.id === sondageId);
-      if (sondageIndex !== -1) {
-        const sondage = newsItem.sondages[sondageIndex];
-        const newTotalVotes = sondage.totalVotes + 1;
+      if (sondageIndex === -1) return;
 
-        const updatedChoix = sondage.choix.map((c) => {
-          const isSelected = choixIds.includes(c.id);
-          const newVotes = isSelected ? c.nombreVotes + 1 : c.nombreVotes;
-          return {
-            ...c,
-            nombreVotes: newVotes,
-            pourcentage: parseFloat(((newVotes / newTotalVotes) * 100).toFixed(1)),
-          };
-        });
+      const sondage = newsItem.sondages[sondageIndex];
+      const ancienIds = new Set(sondage.userVotedChoiceIds ?? []);
+      const nouveauxIds = new Set(choixIds);
 
-        // recalcule les pourcentages pour tous les choix
-        updatedChoix.forEach((c) => {
-          c.pourcentage = parseFloat(((c.nombreVotes / newTotalVotes) * 100).toFixed(1));
-        });
+      const aVoteAvant = ancienIds.size > 0;
+      const aVoteApres = nouveauxIds.size > 0;
+      // +1 votant à la première sélection, -1 au retrait complet, 0 sinon
+      // (l'utilisateur change juste de choix -- toujours 1 votant).
+      const deltaVotants = aVoteApres && !aVoteAvant ? 1 : !aVoteApres && aVoteAvant ? -1 : 0;
+      const newTotalVotes = Math.max(0, sondage.totalVotes + deltaVotants);
 
-        updatedSondage = {
-          ...sondage,
-          totalVotes: newTotalVotes,
-          choix: updatedChoix,
-          userVotedChoiceIds: choixIds,
-        };
+      const updatedChoix = sondage.choix.map((c) => {
+        const etaitSelectionne = ancienIds.has(c.id);
+        const estSelectionne = nouveauxIds.has(c.id);
+        const delta = estSelectionne && !etaitSelectionne ? 1 : !estSelectionne && etaitSelectionne ? -1 : 0;
+        return { ...c, nombreVotes: Math.max(0, c.nombreVotes + delta) };
+      });
+      updatedChoix.forEach((c) => {
+        c.pourcentage = newTotalVotes === 0 ? 0 : parseFloat(((c.nombreVotes / newTotalVotes) * 100).toFixed(1));
+      });
 
-        newsItem.sondages[sondageIndex] = updatedSondage;
-        newsItem.stats.votes += 1;
-      }
+      updatedSondage = {
+        ...sondage,
+        totalVotes: newTotalVotes,
+        choix: updatedChoix,
+        userVotedChoiceIds: choixIds,
+        resultatsVisibles: sondage.resultatsVisibles ?? true,
+      };
+
+      newsItem.sondages[sondageIndex] = updatedSondage;
+      newsItem.stats.votes += deltaVotants;
     });
 
     return updatedSondage;
