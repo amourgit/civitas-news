@@ -23,6 +23,7 @@
 interface ImportMetaEnvLike {
   VITE_API_BASE_URL?: string;
   VITE_API_PORT?: string;
+  VITE_TENANT_HOST?: string;
   VITE_USE_MOCK_DATA?: string;
   VITE_GOOGLE_CLIENT_ID?: string;
   DEV?: boolean;
@@ -46,7 +47,39 @@ const isDev = Boolean(rawEnv.DEV) || !isProd;
 const explicitMockFlag = parseBoolean(rawEnv.VITE_USE_MOCK_DATA);
 const useMockData = explicitMockFlag !== undefined ? explicitMockFlag : isDev;
 
-const tenantHost = getCurrentTenantHost();
+const browserTenantHost = getCurrentTenantHost();
+
+/**
+ * Logique de priorité pour le tenant envoyé dans l'en-tête X-Tenant-Domain
+ * -- extraite en fonction pure (plutôt qu'inlinée) pour rester testable
+ * directement avec de simples chaînes, sans dépendre de import.meta.env
+ * (remplacé STATIQUEMENT par Vite à la transformation : le mocker au
+ * runtime dans un test n'a aucun effet, contrairement à un `.env` réel
+ * chargé par le vrai serveur de dev/build -- voir
+ * config/__tests__/env.test.ts).
+ *
+ *   1. `explicit` (VITE_TENANT_HOST), si défini et non vide -- déploiement
+ *      volontairement pointé sur UN tenant précis, indépendamment de ce
+ *      que le navigateur affiche (utile dès que le domaine réel peut
+ *      varier : déploiements de prévisualisation Vercel avec une URL
+ *      générée à chaque fois, un futur domaine personnalisé, un
+ *      renommage du projet Vercel... -- aucun de ces cas ne doit exiger
+ *      de retoucher le code ou la table Domain côté backend, seulement
+ *      cette variable). Voir .env.example -- vaut "civitasnews" pour ce
+ *      déploiement.
+ *   2. Sinon, `browserHost` -- le hostname RÉELLEMENT affiché dans le
+ *      navigateur (comportement historique, pratique en dev local
+ *      multi-tenant : chaque sous-domaine *.localhost obtient son bon
+ *      tenant sans rien configurer).
+ */
+export function resolveTenantHost(explicit: string | undefined, browserHost: string | null): string | null {
+  const trimmed = explicit?.trim();
+  return trimmed ? trimmed : browserHost;
+}
+
+// Valeur envoyée dans l'en-tête X-Tenant-Domain, voir resolveTenantHost
+// ci-dessus et services/api/token/authFetchInterceptor.ts.
+const tenantHost = resolveTenantHost(rawEnv.VITE_TENANT_HOST, browserTenantHost);
 
 /**
  * Détermine apiBaseUrl :
@@ -70,9 +103,9 @@ function resolveApiBaseUrl(): string {
     warnIfApiBaseUrlMismatchesBrowserTenant(rawEnv.VITE_API_BASE_URL);
     return rawEnv.VITE_API_BASE_URL;
   }
-  if (isProd || !tenantHost) return '/api';
+  if (isProd || !browserTenantHost) return '/api';
   const port = rawEnv.VITE_API_PORT || '8000';
-  return `${getCurrentProtocol()}//${tenantHost}:${port}/api`;
+  return `${getCurrentProtocol()}//${browserTenantHost}:${port}/api`;
 }
 
 /**
@@ -87,13 +120,13 @@ function resolveApiBaseUrl(): string {
  * plutôt que de laisser deviner.
  */
 function warnIfApiBaseUrlMismatchesBrowserTenant(fixedApiBaseUrl: string): void {
-  if (!tenantHost || typeof console === 'undefined') return;
+  if (!browserTenantHost || typeof console === 'undefined') return;
   try {
-    const fixedHost = new URL(fixedApiBaseUrl, `${getCurrentProtocol()}//${tenantHost}`).hostname;
-    if (fixedHost !== tenantHost) {
+    const fixedHost = new URL(fixedApiBaseUrl, `${getCurrentProtocol()}//${browserTenantHost}`).hostname;
+    if (fixedHost !== browserTenantHost) {
       console.warn(
         `[env] VITE_API_BASE_URL ("${fixedApiBaseUrl}") cible l'hôte "${fixedHost}", ` +
-          `différent du sous-domaine affiché dans le navigateur ("${tenantHost}"). ` +
+          `différent du sous-domaine affiché dans le navigateur ("${browserTenantHost}"). ` +
           `Si ce n'est pas un override volontaire, retirez VITE_API_BASE_URL de votre ` +
           `.env local pour laisser l'URL se reconstruire automatiquement depuis l'URL ` +
           `courante (voir .env.example).`
@@ -115,15 +148,24 @@ export const env = {
   apiBaseUrl: resolveApiBaseUrl(),
 
   /**
-   * Hostname courant du navigateur (ex: "civitas.localhost"), sans le
-   * port. Envoyé sur chaque requête via l'en-tête X-Tenant-Domain (voir
+   * Valeur envoyée sur chaque requête via l'en-tête X-Tenant-Domain (voir
    * services/api/token/authFetchInterceptor.ts) comme mécanisme
-   * ALTERNATIF de résolution du tenant côté backend
-   * (config/fonction.py:resolve_request_hostname), utile même quand
+   * ALTERNATIF de résolution du tenant côté backend, testé EN PARALLÈLE
+   * du sous-domaine par TenantMiddleware._resolve_tenant_dual (voir
+   * Backend-Core-Base, tenants/middleware.py) -- utile même quand
    * apiBaseUrl est explicitement fixé par VITE_API_BASE_URL (auquel cas
-   * l'en-tête reste la seule façon fiable de faire remonter le vrai
-   * sous-domaine, puisque le Host effectivement reçu par Django serait
-   * alors celui de l'URL fixe, pas celui du navigateur).
+   * l'en-tête reste la seule façon fiable de faire remonter le tenant,
+   * puisque le Host effectivement reçu par Django serait alors celui de
+   * l'URL fixe, pas celui du navigateur), et INDISPENSABLE en production
+   * sur Render (plan gratuit) qui ne fournit aucun certificat TLS valide
+   * pour les sous-domaines de *.onrender.com -- le Host vu par Django y
+   * est donc toujours son propre domaine racine, jamais un sous-domaine
+   * de tenant.
+   *
+   * Priorité VITE_TENANT_HOST (déploiement figé sur un tenant précis,
+   * indépendant de ce que le navigateur affiche réellement -- "civitasnews"
+   * pour ce déploiement, voir .env.example) sinon repli sur le hostname
+   * réellement affiché dans le navigateur (dev local multi-tenant).
    */
   tenantHost,
 
