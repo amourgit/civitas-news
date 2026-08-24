@@ -50,7 +50,7 @@ export default function BackofficeRecordPage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white font-display">
-          {isCreate ? `Nouveau ${model.labelSingular.toLowerCase()}` : model.labelSingular}
+          {isCreate ? `Créer — ${model.labelSingular}` : model.labelSingular}
         </h1>
       </div>
 

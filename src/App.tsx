@@ -63,11 +63,17 @@ export function App() {
                       pages génériques (BackofficeListPage /
                       BackofficeRecordPage) pilotée par le registre de
                       modèles dessert TOUTES les tables ; AdminDashboardPage
-                      reste la page d'accueil du panneau (index). */}
+                      reste la page d'accueil du panneau (index).
+                      PAS de route ":modelKey/nouveau" séparée : "nouveau"
+                      littéral capté comme SEGMENT STATIQUE ne peuple
+                      jamais le paramètre ":id" (useParams().id serait
+                      undefined), cassant la détection isCreate côté
+                      BackofficeRecordPage. ":modelKey/:id" gère déjà
+                      correctement id="nouveau" comme n'importe quel
+                      autre id. */}
                   <Route path="/admin" element={<BackofficeLayout />}>
                     <Route index element={<AdminDashboardPage />} />
                     <Route path=":modelKey" element={<BackofficeListPage />} />
-                    <Route path=":modelKey/nouveau" element={<BackofficeRecordPage />} />
                     <Route path=":modelKey/:id" element={<BackofficeRecordPage />} />
                   </Route>
                   <Route path="*" element={<NotFoundPage />} />

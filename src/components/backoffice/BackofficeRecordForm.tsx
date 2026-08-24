@@ -59,8 +59,8 @@ const inputClass =
 const labelClass = 'text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5';
 
 function TagsField({
-  value, onChange, disabled,
-}: { value: string[]; onChange: (v: string[]) => void; disabled?: boolean }) {
+  id, value, onChange, disabled,
+}: { id?: string; value: string[]; onChange: (v: string[]) => void; disabled?: boolean }) {
   const [draft, setDraft] = useState('');
   const commit = () => {
     const clean = draft.trim();
@@ -79,6 +79,7 @@ function TagsField({
       ))}
       {!disabled && (
         <input
+          id={id}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -106,6 +107,7 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
   record?: TRecord;
 }) {
   const isReadOnly = disabled || field.readOnly;
+  const fieldId = `bo-field-${field.name}`;
 
   if (field.type === 'fk') {
     return (
@@ -125,8 +127,9 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
   if (field.type === 'select') {
     return (
       <div className="flex flex-col gap-1.5 w-full">
-        <label className={labelClass}>{field.label}{field.required && <span className="text-red-500">*</span>}</label>
+        <label htmlFor={fieldId} className={labelClass}>{field.label}{field.required && <span className="text-red-500">*</span>}</label>
         <select
+          id={fieldId}
           value={(value as string) ?? ''}
           disabled={isReadOnly}
           required={field.required}
@@ -144,8 +147,9 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
 
   if (field.type === 'boolean') {
     return (
-      <label className="flex items-center gap-3 py-2 cursor-pointer select-none">
+      <label htmlFor={fieldId} className="flex items-center gap-3 py-2 cursor-pointer select-none">
         <button
+          id={fieldId}
           type="button"
           disabled={isReadOnly}
           onClick={() => onChange(!value)}
@@ -161,8 +165,8 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
   if (field.type === 'tags') {
     return (
       <div className="flex flex-col gap-1.5 w-full">
-        <label className={labelClass}>{field.label}</label>
-        <TagsField value={(value as string[]) ?? []} onChange={(v) => onChange(v)} disabled={isReadOnly} />
+        <label htmlFor={fieldId} className={labelClass}>{field.label}</label>
+        <TagsField id={fieldId} value={(value as string[]) ?? []} onChange={(v) => onChange(v)} disabled={isReadOnly} />
       </div>
     );
   }
@@ -170,8 +174,9 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
   if (field.type === 'textarea' || field.type === 'richtext') {
     return (
       <div className="flex flex-col gap-1.5 w-full">
-        <label className={labelClass}>{field.label}{field.required && <span className="text-red-500">*</span>}</label>
+        <label htmlFor={fieldId} className={labelClass}>{field.label}{field.required && <span className="text-red-500">*</span>}</label>
         <textarea
+          id={fieldId}
           value={(value as string) ?? ''}
           disabled={isReadOnly}
           required={field.required}
@@ -197,8 +202,9 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
   if (field.type === 'date') {
     return (
       <div className="flex flex-col gap-1.5 w-full">
-        <label className={labelClass}>{field.label}</label>
+        <label htmlFor={fieldId} className={labelClass}>{field.label}</label>
         <input
+          id={fieldId}
           type="date"
           value={(value as string) ?? ''}
           disabled={isReadOnly}
@@ -213,12 +219,13 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
     const currentUrl = typeof value === 'string' ? value : undefined;
     return (
       <div className="flex flex-col gap-1.5 w-full">
-        <label className={labelClass}>{field.label}</label>
+        <label htmlFor={fieldId} className={labelClass}>{field.label}</label>
         {currentUrl && field.type === 'image' && (
           <img src={currentUrl} alt="" className="w-24 h-24 rounded-xl object-cover border border-gray-200 dark:border-gray-700" />
         )}
         {!isReadOnly && (
           <input
+            id={fieldId}
             type="file"
             accept={field.type === 'image' ? 'image/*' : undefined}
             disabled={isReadOnly}
@@ -244,7 +251,7 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
   // text / number / color / défaut
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      <label className={labelClass}>{field.label}{field.required && <span className="text-red-500">*</span>}</label>
+      <label htmlFor={fieldId} className={labelClass}>{field.label}{field.required && <span className="text-red-500">*</span>}</label>
       <div className="flex items-center gap-2">
         {field.type === 'color' && (
           <input
@@ -256,6 +263,7 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
           />
         )}
         <input
+          id={fieldId}
           type={field.type === 'number' ? 'number' : 'text'}
           value={(value as string | number) ?? ''}
           disabled={isReadOnly}

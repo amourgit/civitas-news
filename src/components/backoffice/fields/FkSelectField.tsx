@@ -62,6 +62,7 @@ export const FkSelectField: React.FC<FkSelectFieldProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const fieldId = `bo-fk-${fkTarget}-${label.toLowerCase().replace(/\s+/g, '-')}`;
 
   const targetModel = getModel(fkTarget);
 
@@ -113,13 +114,14 @@ export const FkSelectField: React.FC<FkSelectFieldProps> = ({
 
   return (
     <div className="flex flex-col gap-1.5 w-full" ref={containerRef}>
-      <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+      <label htmlFor={fieldId} className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
         {label}
         {required && <span className="text-red-500">*</span>}
       </label>
 
       <div className="relative">
         <button
+          id={fieldId}
           type="button"
           disabled={disabled || !options}
           onClick={() => setIsOpen((v) => !v)}
