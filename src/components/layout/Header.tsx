@@ -197,7 +197,7 @@ export const Header: React.FC = () => {
           {isAuthenticated && (can(PERMISSIONS.BACKOFFICE_ACCESS) || can(PERMISSIONS.ADMIN_ACCESS)) && (
             <Link
               to="/admin"
-              className="hidden sm:flex p-1 rounded text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+              className="flex p-1 rounded text-white/90 hover:text-white hover:bg-white/15 transition-colors"
               title="Backoffice"
             >
               <ShieldCheck className="w-4 h-4" />
