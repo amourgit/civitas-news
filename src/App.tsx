@@ -20,6 +20,9 @@ import StatistiquesPage from './pages/StatistiquesPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ProfilPage from './pages/ProfilPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import BackofficeListPage from './pages/admin/BackofficeListPage';
+import BackofficeRecordPage from './pages/admin/BackofficeRecordPage';
+import { BackofficeLayout } from './components/backoffice/BackofficeLayout';
 import NotFoundPage from './pages/NotFoundPage';
 
 export function App() {
@@ -55,7 +58,18 @@ export function App() {
                   <Route path="/statistiques" element={<StatistiquesPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/profil" element={<ProfilPage />} />
-                  <Route path="/admin/*" element={<AdminDashboardPage />} />
+                  {/* Backoffice « à la Django admin » — voir
+                      src/components/backoffice/. Une seule paire de
+                      pages génériques (BackofficeListPage /
+                      BackofficeRecordPage) pilotée par le registre de
+                      modèles dessert TOUTES les tables ; AdminDashboardPage
+                      reste la page d'accueil du panneau (index). */}
+                  <Route path="/admin" element={<BackofficeLayout />}>
+                    <Route index element={<AdminDashboardPage />} />
+                    <Route path=":modelKey" element={<BackofficeListPage />} />
+                    <Route path=":modelKey/nouveau" element={<BackofficeRecordPage />} />
+                    <Route path=":modelKey/:id" element={<BackofficeRecordPage />} />
+                  </Route>
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </main>

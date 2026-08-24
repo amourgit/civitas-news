@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { UtilisateurSchema, OrganisationSchema, EtablissementSchema } from './user.types';
 import { SondageSchema } from './sondage.types';
 import { LienPublicationSchema } from './lien.types';
+import { SocleTracabiliteSchema } from './common.types';
 
 export const NewsTypeSchema = z.enum([
   'projet',
@@ -72,13 +73,47 @@ export const DocumentJointSchema = z.object({
 });
 export type DocumentJoint = z.infer<typeof DocumentJointSchema>;
 
+/**
+ * Élément de galerie d'images — endpoint dédié /news/v1/galerie/
+ * (voir Backend-Core-Base news/api/v1/views.py:NewsImageGalerieViewSet).
+ * Distinct du tableau `galerie: string[]` exposé en LECTURE sur `News`
+ * (simple liste d'URLs, voir `NewsSchema.galerie` ci-dessous) : celui-ci
+ * porte l'identifiant nécessaire à l'édition/suppression individuelle
+ * depuis le backoffice.
+ */
+export const NewsImageGalerieItemSchema = z.object({
+  id: z.string(),
+  imageUrl: z.string().nullable().optional(),
+  legende: z.string().optional(),
+  ordre: z.number().int().nonnegative().optional(),
+});
+export type NewsImageGalerieItem = z.infer<typeof NewsImageGalerieItemSchema>;
+
+/**
+ * Étendu avec `.extend(SocleTracabiliteSchema.shape)` : Categorie hérite
+ * du Socle de Traçabilité côté backend (referentiels/models.py) et
+ * l'endpoint autonome /referentiels/v1/categories/ (utilisé par le
+ * backoffice, distinct de l'objet imbriqué léger dans `News.categorie`)
+ * expose bien `description`/`statut`/`creeLe`/`modifieLe` — voir
+ * referentiels/api/v1/serializers.py:CategorieSerializer.
+ */
 export const CategorieSchema = z.object({
   id: z.string(),
   nom: z.string(),
   couleur: z.string(),
   icone: z.string(),
-});
+  description: z.string().optional(),
+}).extend(SocleTracabiliteSchema.shape);
 export type Categorie = z.infer<typeof CategorieSchema>;
+
+/** Payload d'écriture — voir CategorieSerializer (create/update). */
+export interface CategorieEcriturePayload {
+  nom: string;
+  couleur?: string;
+  icone?: string;
+  description?: string;
+  statut?: import('./common.types').StatutCycleVie;
+}
 
 export const NewsSchema = z.object({
   id: z.string(),

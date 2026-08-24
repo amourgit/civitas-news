@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bell, Sun, Moon, HelpCircle, ChevronLeft, ChevronRight, Sparkles, LogIn } from 'lucide-react';
+import { Search, Bell, Sun, Moon, HelpCircle, ChevronLeft, ChevronRight, Sparkles, LogIn, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUiStore } from '../../store/ui.store';
 import { useNotificationsStore } from '../../store/notifications.store';
 import { useAuthStore } from '../../store/auth.store';
+import { usePermissions } from '../../lib/permissions/usePermissions';
+import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
 import topbarPatternImg from '../../assets/images/topbar_pattern_1785532678470.jpg';
 
 const CAROUSEL_INFO = [
@@ -58,6 +60,7 @@ export const Header: React.FC = () => {
   // (avatar si connecté, bouton "Se connecter" sinon) -- jamais à
   // bloquer l'accès à quoi que ce soit.
   const { user, isAuthenticated, isHydrating } = useAuthStore();
+  const { can } = usePermissions();
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   // Carousel state for Homepage expanded header
@@ -186,6 +189,20 @@ export const Header: React.FC = () => {
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4" />}
           </button>
+
+          {/* Backoffice — icône visible uniquement pour les
+              modérateurs/administrateurs (voir permissions.catalog.ts :
+              BACKOFFICE_ACCESS/ADMIN_ACCESS), même niveau d'accès que
+              /admin lui-même (voir BackofficeLayout). */}
+          {isAuthenticated && (can(PERMISSIONS.BACKOFFICE_ACCESS) || can(PERMISSIONS.ADMIN_ACCESS)) && (
+            <Link
+              to="/admin"
+              className="hidden sm:flex p-1 rounded text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+              title="Backoffice"
+            >
+              <ShieldCheck className="w-4 h-4" />
+            </Link>
+          )}
 
           {/* Notifications Trigger */}
           <Link

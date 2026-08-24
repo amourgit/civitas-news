@@ -5,7 +5,10 @@
 
 import { http } from './httpClient';
 import { USERS_ENDPOINTS } from '../endpoints';
-import { BackendUserSchema, type BackendUser } from '../../../types/models/backend.types';
+import {
+  BackendUserSchema, type BackendUser,
+  type BackendUserEcriturePayload, type BackendUserCreationPayload,
+} from '../../../types/models/backend.types';
 import { UtilisateurSchema, type Utilisateur } from '../../../types/models/user.types';
 import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
@@ -49,8 +52,23 @@ export const usersRepository = {
     return response.data;
   },
 
-  async update(id: number, data: Partial<BackendUser>): Promise<BackendUser> {
-    const response = await http.update.patch<Partial<BackendUser>, BackendUser>({
+  /** POST /users/v1/users/ — réservé aux superusers côté backend (UserCreateSerializer). */
+  async create(payload: BackendUserCreationPayload): Promise<BackendUser> {
+    const response = await http.post.post<BackendUserCreationPayload, BackendUser>({
+      endpoint: USERS_ENDPOINTS.create,
+      body: payload,
+      responseSchema: BackendUserSchema,
+      requireAuth: true,
+    });
+    return response.data;
+  },
+
+  /** PATCH — réservé aux modérateurs/administrateurs côté backend (voir
+   * UserViewSet.permission_classes). Passe par UserUpdateSerializer, qui
+   * n'inclut PAS `username`/`badges`/`isStaff`/`isSuperuser`/`dateJoined` :
+   * ces champs sont ignorés s'ils sont présents dans `data`. */
+  async update(id: number, data: Partial<BackendUserEcriturePayload>): Promise<BackendUser> {
+    const response = await http.update.patch<Partial<BackendUserEcriturePayload>, BackendUser>({
       endpoint: USERS_ENDPOINTS.list,
       resourceId: id,
       patches: data,
@@ -58,6 +76,10 @@ export const usersRepository = {
       requireAuth: true,
     });
     return response.data;
+  },
+
+  async remove(id: number): Promise<void> {
+    await http.delete.delete({ endpoint: USERS_ENDPOINTS.list, resourceId: id, requireAuth: true });
   },
 
   async changePassword(id: number, oldPassword: string, newPassword: string): Promise<void> {

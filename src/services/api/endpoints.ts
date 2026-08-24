@@ -39,6 +39,8 @@ export const AUTH_ENDPOINTS = {
 
 export const USERS_ENDPOINTS = {
   list: '/users/v1/users/',
+  /** POST — réservé aux superusers côté backend (voir UserViewSet.get_permissions). */
+  create: '/users/v1/users/',
   detail: (id: string | number) => `/users/v1/users/${id}/`,
   /** GET -> profil de l'utilisateur authentifié courant */
   me: '/users/v1/users/me/',
@@ -68,8 +70,11 @@ export const DOMAIN_ENDPOINTS = {
  */
 export const REFERENTIELS_ENDPOINTS = {
   categories: '/referentiels/v1/categories/',
+  categorieDetail: (id: string) => `/referentiels/v1/categories/${id}/`,
   organisations: '/referentiels/v1/organisations/',
+  organisationDetail: (id: string) => `/referentiels/v1/organisations/${id}/`,
   etablissements: '/referentiels/v1/etablissements/',
+  etablissementDetail: (id: string) => `/referentiels/v1/etablissements/${id}/`,
 } as const;
 
 export const NEWS_ENDPOINTS = {
@@ -78,6 +83,19 @@ export const NEWS_ENDPOINTS = {
   react: (id: string) => `/news/v1/news/${id}/reactions/`,
   /** POST -> incrémente le compteur de partages, renvoie { partages }. */
   partager: (id: string) => `/news/v1/news/${id}/partager/`,
+  /**
+   * Sous-ressources dédiées (app backend séparée, PAS imbriquée sous
+   * /news/{id}/ — même convention que commentaires/sondages/liens) :
+   * filtrage par `?news=<id>` en liste, `news` requis dans le corps en
+   * création. Gérées depuis les onglets "Médias"/"Galerie"/"Documents"
+   * de la page de détail News du backoffice.
+   */
+  medias: '/news/v1/medias/',
+  mediaDetail: (id: string) => `/news/v1/medias/${id}/`,
+  galerie: '/news/v1/galerie/',
+  galerieDetail: (id: string) => `/news/v1/galerie/${id}/`,
+  documents: '/news/v1/documents/',
+  documentDetail: (id: string) => `/news/v1/documents/${id}/`,
 } as const;
 
 /**
@@ -95,7 +113,9 @@ export const COMMENTS_ENDPOINTS = {
 } as const;
 
 export const SONDAGES_ENDPOINTS = {
+  list: '/sondages/v1/sondages/',
   create: '/sondages/v1/sondages/',
+  detail: (sondageId: string) => `/sondages/v1/sondages/${sondageId}/`,
   vote: (sondageId: string) => `/sondages/v1/sondages/${sondageId}/vote/`,
 } as const;
 
@@ -105,6 +125,7 @@ export const SONDAGES_ENDPOINTS = {
  * dans le corps de la requête.
  */
 export const LIENS_ENDPOINTS = {
+  list: '/liens/v1/liens/',
   create: '/liens/v1/liens/',
   detail: (id: string) => `/liens/v1/liens/${id}/`,
   /** POST public (pas d'auth requise) -> trace un clic/scan, renvoie { valide, aMotDePasse }. */
@@ -117,6 +138,7 @@ export const STATISTIQUES_ENDPOINTS = {
 
 export const NOTIFICATIONS_ENDPOINTS = {
   list: '/notifications/v1/notifications/',
+  detail: (id: string) => `/notifications/v1/notifications/${id}/`,
   markAsRead: (id: string) => `/notifications/v1/notifications/${id}/read/`,
   markAllAsRead: '/notifications/v1/notifications/read-all/',
 } as const;
@@ -130,10 +152,12 @@ export const NOTIFICATIONS_ENDPOINTS = {
  */
 export const ADMIN_ENDPOINTS = {
   signalements: '/moderation/v1/signalements/',
+  signalementDetail: (id: string) => `/moderation/v1/signalements/${id}/`,
   traiterSignalement: (id: string) => `/moderation/v1/signalements/${id}/traiter/`,
   utilisateurs: '/moderation/v1/utilisateurs/',
 } as const;
 
 export const JOURNAL_ENDPOINTS = {
   evenements: '/journal/v1/evenements/',
+  evenementDetail: (id: string) => `/journal/v1/evenements/${id}/`,
 } as const;

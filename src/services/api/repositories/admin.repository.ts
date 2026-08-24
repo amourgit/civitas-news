@@ -39,6 +39,49 @@ export const adminRepository = {
     });
   },
 
+  async getSignalementById(id: string): Promise<Signalement> {
+    const response = await http.get.get<Signalement>({
+      endpoint: ADMIN_ENDPOINTS.signalementDetail(id),
+      schema: SignalementSchema,
+      requireAuth: true,
+    });
+    return response.data;
+  },
+
+  /**
+   * Édition des champs descriptifs d'un signalement (motif, aperçu,
+   * description) — PAS le statut : voir `traiterSignalement` ci-dessous,
+   * seul chemin qui consigne le changement de statut dans le journal
+   * d'audit (EvenementJournal). `update()` reste possible techniquement
+   * sur `statut` côté backend (même serializer que la lecture, tous les
+   * champs sauf id/auteur/date sont ouverts en écriture — voir
+   * moderation/api/v1/serializers.py:SignalementSerializer), mais le
+   * backoffice route volontairement ce cas précis vers `traiter()`.
+   */
+  async updateSignalement(
+    id: string,
+    payload: Partial<{
+      typeContenu: Signalement['typeContenu'];
+      contenuId: string;
+      titreOuApercu: string;
+      motif: Signalement['motif'];
+      description: string;
+    }>,
+  ): Promise<Signalement> {
+    const response = await http.update.patch<typeof payload, Signalement>({
+      endpoint: ADMIN_ENDPOINTS.signalements,
+      resourceId: id,
+      patches: payload,
+      responseSchema: SignalementSchema,
+      requireAuth: true,
+    });
+    return response.data;
+  },
+
+  async removeSignalement(id: string): Promise<void> {
+    await http.delete.delete({ endpoint: ADMIN_ENDPOINTS.signalements, resourceId: id, requireAuth: true });
+  },
+
   async traiterSignalement(id: string, reponse: 'traite' | 'rejete'): Promise<Signalement> {
     const response = await http.post.post<{ statut: 'traite' | 'rejete' }, Signalement>({
       endpoint: ADMIN_ENDPOINTS.traiterSignalement(id),
@@ -60,6 +103,16 @@ export const adminRepository = {
       });
       return { results: response.data.results, next: response.data.next };
     });
+  },
+
+  /** Journal d'audit immuable — ReadOnlyModelViewSet côté backend, aucune écriture possible. */
+  async getAuditLogById(id: string): Promise<AuditLog> {
+    const response = await http.get.get<AuditLog>({
+      endpoint: JOURNAL_ENDPOINTS.evenementDetail(id),
+      schema: AuditLogSchema,
+      requireAuth: true,
+    });
+    return response.data;
   },
 
   async getUtilisateurs(): Promise<Utilisateur[]> {

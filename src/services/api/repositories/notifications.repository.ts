@@ -21,6 +21,15 @@ export const notificationsRepository = {
     });
   },
 
+  async getById(id: string): Promise<NotificationItem> {
+    const response = await http.get.get<NotificationItem>({
+      endpoint: NOTIFICATIONS_ENDPOINTS.detail(id),
+      schema: NotificationItemSchema,
+      requireAuth: true,
+    });
+    return response.data;
+  },
+
   async markAsRead(id: string): Promise<void> {
     await http.post.post<Record<string, never>, unknown>({
       endpoint: NOTIFICATIONS_ENDPOINTS.markAsRead(id),

@@ -8,7 +8,14 @@
 import type { RoleUtilisateur } from '../../types/models/user.types';
 import { PERMISSIONS, type Permission } from './permissions.catalog';
 
-const ANONYME: Permission[] = [PERMISSIONS.NEWS_VIEW, PERMISSIONS.COMMENTAIRE_VIEW, PERMISSIONS.SONDAGE_VIEW];
+const ANONYME: Permission[] = [
+  PERMISSIONS.NEWS_VIEW, PERMISSIONS.COMMENTAIRE_VIEW, PERMISSIONS.SONDAGE_VIEW,
+  // Les référentiels (Catégories/Organisations/Établissements) sont en
+  // LECTURE publique côté backend (LectureLibreEcritureModerateur —
+  // voir referentiels/api/v1/views.py) : nécessaire ne serait-ce que
+  // pour peupler les sélecteurs du formulaire de création de News.
+  PERMISSIONS.REFERENTIEL_VIEW,
+];
 
 const ETUDIANT: Permission[] = [
   ...ANONYME,
@@ -39,6 +46,17 @@ const MODERATEUR: Permission[] = [
   PERMISSIONS.ADMIN_ACCESS,
   PERMISSIONS.ADMIN_SIGNALEMENT_TRAITER,
   PERMISSIONS.LIEN_DELETE,
+  // Backoffice — même niveau que les droits de modération backend
+  // (common/permissions.py:ROLES_MODERATION = moderateur + administrateur)
+  // sur lesquels s'appuient les endpoints correspondants.
+  PERMISSIONS.BACKOFFICE_ACCESS,
+  PERMISSIONS.REFERENTIEL_MANAGE,
+  PERMISSIONS.BACKOFFICE_NEWS_MANAGE,
+  PERMISSIONS.BACKOFFICE_COMMENTAIRE_MANAGE,
+  PERMISSIONS.BACKOFFICE_SONDAGE_MANAGE,
+  PERMISSIONS.BACKOFFICE_LIEN_MANAGE,
+  PERMISSIONS.BACKOFFICE_NOTIFICATION_VIEW,
+  PERMISSIONS.BACKOFFICE_SIGNALEMENT_MANAGE,
 ];
 
 const ADMINISTRATEUR: Permission[] = [

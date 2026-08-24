@@ -26,16 +26,38 @@ export interface LienEcriturePayload {
 }
 
 export const liensRepository = {
+  /** Table du backoffice — tous les liens, non filtrés par News. */
+  async list(): Promise<LienPublication[]> {
+    return fetchAllPages<LienPublication>(async (page) => {
+      const response = await http.get.get({
+        endpoint: LIENS_ENDPOINTS.list,
+        params: { page },
+        schema: paginatedSchema(LienPublicationSchema),
+        requireAuth: false,
+      });
+      return { results: response.data.results, next: response.data.next };
+    });
+  },
+
   async listByNews(newsId: string): Promise<LienPublication[]> {
     return fetchAllPages<LienPublication>(async (page) => {
       const response = await http.get.get({
-        endpoint: LIENS_ENDPOINTS.create,
+        endpoint: LIENS_ENDPOINTS.list,
         params: { news: newsId, page },
         schema: paginatedSchema(LienPublicationSchema),
         requireAuth: false,
       });
       return { results: response.data.results, next: response.data.next };
     });
+  },
+
+  async getById(id: string): Promise<LienPublication> {
+    const response = await http.get.get<LienPublication>({
+      endpoint: LIENS_ENDPOINTS.detail(id),
+      schema: LienPublicationSchema,
+      requireAuth: false,
+    });
+    return response.data;
   },
 
   async generate(newsId: string, payload: LienEcriturePayload): Promise<LienPublication> {
@@ -49,6 +71,17 @@ export const liensRepository = {
       requireAuth: true,
     });
     return response.data;
+  },
+
+  /**
+   * Pas de `update()` : LienPublicationViewSet n'expose volontairement
+   * QUE GET/POST/DELETE (voir le docstring de la vue backend,
+   * liens/api/v1/views.py) — un lien de partage se révoque et se
+   * régénère, il ne se modifie pas en place. Le backoffice ne propose
+   * donc que la consultation et la suppression pour cette table.
+   */
+  async remove(id: string): Promise<void> {
+    await http.delete.delete({ endpoint: LIENS_ENDPOINTS.list, resourceId: id, requireAuth: true });
   },
 
   /** POST public (pas d'auth requise) — trace un clic/scan sur le lien. */

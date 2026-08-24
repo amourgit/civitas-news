@@ -52,6 +52,21 @@ export const PERMISSIONS = {
   ADMIN_SIGNALEMENT_TRAITER: 'admin:signalement:traiter',
   ADMIN_AUDIT_VIEW: 'admin:audit:view',
   ADMIN_UTILISATEUR_GERER: 'admin:utilisateur:gerer',
+
+  // Backoffice (src/components/backoffice/) — gestion des référentiels
+  // et modération avancée. Distinct de ADMIN_ACCESS (qui n'ouvre que le
+  // tableau de bord/liste de signalements) : ces permissions gouvernent
+  // les tables complètes du panneau d'administration façon "Django
+  // admin" (voir src/components/backoffice/registry/).
+  BACKOFFICE_ACCESS: 'backoffice:access',
+  REFERENTIEL_VIEW: 'referentiel:view',
+  REFERENTIEL_MANAGE: 'referentiel:manage',
+  BACKOFFICE_NEWS_MANAGE: 'backoffice:news:manage',
+  BACKOFFICE_COMMENTAIRE_MANAGE: 'backoffice:commentaire:manage',
+  BACKOFFICE_SONDAGE_MANAGE: 'backoffice:sondage:manage',
+  BACKOFFICE_LIEN_MANAGE: 'backoffice:lien:manage',
+  BACKOFFICE_NOTIFICATION_VIEW: 'backoffice:notification:view',
+  BACKOFFICE_SIGNALEMENT_MANAGE: 'backoffice:signalement:manage',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

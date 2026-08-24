@@ -13,6 +13,7 @@
 // ============================================================
 
 export * from './models/user.types';
+export * from './models/common.types';
 export * from './models/lien.types';
 export * from './models/sondage.types';
 export * from './models/commentaire.types';

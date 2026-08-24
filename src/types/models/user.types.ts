@@ -15,6 +15,7 @@
 // ============================================================
 
 import { z } from 'zod';
+import { SocleTracabiliteSchema, type StatutCycleVie } from './common.types';
 
 export const RoleUtilisateurSchema = z.enum([
   'anonyme',
@@ -56,6 +57,22 @@ export const UtilisateurSchema = z.object({
 });
 export type Utilisateur = z.infer<typeof UtilisateurSchema>;
 
+export const TypeOrganisationSchema = z.enum([
+  'association_etudiante',
+  'administration',
+  'club',
+  'departement',
+  'autre',
+]);
+export type TypeOrganisation = z.infer<typeof TypeOrganisationSchema>;
+export const TYPE_ORGANISATION_LABELS: Record<TypeOrganisation, string> = {
+  association_etudiante: 'Association étudiante',
+  administration: 'Administration',
+  club: 'Club',
+  departement: 'Département académique',
+  autre: 'Autre',
+};
+
 export const OrganisationSchema = z.object({
   id: z.string(),
   nom: z.string(),
@@ -63,12 +80,27 @@ export const OrganisationSchema = z.object({
   logo: z.string().nullable().optional(),
   type: z.string(),
   description: z.string().optional(),
-});
+}).extend(SocleTracabiliteSchema.shape);
 export type Organisation = z.infer<typeof OrganisationSchema>;
+
+/** Payload d'écriture JSON (sans logo — voir referentiels.repository.ts
+ * pour la variante multipart utilisée à la création). */
+export interface OrganisationEcriturePayload {
+  nom: string;
+  type?: TypeOrganisation;
+  description?: string;
+  statut?: StatutCycleVie;
+}
 
 export const EtablissementSchema = z.object({
   id: z.string(),
   nom: z.string(),
   province: z.string(),
-});
+}).extend(SocleTracabiliteSchema.shape);
 export type Etablissement = z.infer<typeof EtablissementSchema>;
+
+export interface EtablissementEcriturePayload {
+  nom: string;
+  province: string;
+  statut?: StatutCycleVie;
+}

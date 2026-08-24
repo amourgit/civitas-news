@@ -30,6 +30,33 @@ export const commentsRepository = {
     });
   },
 
+  /** Table du backoffice — tous les commentaires, non filtrés par News. */
+  async list(): Promise<Commentaire[]> {
+    return fetchAllPages<Commentaire>(async (page) => {
+      const response = await http.get.get({
+        endpoint: COMMENTS_ENDPOINTS.list,
+        params: { page },
+        schema: paginatedSchema(CommentaireSchema),
+        requireAuth: false,
+      });
+      return { results: response.data.results, next: response.data.next };
+    });
+  },
+
+  async getById(id: string): Promise<Commentaire> {
+    // CommentaireViewSet.retrieve() est explicitement surchargé côté
+    // backend pour toujours répondre avec CommentaireSerializer (la
+    // forme complète — auteur, réactions, votes...), jamais la forme
+    // d'écriture. Contrairement au PATCH ci-dessous, ce GET est donc
+    // directement validable contre CommentaireSchema.
+    const response = await http.get.get<Commentaire>({
+      endpoint: COMMENTS_ENDPOINTS.detail(id),
+      schema: CommentaireSchema,
+      requireAuth: false,
+    });
+    return response.data;
+  },
+
   async create(newsId: string, payload: CreerCommentairePayload): Promise<Commentaire> {
     const response = await http.post.post<CreerCommentairePayload & { news: string }, Commentaire>({
       endpoint: COMMENTS_ENDPOINTS.list,
@@ -41,6 +68,25 @@ export const commentsRepository = {
       requireAuth: true,
     });
     return response.data;
+  },
+
+  /**
+   * Le PATCH renvoie la forme d'ÉCRITURE (CommentaireEcritureSerializer :
+   * seulement id/contenu/typeContenu/audioDuration/reponseA — voir
+   * commentaires/api/v1/views.py), pas la forme complète attendue par
+   * CommentaireSchema (auteur/reactions/votes obligatoires) : valider la
+   * réponse du PATCH ferait donc systématiquement échouer Zod. On
+   * n'attache donc PAS de `responseSchema` ici, et on rapatrie la forme
+   * complète et à jour via un second appel `getById`.
+   */
+  async update(id: string, payload: Partial<CreerCommentairePayload>): Promise<Commentaire> {
+    await http.update.patch<Partial<CreerCommentairePayload>, unknown>({
+      endpoint: COMMENTS_ENDPOINTS.list,
+      resourceId: id,
+      patches: payload,
+      requireAuth: true,
+    });
+    return commentsRepository.getById(id);
   },
 
   async vote(commentId: string, direction: 'up' | 'down'): Promise<Commentaire> {

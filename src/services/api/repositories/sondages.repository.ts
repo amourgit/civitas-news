@@ -6,6 +6,7 @@
 import { http } from './httpClient';
 import { SONDAGES_ENDPOINTS } from '../endpoints';
 import { SondageSchema, type Sondage } from '../../../types/global.types';
+import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
 /**
  * Forme d'ÉCRITURE — le backend (sondages/api/v1/serializers.py:
@@ -29,6 +30,27 @@ export interface SondageEcriturePayload {
 }
 
 export const sondagesRepository = {
+  async list(newsId?: string): Promise<Sondage[]> {
+    return fetchAllPages<Sondage>(async (page) => {
+      const response = await http.get.get({
+        endpoint: SONDAGES_ENDPOINTS.list,
+        params: { page, ...(newsId ? { news: newsId } : {}) },
+        schema: paginatedSchema(SondageSchema),
+        requireAuth: false,
+      });
+      return { results: response.data.results, next: response.data.next };
+    });
+  },
+
+  async getById(id: string): Promise<Sondage> {
+    const response = await http.get.get<Sondage>({
+      endpoint: SONDAGES_ENDPOINTS.detail(id),
+      schema: SondageSchema,
+      requireAuth: false,
+    });
+    return response.data;
+  },
+
   async create(payload: SondageEcriturePayload): Promise<Sondage> {
     const { newsId, ...rest } = payload;
     // POST JSON standard : CamelCaseJSONParser convertit automatiquement
@@ -40,6 +62,32 @@ export const sondagesRepository = {
       requireAuth: true,
     });
     return response.data;
+  },
+
+  /**
+   * `choix` (les options du sondage) est volontairement TOUJOURS exclu
+   * du PATCH : `SondageEcritureSerializer` n'implémente pas de méthode
+   * `update()` dédiée (seulement `create()`), le comportement par défaut
+   * de DRF ferait alors un `setattr(instance, 'choix', [...])` sur le
+   * manager de clé étrangère inverse `Sondage.choix` -- ce qui échoue
+   * côté Django (assignation directe interdite sur une relation inverse
+   * non nullable). Les options d'un sondage ne sont donc éditables qu'à
+   * la création depuis ce backoffice ; le formulaire d'édition les
+   * affiche en lecture seule.
+   */
+  async update(id: string, payload: Partial<Omit<SondageEcriturePayload, 'newsId' | 'choix'>>): Promise<Sondage> {
+    const response = await http.update.patch<Record<string, unknown>, Sondage>({
+      endpoint: SONDAGES_ENDPOINTS.list,
+      resourceId: id,
+      patches: payload as Record<string, unknown>,
+      responseSchema: SondageSchema,
+      requireAuth: true,
+    });
+    return response.data;
+  },
+
+  async remove(id: string): Promise<void> {
+    await http.delete.delete({ endpoint: SONDAGES_ENDPOINTS.list, resourceId: id, requireAuth: true });
   },
 
   /**
