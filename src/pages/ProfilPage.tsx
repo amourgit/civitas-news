@@ -38,6 +38,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { toast } from '../hooks/useToast';
+import { ConfirmDialog } from '../components/backoffice/ConfirmDialog';
 
 export default function ProfilPage() {
   const navigate = useNavigate();
@@ -46,14 +47,22 @@ export default function ProfilPage() {
 
   const [activeTab, setActiveTab] = useState<'activite' | 'votes' | 'sujets' | 'info' | 'badges'>('activite');
   const [rightSearchQuery, setRightSearchQuery] = useState('');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
-    // Plus de redirection forcée : la connexion est optionnelle (voir
-    // LoginModal.tsx) -- on reste simplement sur /profil, qui gère déjà
-    // très bien l'état anonyme (badge "Anonyme" + bouton "Se connecter"
-    // ci-dessous), plutôt que de router vers une page qui n'existe plus.
-    toast('info', 'Déconnexion effectuée.');
+    setIsLoggingOut(true);
+    try {
+      await logout(); // révoque le token côté serveur (POST /token/v1/logout/) puis tokenStore.clear()
+      // Plus de redirection forcée : la connexion est optionnelle (voir
+      // LoginModal.tsx) -- on reste simplement sur /profil, qui gère déjà
+      // très bien l'état anonyme (badge "Anonyme" + bouton "Se connecter"
+      // ci-dessous), plutôt que de router vers une page qui n'existe plus.
+      toast('info', 'Déconnexion effectuée.');
+    } finally {
+      setIsLoggingOut(false);
+      setShowLogoutConfirm(false);
+    }
   };
 
   // Check if user has rank/grade permission to create topics
@@ -210,6 +219,20 @@ export default function ProfilPage() {
                   <Settings className="w-3.5 h-3.5 text-[#5B4DFF]" />
                   <span>Paramètres</span>
                 </Link>
+                {/* Déconnexion -- visible directement sur la bannière (pas
+                    besoin d'ouvrir l'onglet "Infos & Rangs" pour la trouver,
+                    voir aussi le bouton équivalent plus bas). Même
+                    handleLogout, même flux (révocation serveur +
+                    tokenStore.clear()) -- aucune logique dupliquée. */}
+                {isAuthenticated && (
+                  <button
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="p-2 rounded-full bg-black/30 hover:bg-rose-600/90 backdrop-blur-md text-white transition-all"
+                    title="Se déconnecter"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -643,7 +666,7 @@ export default function ProfilPage() {
                     </Link>
                     {isAuthenticated && (
                       <button
-                        onClick={handleLogout}
+                        onClick={() => setShowLogoutConfirm(true)}
                         className="px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-200 dark:border-rose-800 hover:bg-rose-100 transition-all flex items-center gap-1.5"
                       >
                         <LogOut className="w-3.5 h-3.5" /> Se déconnecter
@@ -742,6 +765,16 @@ export default function ProfilPage() {
         </div>
 
       </div>
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Se déconnecter"
+        description="Vous serez déconnecté de votre session sur cet appareil. Vous pourrez vous reconnecter à tout moment."
+        confirmLabel="Se déconnecter"
+        isLoading={isLoggingOut}
+        onConfirm={handleLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </div>
   );
 }
