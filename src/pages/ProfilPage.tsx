@@ -53,15 +53,15 @@ export default function ProfilPage() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
+      // Ne rejette jamais (voir useAuthStore().logout() dans auth.store.ts) :
+      // même si la révocation serveur échoue, la session locale est
+      // toujours effacée -- donc pas de branche d'erreur ici.
       await logout(); // révoque le token côté serveur (POST /token/v1/logout/) puis tokenStore.clear()
-      // Plus de redirection forcée : la connexion est optionnelle (voir
-      // LoginModal.tsx) -- on reste simplement sur /profil, qui gère déjà
-      // très bien l'état anonyme (badge "Anonyme" + bouton "Se connecter"
-      // ci-dessous), plutôt que de router vers une page qui n'existe plus.
-      toast('info', 'Déconnexion effectuée.');
+      toast('success', 'Déconnexion effectuée.', 'À bientôt sur CIVITAS !');
     } finally {
       setIsLoggingOut(false);
       setShowLogoutConfirm(false);
+      navigate('/');
     }
   };
 

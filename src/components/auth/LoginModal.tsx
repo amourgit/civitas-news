@@ -9,10 +9,10 @@
 // La connexion reste STRICTEMENT OPTIONNELLE (voir Header.tsx : plus
 // aucune route ni requête n'exige de session) — ce popup ne fait que
 // permettre à un visiteur anonyme d'associer une identité à ses
-// actions s'il le souhaite. Après succès, on ferme simplement le popup
-// SANS naviguer : contrairement à l'ancienne page dédiée, ce popup
-// peut s'ouvrir depuis n'importe quelle page (ex: en lisant un
-// article) — rediriger vers l'accueil serait une régression UX.
+// actions s'il le souhaite. Après succès (login, inscription ou
+// Google), on ferme le popup PUIS on redirige vers "/" -- demande
+// explicite pour rendre l'issue de la connexion/déconnexion visible
+// plutôt que de rester silencieusement sur la page courante.
 //
 // Deux modes dans le MÊME popup (pas de seconde page) :
 // - 'login'    : identifiant + password. Si le backend répond
@@ -26,6 +26,7 @@
 // ============================================================
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, LogIn, UserPlus, Fingerprint } from 'lucide-react';
 import { useUiStore } from '../../store/ui.store';
 import { useAuthStore } from '../../store/auth.store';
@@ -56,6 +57,7 @@ function extractFieldErrors(details: unknown): FieldErrors {
 export default function LoginModal() {
   const { loginModalOpen, closeLoginModal } = useUiStore();
   const { login, register, loginWithGoogle } = useAuthStore();
+  const navigate = useNavigate();
 
   const [mode, setMode] = useState<Mode>('login');
   const [identifiant, setIdentifiant] = useState('');
@@ -100,6 +102,7 @@ export default function LoginModal() {
   const onSuccess = (message: string) => {
     toast('success', message);
     closeLoginModal();
+    navigate('/');
   };
 
   const handleLoginSubmit = async (e: FormEvent) => {
@@ -119,7 +122,9 @@ export default function LoginModal() {
       if (error instanceof ApiError && error.code === 'ACCOUNT_NOT_FOUND') {
         setAccountNotFound(true);
       } else {
-        setFormError(error instanceof ApiError ? error.message : 'Identifiant ou mot de passe incorrect.');
+        const message = error instanceof ApiError ? error.message : 'Identifiant ou mot de passe incorrect.';
+        setFormError(message);
+        toast('error', 'Connexion impossible', message);
       }
     } finally {
       setSubmitting(false);
@@ -147,11 +152,15 @@ export default function LoginModal() {
         const errors = extractFieldErrors(error.details);
         if (Object.keys(errors).length > 0) {
           setFieldErrors(errors);
+          toast('error', 'Inscription impossible', 'Vérifiez les champs en rouge.');
         } else {
           setFormError(error.message);
+          toast('error', 'Inscription impossible', error.message);
         }
       } else {
-        setFormError(error instanceof ApiError ? error.message : "L'inscription a échoué. Veuillez réessayer.");
+        const message = error instanceof ApiError ? error.message : "L'inscription a échoué. Veuillez réessayer.";
+        setFormError(message);
+        toast('error', 'Inscription impossible', message);
       }
     } finally {
       setSubmitting(false);
@@ -170,7 +179,9 @@ export default function LoginModal() {
       );
     } catch (error) {
       setAccountNotFound(false);
-      setFormError(error instanceof ApiError ? error.message : 'Impossible de créer le compte pour le moment.');
+      const message = error instanceof ApiError ? error.message : 'Impossible de créer le compte pour le moment.';
+      setFormError(message);
+      toast('error', 'Création du compte impossible', message);
     } finally {
       setSubmitting(false);
     }
@@ -184,7 +195,9 @@ export default function LoginModal() {
       const profile = await loginWithGoogle(credential);
       onSuccess(`Bon retour, ${profile.nomAffiche} !`);
     } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : 'Connexion Google impossible pour le moment.');
+      const message = error instanceof ApiError ? error.message : 'Connexion Google impossible pour le moment.';
+      setFormError(message);
+      toast('error', 'Connexion Google impossible', message);
     } finally {
       setSubmitting(false);
     }
