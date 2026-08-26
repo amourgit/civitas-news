@@ -1,11 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { News, Sujet } from '../../../types/global.types';
 import { Badge } from '../../../components/ui/Badge';
 import { RichTextViewer } from '../../../components/ui/RichTextViewer';
 import { ExpandableDescription } from '../../../components/ui/ExpandableDescription';
 import { TikTokHeartButton } from '../../../components/ui/TikTokHeartButton';
 import { useNewsReactions } from '../hooks/useNewsReactions';
+import { useOpenNewsDetail } from '../hooks/useOpenNewsDetail';
 import { formatDateRelative } from '../../../lib/formatDate';
 import { formatNumber } from '../../../lib/formatNumber';
 import {
@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   AlertCircle,
   Calendar,
+  Images,
 } from 'lucide-react';
 
 export interface NewsCardProps {
@@ -31,6 +32,7 @@ export interface NewsCardProps {
 export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => {
   const newsItem = news || sujet!;
   const { react } = useNewsReactions(newsItem.id, onUpdate);
+  const openNewsDetail = useOpenNewsDetail();
 
   const totalReactions = Object.values(newsItem.stats.reactions || {}).reduce(
     (acc: number, curr: number) => acc + (Number(curr) || 0),
@@ -44,15 +46,59 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
       ? [...sondagePrincipal.choix].sort((a, b) => (b.pourcentage || 0) - (a.pourcentage || 0))[0]
       : null;
 
-  // Medias calculation (max 3 items, image/video support)
+  // Medias : une seule image héro (80vh), les suivantes ne sont indiquées
+  // que par un badge "+N" -- le détail complet (toute la galerie) reste
+  // accessible dans le BottomSheet.
   const allMedias = [newsItem.image, ...(newsItem.galerie || [])].filter(Boolean);
-  const displayMedias = allMedias.slice(0, 3);
-  const extraMediasCount = Math.max(0, allMedias.length - 3);
+  const heroMedia = allMedias[0];
+  const extraMediasCount = Math.max(0, allMedias.length - 1);
+  const heroIsVideo = !!heroMedia && (heroMedia.endsWith('.mp4') || heroMedia.endsWith('.webm') || heroMedia.includes('video'));
+
+  const handleOpenDetail = () => openNewsDetail(newsItem.slug);
 
   return (
-    <div className="w-full bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-800 rounded-none shadow-sm hover:border-[#5B4DFF]/50 transition-all duration-200 overflow-hidden mb-2">
+    <div
+      onClick={handleOpenDetail}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleOpenDetail();
+        }
+      }}
+      className="w-full bg-white dark:bg-[#1A1F4D] rounded-none shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden mb-2 cursor-pointer"
+    >
+      {/* Hero media -- 80vh, pleine largeur de la card */}
+      {heroMedia && (
+        <div className="relative h-[80vh] w-full bg-slate-900 overflow-hidden group">
+          {heroIsVideo ? (
+            <video src={heroMedia} className="w-full h-full object-cover" muted loop playsInline />
+          ) : (
+            <img
+              src={heroMedia}
+              alt={newsItem.titre}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent pointer-events-none" />
+
+          {heroIsVideo && (
+            <div className="absolute top-3 left-3 bg-black/60 text-white text-[10px] px-2 py-1 font-bold">
+              VIDÉO
+            </div>
+          )}
+
+          {extraMediasCount > 0 && (
+            <div className="absolute top-3 right-3 bg-black/60 text-white text-[10px] px-2 py-1 font-bold flex items-center gap-1">
+              <Images className="w-3 h-3" />+{extraMediasCount}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 1. Header Metadata Strip */}
-      <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 border-b border-gray-200 dark:border-gray-800/80 flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+      <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
         <div className="flex items-center gap-1.5 flex-wrap">
           <Badge variant="type" type={newsItem.type}>
             {newsItem.type.toUpperCase()}
@@ -85,18 +131,20 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
 
       {/* 2. Main Body: Flex Parent (Desktop: Row inline with dashboard, Mobile: Stacked vertically) */}
       <div className="p-2.5 sm:p-3 flex flex-col md:flex-row gap-3 items-stretch justify-between">
-        {/* Main Column (Title, Description, Tags, Author info, AND Media thumbnails stacked vertically) */}
+        {/* Main Column (Title, Description, Tags, Author info) */}
         <div className="flex-1 flex flex-col justify-between space-y-2 min-w-0">
           <div className="space-y-1.5">
-            {/* Title */}
-            <Link to={`/news/${newsItem.slug}`}>
-              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 dark:text-white font-display hover:text-[#5B4DFF] transition-colors leading-tight line-clamp-2">
-                {newsItem.titre}
-              </h3>
-            </Link>
+            {/* Title -- le clic ouvre les détails via le clic de la card
+                (bubbling) ; pas de logique propre à isoler ici. */}
+            <h3 className="text-base sm:text-lg font-extrabold text-gray-900 dark:text-white font-display hover:text-[#5B4DFF] transition-colors leading-tight line-clamp-2">
+              {newsItem.titre}
+            </h3>
 
-            {/* Description */}
-            <ExpandableDescription content={newsItem.description} maxChars={130} />
+            {/* Description -- garde sa propre logique de clic (voir
+                plus/voir moins) : ne doit PAS ouvrir les détails. */}
+            <div onClick={(e) => e.stopPropagation()}>
+              <ExpandableDescription content={newsItem.description} maxChars={130} />
+            </div>
 
             {/* Tags */}
             {newsItem.tags && newsItem.tags.length > 0 && (
@@ -109,61 +157,10 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
               </div>
             )}
           </div>
-
-          {/* Media preview strip */}
-          <div className={`grid gap-1.5 pt-2 w-full ${
-            displayMedias.length === 1
-              ? 'grid-cols-1'
-              : displayMedias.length === 2
-              ? 'grid-cols-2'
-              : 'grid-cols-3'
-          }`}>
-            {displayMedias.map((mediaUrl, idx) => {
-              const isVideo = mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.webm') || mediaUrl.includes('video');
-              const isLastWithMore = idx === 2 && extraMediasCount > 0;
-              return (
-                <div
-                  key={idx}
-                  className="relative h-32 sm:h-36 w-full bg-slate-900 overflow-hidden border border-gray-200 dark:border-gray-800 group"
-                >
-                  {isVideo ? (
-                    <video
-                      src={mediaUrl}
-                      className="w-full h-full object-cover opacity-90"
-                      muted
-                      loop
-                      playsInline
-                    />
-                  ) : (
-                    <img
-                      src={mediaUrl}
-                      alt={`${newsItem.titre} ${idx + 1}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90"
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none" />
-
-                  {/* Video badge if video */}
-                  {isVideo && (
-                    <div className="absolute top-1 left-1 bg-black/60 text-white text-[9px] px-1 py-0.5 font-bold">
-                      VIDÉO
-                    </div>
-                  )}
-
-                  {/* Overflow badge "+N..." on 3rd item if more medias exist */}
-                  {isLastWithMore && (
-                    <div className="absolute inset-0 bg-black/70 backdrop-blur-[1px] flex items-center justify-center text-white font-extrabold text-xs sm:text-sm">
-                      +{extraMediasCount}...
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
 
         {/* Right Minimalist Dashboard & Poll Leader */}
-        <div className="w-full md:w-72 lg:w-80 shrink-0 bg-gray-50 dark:bg-[#14183E] border border-gray-200 dark:border-gray-800/80 p-2 sm:p-2.5 rounded-none flex flex-col justify-between space-y-2">
+        <div className="w-full md:w-72 lg:w-80 shrink-0 bg-gray-50 dark:bg-[#14183E] p-2 sm:p-2.5 rounded-none flex flex-col justify-between space-y-2">
           {/* Top Choice in Poll if available */}
           {sondagePrincipal && topChoix ? (
             <div className="space-y-1">
@@ -205,29 +202,29 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
           )}
 
           {/* Statistics Grid */}
-          <div className="grid grid-cols-4 gap-1 pt-1.5 border-t border-gray-200 dark:border-gray-800 text-center">
-            <div className="p-0.5 bg-white dark:bg-[#1A1F4D] border border-gray-100 dark:border-gray-800">
+          <div className="grid grid-cols-4 gap-1 pt-1.5 text-center">
+            <div className="p-0.5 bg-white dark:bg-[#1A1F4D]">
               <div className="text-[10px] font-extrabold text-gray-900 dark:text-white font-display">
                 {formatNumber(newsItem.stats.votes)}
               </div>
               <div className="text-[8px] text-gray-400 uppercase font-semibold">Votes</div>
             </div>
 
-            <div className="p-0.5 bg-white dark:bg-[#1A1F4D] border border-gray-100 dark:border-gray-800">
+            <div className="p-0.5 bg-white dark:bg-[#1A1F4D]">
               <div className="text-[10px] font-extrabold text-gray-900 dark:text-white font-display">
                 {formatNumber(newsItem.stats.commentaires)}
               </div>
               <div className="text-[8px] text-gray-400 uppercase font-semibold">Avis</div>
             </div>
 
-            <div className="p-0.5 bg-white dark:bg-[#1A1F4D] border border-gray-100 dark:border-gray-800">
+            <div className="p-0.5 bg-white dark:bg-[#1A1F4D]">
               <div className="text-[10px] font-extrabold text-gray-900 dark:text-white font-display">
                 {formatNumber(newsItem.stats.vues)}
               </div>
               <div className="text-[8px] text-gray-400 uppercase font-semibold">Vues</div>
             </div>
 
-            <div className="p-0.5 bg-white dark:bg-[#1A1F4D] border border-gray-100 dark:border-gray-800">
+            <div className="p-0.5 bg-white dark:bg-[#1A1F4D]">
               <div className="text-[10px] font-extrabold text-[#5B4DFF] font-display">
                 {totalReactions}
               </div>
@@ -238,14 +235,18 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
       </div>
 
       {/* 3. Action Toolbar Footer */}
-      <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs">
+      <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">
-          <TikTokHeartButton
-            newsId={newsItem.id}
-            initialCount={newsItem.stats?.reactions?.coeur || 0}
-            userReaction={newsItem.userReaction}
-            onUpdate={onUpdate}
-          />
+          {/* Garde sa propre logique de réaction : ne doit PAS ouvrir les
+              détails au clic. */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <TikTokHeartButton
+              newsId={newsItem.id}
+              initialCount={newsItem.stats?.reactions?.coeur || 0}
+              userReaction={newsItem.userReaction}
+              onUpdate={onUpdate}
+            />
+          </div>
 
           <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium hidden sm:inline">
             <MessageSquare className="w-3 h-3 inline mr-1 text-[#5B4DFF]" />
@@ -253,12 +254,16 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
           </span>
         </div>
 
-        <Link to={`/news/${newsItem.slug}`}>
-          <button className="flex items-center gap-1 px-2.5 py-1 rounded-none bg-[#5B4DFF] hover:bg-[#4a3ecc] text-white text-[11px] font-extrabold transition-colors">
-            <span>Explorer la News</span>
-            <ArrowRight className="w-3 h-3" />
-          </button>
-        </Link>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenDetail();
+          }}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-none bg-[#5B4DFF] hover:bg-[#4a3ecc] text-white text-[11px] font-extrabold transition-colors"
+        >
+          <span>Explorer la News</span>
+          <ArrowRight className="w-3 h-3" />
+        </button>
       </div>
     </div>
   );
@@ -266,5 +271,4 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
 
 export const SujetCard = NewsCard;
 export type SujetCardProps = NewsCardProps;
-
 

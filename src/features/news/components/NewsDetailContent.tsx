@@ -1,28 +1,41 @@
 import React, { useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useNews } from '../features/news/hooks/useNews';
-import { useNewsList } from '../features/news/hooks/useNewsList';
-import { NewsHeaderSharePointStyle } from '../features/news/components/NewsHeaderSharePointStyle';
-import { NewsContenu } from '../features/news/components/NewsContenu';
-import { NewsMediaGallery } from '../features/news/components/NewsMediaGallery';
-import { NewsDocuments } from '../features/news/components/NewsDocuments';
-import { NewsSimilaires } from '../features/news/components/NewsSimilaires';
-import { SondageCard } from '../features/sondages/components/SondageCard';
-import { CommentThread } from '../features/discussion/components/CommentThread';
-import { Skeleton } from '../components/ui/Skeleton';
+import { useNews } from '../hooks/useNews';
+import { useNewsList } from '../hooks/useNewsList';
+import { NewsHeaderSharePointStyle } from './NewsHeaderSharePointStyle';
+import { NewsContenu } from './NewsContenu';
+import { NewsMediaGallery } from './NewsMediaGallery';
+import { NewsDocuments } from './NewsDocuments';
+import { NewsSimilaires } from './NewsSimilaires';
+import { SondageCard } from '../../sondages/components/SondageCard';
+import { CommentThread } from '../../discussion/components/CommentThread';
+import { Skeleton } from '../../../components/ui/Skeleton';
 import { ArrowLeft, Building, Calendar, Info, ShieldCheck } from 'lucide-react';
-import NotFoundPage from './NotFoundPage';
-import { useSetSideContent } from '../context/SideContentContext';
-import { GooglePartnerWidget } from '../components/widgets/GooglePartnerWidget';
-import { AirtelGabonWidget } from '../components/widgets/AirtelGabonWidget';
+import NotFoundPage from '../../../pages/NotFoundPage';
+import { useSetSideContent } from '../../../context/SideContentContext';
+import { GooglePartnerWidget } from '../../../components/widgets/GooglePartnerWidget';
+import { AirtelGabonWidget } from '../../../components/widgets/AirtelGabonWidget';
 
-export default function NewsDetailPage() {
-  const { slug } = useParams<{ slug: string }>();
+export interface NewsDetailContentProps {
+  slug: string;
+  /** Remplace l'ancienne navigation "Retour aux news" (route dédiée) :
+   * ce contenu n'est plus une page, donc "retour" == fermer le panneau. */
+  onClose: () => void;
+}
+
+/**
+ * Contenu intégral de l'ancienne page /news/:slug (et /sujets/:slug) --
+ * déplacé tel quel depuis pages/NewsDetailPage.tsx (route désormais
+ * débranchée dans App.tsx) pour être affiché dans le BottomSheet
+ * générique plutôt que sur une page complète. `slug` arrive en prop
+ * (plus de useParams, il n'y a plus de route) ; toute la logique de
+ * récupération/affichage des données reste identique.
+ */
+export function NewsDetailContent({ slug, onClose }: NewsDetailContentProps) {
   const { newsItem, setNewsItem, sujet, setSujet, isLoading, error } = useNews(slug);
   const currentItem = newsItem || sujet;
   const setCurrentItem = setNewsItem || setSujet;
   const { newsList, sujets: allSujets } = useNewsList();
-  
+
   const commentsRef = useRef<HTMLDivElement>(null);
   const pollsRef = useRef<HTMLDivElement>(null);
 
@@ -104,14 +117,15 @@ export default function NewsDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto pb-10 space-y-3 sm:space-y-4 px-1 sm:px-2">
-      {/* Back Link */}
-      <Link
-        to="/news"
+      {/* Close (remplace l'ancien lien "Retour aux news", qui naviguait
+          vers une page dédiée -- ici on ferme simplement le panneau) */}
+      <button
+        onClick={onClose}
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#00785a] transition-colors py-0.5"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
-        <span>Retour aux news</span>
-      </Link>
+        <span>Fermer</span>
+      </button>
 
       {/* SharePoint Style Header Banner */}
       <NewsHeaderSharePointStyle
@@ -167,5 +181,3 @@ export default function NewsDetailPage() {
     </div>
   );
 }
-
-

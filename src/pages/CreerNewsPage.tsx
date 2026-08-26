@@ -12,6 +12,7 @@ import { toast } from '../hooks/useToast';
 import { FilePlus, ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, X } from 'lucide-react';
 import { RichTextViewer } from '../components/ui/RichTextViewer';
 import { MarkdownToolbar } from '../components/ui/MarkdownToolbar';
+import { useOpenNewsDetail } from '../features/news/hooks/useOpenNewsDetail';
 
 const WIZARD_STEPS = [
   { id: 'step-1', title: '1. Informations', description: 'Titre & Thématique' },
@@ -41,6 +42,7 @@ function toDatetimeLocalValue(date: Date): string {
 
 export default function CreerNewsPage() {
   const navigate = useNavigate();
+  const openNewsDetail = useOpenNewsDetail();
   const { user } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -186,7 +188,8 @@ export default function CreerNewsPage() {
       }
 
       toast('success', 'News publiée avec succès !', 'Votre actualité est désormais ouverte au débat.');
-      navigate(`/news/${created.slug}`);
+      navigate('/news');
+      openNewsDetail(created.slug);
     } catch (err: any) {
       toast('error', 'Erreur de publication', err?.message);
     } finally {
