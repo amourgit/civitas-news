@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchBar } from '../features/recherche/components/SearchBar';
 import { useNewsList } from '../features/news/hooks/useNewsList';
+import { useNews } from '../features/news/hooks/useNews';
 import { NewsGrid } from '../features/news/components/NewsGrid';
+import { NewsDetailContent } from '../features/news/components/NewsDetailContent';
+import { BottomSheet } from '../components/ui/BottomSheet';
 import { Tabs } from '../components/ui/Tabs';
 import { Search, Filter, Sparkles } from 'lucide-react';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const CATEGORY_OPTIONS = [
   { id: 'all', label: 'Toutes les catégories' },
@@ -22,9 +26,22 @@ export default function RecherchePage() {
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('tous');
+  const [selectedNewsSlug, setSelectedNewsSlug] = useState<string | null>(null);
 
   const { newsList, sujets, isLoading } = useNewsList({ search: query, category: selectedCategory !== 'all' ? selectedCategory : undefined });
   const rawList = newsList || sujets || [];
+
+  const { newsItem, setNewsItem, sujet, setSujet, isLoading: isDetailLoading } = useNews(selectedNewsSlug);
+  const currentItem = newsItem || sujet;
+  const { newsList: allNews, sujets: allSujets } = useNewsList();
+
+  const handleOpenDetail = (slug: string) => {
+    setSelectedNewsSlug(slug);
+  };
+
+  const handleCloseDetail = () => {
+    setSelectedNewsSlug(null);
+  };
 
   // Filter list by tab if selected
   const list = rawList.filter((item) => {
@@ -114,7 +131,30 @@ export default function RecherchePage() {
         )}
       </div>
 
-      <NewsGrid newsList={list} isLoading={isLoading} />
+      <NewsGrid newsList={list} isLoading={isLoading} onOpenDetail={handleOpenDetail} />
+
+      {/* Bottom Sheet for News Details */}
+      <BottomSheet
+        isOpen={selectedNewsSlug !== null}
+        onClose={handleCloseDetail}
+        title={currentItem?.titre}
+      >
+        {isDetailLoading ? (
+          <div className="space-y-3 max-w-5xl mx-auto py-2 px-1">
+            <Skeleton height={220} variant="card" />
+            <Skeleton height={40} variant="rectangular" />
+            <Skeleton height={150} variant="rectangular" />
+          </div>
+        ) : currentItem ? (
+          <NewsDetailContent
+            newsItem={currentItem}
+            onUpdate={setNewsItem || setSujet}
+            allNews={allNews || allSujets}
+            allSujets={allNews || allSujets}
+            onOpenDetail={handleOpenDetail}
+          />
+        ) : null}
+      </BottomSheet>
     </div>
   );
 }

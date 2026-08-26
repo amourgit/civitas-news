@@ -9,6 +9,7 @@ export interface NewsGridProps {
   sujets?: News[];
   isLoading?: boolean;
   onResetFilters?: () => void;
+  onOpenDetail?: (slug: string) => void;
 }
 
 export const NewsGrid: React.FC<NewsGridProps> = ({
@@ -16,6 +17,7 @@ export const NewsGrid: React.FC<NewsGridProps> = ({
   sujets,
   isLoading = false,
   onResetFilters,
+  onOpenDetail,
 }) => {
   const list = newsList || sujets || [];
 
@@ -47,7 +49,7 @@ export const NewsGrid: React.FC<NewsGridProps> = ({
   return (
     <div className="w-full flex flex-col space-y-4 sm:space-y-6">
       {list.map((item) => (
-        <NewsCard key={item.id} news={item} />
+        <NewsCard key={item.id} news={item} onOpenDetail={onOpenDetail} />
       ))}
     </div>
   );

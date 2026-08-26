@@ -11,7 +11,6 @@ import LoginModal from './components/auth/LoginModal';
 
 import HomePage from './pages/HomePage';
 import NewsListPage from './pages/NewsListPage';
-import NewsDetailPage from './pages/NewsDetailPage';
 import SondageFocusPage from './pages/SondageFocusPage';
 import CreerNewsPage from './pages/CreerNewsPage';
 import CreerSondagePage from './pages/CreerSondagePage';
@@ -43,14 +42,12 @@ export function App() {
                   <Route path="/" element={<HomePage />} />
                   <Route path="/news" element={<NewsListPage />} />
                   <Route path="/news/creer" element={<CreerNewsPage />} />
-                  <Route path="/news/:slug" element={<NewsDetailPage />} />
                   <Route path="/news/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
                   <Route path="/news/:newsId/sondages/creer" element={<CreerSondagePage />} />
 
                   {/* Redirects/Aliases for legacy /sujets URLs */}
                   <Route path="/sujets" element={<NewsListPage />} />
                   <Route path="/sujets/creer" element={<CreerNewsPage />} />
-                  <Route path="/sujets/:slug" element={<NewsDetailPage />} />
                   <Route path="/sujets/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
                   <Route path="/sujets/:sujetId/sondages/creer" element={<CreerSondagePage />} />
 

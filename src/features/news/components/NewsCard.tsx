@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { News, Sujet } from '../../../types/global.types';
 import { Badge } from '../../../components/ui/Badge';
@@ -26,9 +26,10 @@ export interface NewsCardProps {
   news?: News;
   sujet?: News;
   onUpdate?: (updated: News) => void;
+  onOpenDetail?: (slug: string) => void;
 }
 
-export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => {
+export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpenDetail }) => {
   const newsItem = news || sujet!;
   const { react } = useNewsReactions(newsItem.id, onUpdate);
 
@@ -36,6 +37,22 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
     (acc: number, curr: number) => acc + (Number(curr) || 0),
     0
   );
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent navigation when clicking on interactive elements
+    if ((e.target as HTMLElement).closest('button') || 
+        (e.target as HTMLElement).closest('a') ||
+        (e.target as HTMLElement).closest('[data-no-card-click]')) {
+      return;
+    }
+    
+    if (onOpenDetail) {
+      onOpenDetail(newsItem.slug);
+    } else {
+      // Fallback to Link navigation if no callback provided
+      window.location.href = `/news/${newsItem.slug}`;
+    }
+  };
 
   // Main poll & top choice calculation
   const sondagePrincipal = newsItem.sondages && newsItem.sondages.length > 0 ? newsItem.sondages[0] : null;
@@ -50,9 +67,12 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
   const extraMediasCount = Math.max(0, allMedias.length - 3);
 
   return (
-    <div className="w-full bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-800 rounded-none shadow-sm hover:border-[#5B4DFF]/50 transition-all duration-200 overflow-hidden mb-2">
+    <div 
+      className="w-full bg-white dark:bg-[#1A1F4D] rounded-none shadow-sm transition-all duration-200 overflow-hidden mb-2 cursor-pointer"
+      onClick={handleCardClick}
+    >
       {/* 1. Header Metadata Strip */}
-      <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 border-b border-gray-200 dark:border-gray-800/80 flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+      <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 flex flex-wrap items-center justify-between gap-1.5 text-[11px] sm:text-xs md:text-sm">
         <div className="flex items-center gap-1.5 flex-wrap">
           <Badge variant="type" type={newsItem.type}>
             {newsItem.type.toUpperCase()}
@@ -84,13 +104,13 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
       </div>
 
       {/* 2. Main Body: Flex Parent (Desktop: Row inline with dashboard, Mobile: Stacked vertically) */}
-      <div className="p-2.5 sm:p-3 flex flex-col md:flex-row gap-3 items-stretch justify-between">
+      <div className="p-2.5 sm:p-3 flex flex-col gap-3 items-stretch justify-between">
         {/* Main Column (Title, Description, Tags, Author info, AND Media thumbnails stacked vertically) */}
         <div className="flex-1 flex flex-col justify-between space-y-2 min-w-0">
           <div className="space-y-1.5">
             {/* Title */}
-            <Link to={`/news/${newsItem.slug}`}>
-              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 dark:text-white font-display hover:text-[#5B4DFF] transition-colors leading-tight line-clamp-2">
+            <Link to={`/news/${newsItem.slug}`} data-no-card-click>
+              <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white font-display hover:text-[#5B4DFF] transition-colors leading-tight line-clamp-2">
                 {newsItem.titre}
               </h3>
             </Link>
@@ -102,7 +122,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
             {newsItem.tags && newsItem.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-0.5">
                 {newsItem.tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="text-[9px] font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded-none">
+                  <span key={tag} className="text-[9px] sm:text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded-none">
                     #{tag}
                   </span>
                 ))}
@@ -124,7 +144,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
               return (
                 <div
                   key={idx}
-                  className="relative h-32 sm:h-36 w-full bg-slate-900 overflow-hidden border border-gray-200 dark:border-gray-800 group"
+                  className="relative h-[50vh] w-full bg-slate-900 overflow-hidden group"
                 >
                   {isVideo ? (
                     <video
@@ -162,84 +182,41 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
           </div>
         </div>
 
-        {/* Right Minimalist Dashboard & Poll Leader */}
-        <div className="w-full md:w-72 lg:w-80 shrink-0 bg-gray-50 dark:bg-[#14183E] border border-gray-200 dark:border-gray-800/80 p-2 sm:p-2.5 rounded-none flex flex-col justify-between space-y-2">
-          {/* Top Choice in Poll if available */}
-          {sondagePrincipal && topChoix ? (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-extrabold text-[#5B4DFF]">
-                <span className="flex items-center gap-1 uppercase tracking-wider">
-                  <TrendingUp className="w-3 h-3 text-emerald-500" />
-                  Tendance Principale
-                </span>
-                <span className="text-gray-700 dark:text-gray-300">
-                  {topChoix.pourcentage}% ({formatNumber(topChoix.nombreVotes)} v)
-                </span>
-              </div>
-              <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                {topChoix.libelle}
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-none overflow-hidden">
-                <div
-                  className="bg-[#5B4DFF] h-full transition-all duration-300"
-                  style={{ width: `${topChoix.pourcentage}%` }}
-                />
-              </div>
+        {/* Statistics Grid */}
+        <div className="grid grid-cols-4 gap-1 text-center">
+          <div className="p-0.5 bg-white dark:bg-[#1A1F4D]">
+            <div className="text-[10px] sm:text-xs md:text-sm font-extrabold text-gray-900 dark:text-white font-display">
+              {formatNumber(newsItem.stats.votes)}
             </div>
-          ) : (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-extrabold text-amber-600 dark:text-amber-400">
-                <span className="flex items-center gap-1 uppercase tracking-wider">
-                  <AlertCircle className="w-3 h-3" />
-                  Tableau de Bord News
-                </span>
-                <span className="text-gray-600 dark:text-gray-400 font-normal">Taux d'engagement</span>
-              </div>
-              <div className="text-xs font-bold text-gray-900 dark:text-white">
-                {formatNumber(newsItem.stats.votes + newsItem.stats.commentaires)} participations citoyennes
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-none overflow-hidden">
-                <div className="bg-emerald-500 h-full transition-all duration-300 w-3/4" />
-              </div>
-            </div>
-          )}
+            <div className="text-[8px] sm:text-[9px] md:text-[10px] text-gray-400 uppercase font-semibold">Votes</div>
+          </div>
 
-          {/* Statistics Grid */}
-          <div className="grid grid-cols-4 gap-1 pt-1.5 border-t border-gray-200 dark:border-gray-800 text-center">
-            <div className="p-0.5 bg-white dark:bg-[#1A1F4D] border border-gray-100 dark:border-gray-800">
-              <div className="text-[10px] font-extrabold text-gray-900 dark:text-white font-display">
-                {formatNumber(newsItem.stats.votes)}
-              </div>
-              <div className="text-[8px] text-gray-400 uppercase font-semibold">Votes</div>
+          <div className="p-0.5 bg-white dark:bg-[#1A1F4D]">
+            <div className="text-[10px] sm:text-xs md:text-sm font-extrabold text-gray-900 dark:text-white font-display">
+              {formatNumber(newsItem.stats.commentaires)}
             </div>
+            <div className="text-[8px] sm:text-[9px] md:text-[10px] text-gray-400 uppercase font-semibold">Avis</div>
+          </div>
 
-            <div className="p-0.5 bg-white dark:bg-[#1A1F4D] border border-gray-100 dark:border-gray-800">
-              <div className="text-[10px] font-extrabold text-gray-900 dark:text-white font-display">
-                {formatNumber(newsItem.stats.commentaires)}
-              </div>
-              <div className="text-[8px] text-gray-400 uppercase font-semibold">Avis</div>
+          <div className="p-0.5 bg-white dark:bg-[#1A1F4D]">
+            <div className="text-[10px] sm:text-xs md:text-sm font-extrabold text-gray-900 dark:text-white font-display">
+              {formatNumber(newsItem.stats.vues)}
             </div>
+            <div className="text-[8px] sm:text-[9px] md:text-[10px] text-gray-400 uppercase font-semibold">Vues</div>
+          </div>
 
-            <div className="p-0.5 bg-white dark:bg-[#1A1F4D] border border-gray-100 dark:border-gray-800">
-              <div className="text-[10px] font-extrabold text-gray-900 dark:text-white font-display">
-                {formatNumber(newsItem.stats.vues)}
-              </div>
-              <div className="text-[8px] text-gray-400 uppercase font-semibold">Vues</div>
+          <div className="p-0.5 bg-white dark:bg-[#1A1F4D]">
+            <div className="text-[10px] sm:text-xs md:text-sm font-extrabold text-[#5B4DFF] font-display">
+              {totalReactions}
             </div>
-
-            <div className="p-0.5 bg-white dark:bg-[#1A1F4D] border border-gray-100 dark:border-gray-800">
-              <div className="text-[10px] font-extrabold text-[#5B4DFF] font-display">
-                {totalReactions}
-              </div>
-              <div className="text-[8px] text-gray-400 uppercase font-semibold">Réact</div>
-            </div>
+            <div className="text-[8px] sm:text-[9px] md:text-[10px] text-gray-400 uppercase font-semibold">Réact</div>
           </div>
         </div>
       </div>
 
       {/* 3. Action Toolbar Footer */}
-      <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-3">
+      <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 flex items-center justify-between text-xs sm:text-sm md:text-base">
+        <div className="flex items-center gap-3" data-no-card-click>
           <TikTokHeartButton
             newsId={newsItem.id}
             initialCount={newsItem.stats?.reactions?.coeur || 0}
@@ -247,18 +224,24 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate }) => 
             onUpdate={onUpdate}
           />
 
-          <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium hidden sm:inline">
-            <MessageSquare className="w-3 h-3 inline mr-1 text-[#5B4DFF]" />
+          <span className="text-[10px] sm:text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium hidden sm:inline">
+            <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 inline mr-1 text-[#5B4DFF]" />
             {newsItem.stats.commentaires} retours modérés
           </span>
         </div>
 
-        <Link to={`/news/${newsItem.slug}`}>
-          <button className="flex items-center gap-1 px-2.5 py-1 rounded-none bg-[#5B4DFF] hover:bg-[#4a3ecc] text-white text-[11px] font-extrabold transition-colors">
-            <span>Explorer la News</span>
-            <ArrowRight className="w-3 h-3" />
-          </button>
-        </Link>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onOpenDetail) {
+              onOpenDetail(newsItem.slug);
+            }
+          }}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-none bg-[#5B4DFF] hover:bg-[#4a3ecc] text-white text-[11px] sm:text-xs md:text-sm font-extrabold transition-colors"
+        >
+          <span>Explorer la News</span>
+          <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+        </button>
       </div>
     </div>
   );
