@@ -59,7 +59,16 @@ function toSnakeCaseKeys(fields: Record<string, unknown>): Record<string, unknow
 
 /** Aplati le payload d'écriture vers les noms de champs attendus par NewsEcritureSerializer. */
 function buildScalarFields(payload: Omit<NewsEcriturePayload, 'image'>): Record<string, unknown> {
-  const { categorieId, organisationId, etablissementId, ...rest } = payload;
+  // `image` explicitement exclu même s'il traîne encore sur `payload`
+  // (ex: create() qui passe le payload complet malgré le typage) :
+  // sans ce filtre, il atterrit dans `rest`, puis dans additionalFields,
+  // et uploadFiles() l'ajoute une SECONDE fois au FormData sous la même
+  // clé "image" -- mais cette fois via `String(file)` = la chaîne
+  // littérale "[object File]" au lieu du fichier. Deux entrées "image"
+  // dans le même FormData (le vrai fichier + cette chaîne parasite),
+  // pour un résultat qui dépend alors de l'ordre de fusion interne de
+  // request.data côté DRF plutôt que d'être correct par construction.
+  const { categorieId, organisationId, etablissementId, image: _image, ...rest } = payload as Record<string, unknown> & Omit<NewsEcriturePayload, 'image'>;
   const fields: Record<string, unknown> = {
     ...rest,
     categorie: categorieId,
