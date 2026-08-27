@@ -138,7 +138,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
 
       {/* 2. Main Body: Flex Parent (Desktop: Row inline with dashboard, Mobile: Stacked vertically) */}
       <div className="p-2.5 sm:p-3 flex flex-col gap-3 items-stretch justify-between">
-        {/* Main Column (Title, Description, Tags, Author info, AND Media thumbnails stacked vertically) */}
+        {/* Main Column (Title, Description, Tags) */}
         <div className="flex-1 flex flex-col justify-between space-y-2 min-w-0">
           <div className="space-y-1.5">
             {/* Title -- le clic ouvre les détails via le clic de la card
