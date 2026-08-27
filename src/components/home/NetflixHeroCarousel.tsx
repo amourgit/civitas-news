@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { News, Sujet } from '../../types/global.types';
 import { RichTextViewer } from '../../components/ui/RichTextViewer';
+import { useOpenNewsDetail } from '../../features/news/hooks/useOpenNewsDetail';
 import {
   Play,
   Info,
@@ -52,6 +52,7 @@ const SLIDE_BADGES: SlideBadge[] = [
 ];
 
 export const NetflixHeroCarousel: React.FC<NetflixHeroCarouselProps> = ({ newsList, sujets }) => {
+  const openNewsDetail = useOpenNewsDetail();
   const list = newsList || sujets || [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -162,19 +163,21 @@ export const NetflixHeroCarousel: React.FC<NetflixHeroCarouselProps> = ({ newsLi
 
             {/* Netflix Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 pt-2 sm:pt-3">
-              <Link to={`/news/${current.slug}`}>
-                <button className="inline-flex items-center gap-2 px-5 sm:px-7 py-2.5 sm:py-3 bg-white hover:bg-white/90 text-black font-extrabold text-xs sm:text-sm transition-all shadow-xl active:scale-95">
-                  <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-black text-black" />
-                  <span>Consulter la News</span>
-                </button>
-              </Link>
+              <button
+                onClick={() => openNewsDetail(current.slug)}
+                className="inline-flex items-center gap-2 px-5 sm:px-7 py-2.5 sm:py-3 bg-white hover:bg-white/90 text-black font-extrabold text-xs sm:text-sm transition-all shadow-xl active:scale-95"
+              >
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-black text-black" />
+                <span>Consulter la News</span>
+              </button>
 
-              <Link to={`/news/${current.slug}`}>
-                <button className="inline-flex items-center gap-2 px-5 sm:px-7 py-2.5 sm:py-3 bg-gray-500/40 hover:bg-gray-500/60 text-white font-extrabold text-xs sm:text-sm backdrop-blur-md border border-white/30 transition-all active:scale-95">
-                  <Info className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>Plus d&apos;infos</span>
-                </button>
-              </Link>
+              <button
+                onClick={() => openNewsDetail(current.slug)}
+                className="inline-flex items-center gap-2 px-5 sm:px-7 py-2.5 sm:py-3 bg-gray-500/40 hover:bg-gray-500/60 text-white font-extrabold text-xs sm:text-sm backdrop-blur-md border border-white/30 transition-all active:scale-95"
+              >
+                <Info className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>Plus d&apos;infos</span>
+              </button>
             </div>
           </motion.div>
         </AnimatePresence>

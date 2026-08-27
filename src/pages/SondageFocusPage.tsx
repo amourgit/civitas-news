@@ -1,6 +1,7 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useNews } from '../features/news/hooks/useNews';
+import { useOpenNewsDetail } from '../features/news/hooks/useOpenNewsDetail';
 import { SondageCard } from '../features/sondages/components/SondageCard';
 import { SondageEvolutionChart } from '../features/sondages/components/SondageEvolutionChart';
 import { ArrowLeft, CheckSquare } from 'lucide-react';
@@ -10,6 +11,7 @@ export default function SondageFocusPage() {
   const { slug, sondageId } = useParams<{ slug: string; sondageId: string }>();
   const { newsItem, sujet, isLoading } = useNews(slug);
   const currentItem = newsItem || sujet;
+  const openNewsDetail = useOpenNewsDetail();
 
   if (isLoading) return <div className="p-8 text-center text-xs text-gray-400">Chargement...</div>;
 
@@ -19,13 +21,13 @@ export default function SondageFocusPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-16">
-      <Link
-        to={`/news/${currentItem.slug}`}
+      <button
+        onClick={() => openNewsDetail(currentItem.slug)}
         className="inline-flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-[#5B4DFF]"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Retour à la news "{currentItem.titre}"</span>
-      </Link>
+      </button>
 
       <div className="space-y-2">
         <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white font-display flex items-center gap-3">

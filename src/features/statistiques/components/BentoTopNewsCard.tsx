@@ -1,10 +1,11 @@
 import React from 'react';
 import { Flame, ArrowUpRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useNewsList } from '../hooks/useNewsList';
+import { useOpenNewsDetail } from '../../news/hooks/useOpenNewsDetail';
 
 export const BentoTopNewsCard: React.FC = () => {
   const { news: allNews } = useNewsList();
+  const openNewsDetail = useOpenNewsDetail();
 
   // Sort by popularity (total votes + views + comments)
   const sortedNews = [...allNews]
@@ -36,10 +37,11 @@ export const BentoTopNewsCard: React.FC = () => {
           const growth = `+${10 + (4 - rank) * 6}%`;
 
           return (
-            <Link
+            <button
               key={item.id}
-              to={`/news/${item.slug || item.id}`}
-              className="flex items-center justify-between gap-3 p-2 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition-all border border-gray-100 dark:border-gray-700/40 group"
+              type="button"
+              onClick={() => openNewsDetail(item.slug || String(item.id))}
+              className="w-full flex items-center justify-between gap-3 p-2 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition-all border border-gray-100 dark:border-gray-700/40 group text-left"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <span
@@ -71,7 +73,7 @@ export const BentoTopNewsCard: React.FC = () => {
                   {growth}
                 </span>
               </div>
-            </Link>
+            </button>
           );
         })}
       </div>

@@ -5,8 +5,7 @@ import { Button } from '../components/ui/Button';
 import { toast } from '../hooks/useToast';
 
 export default function CreerSondagePage() {
-  const { newsId, sujetId } = useParams<{ newsId?: string; sujetId?: string }>();
-  const targetId = newsId || sujetId;
+  useParams<{ newsId?: string; sujetId?: string }>();
   const navigate = useNavigate();
   const [question, setQuestion] = useState('');
   const [choix1, setChoix1] = useState('');
@@ -19,7 +18,7 @@ export default function CreerSondagePage() {
       return;
     }
     toast('success', 'Sondage ajouté !');
-    navigate(targetId ? `/news/${targetId}` : '/news');
+    navigate('/news');
   };
 
   return (

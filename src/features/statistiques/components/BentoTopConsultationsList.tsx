@@ -1,10 +1,11 @@
 import React from 'react';
 import { Layers, ArrowUpRight, Newspaper } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useNewsList } from '../hooks/useNewsList';
+import { useOpenNewsDetail } from '../../news/hooks/useOpenNewsDetail';
 
 export const BentoTopConsultationsList: React.FC = () => {
   const { news } = useNewsList();
+  const openNewsDetail = useOpenNewsDetail();
   const topNews = news.slice(0, 3);
 
   return (
@@ -25,10 +26,11 @@ export const BentoTopConsultationsList: React.FC = () => {
           const progress = Math.min(100, Math.max(30, 95 - idx * 18));
 
           return (
-            <Link
+            <button
               key={item.id}
-              to={`/news/${item.slug || item.id}`}
-              className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/80 dark:bg-gray-800/40 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 border border-gray-100 dark:border-gray-700/50 transition-all group"
+              type="button"
+              onClick={() => openNewsDetail(item.slug || String(item.id))}
+              className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gray-50/80 dark:bg-gray-800/40 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 border border-gray-100 dark:border-gray-700/50 transition-all group text-left"
             >
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-[#5B4DFF] shrink-0">
@@ -60,7 +62,7 @@ export const BentoTopConsultationsList: React.FC = () => {
                   +{12 - idx * 3}%
                 </span>
               </div>
-            </Link>
+            </button>
           );
         })}
       </div>

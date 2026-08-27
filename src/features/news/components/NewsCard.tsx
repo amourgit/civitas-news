@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
 import { News, Sujet } from '../../../types/global.types';
 import { Badge } from '../../../components/ui/Badge';
 import { RichTextViewer } from '../../../components/ui/RichTextViewer';
 import { ExpandableDescription } from '../../../components/ui/ExpandableDescription';
 import { TikTokHeartButton } from '../../../components/ui/TikTokHeartButton';
 import { useNewsReactions } from '../hooks/useNewsReactions';
+import { useOpenNewsDetail } from '../hooks/useOpenNewsDetail';
 import { formatDateRelative } from '../../../lib/formatDate';
 import { formatNumber } from '../../../lib/formatNumber';
 import {
@@ -32,6 +32,7 @@ export interface NewsCardProps {
 export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpenDetail }) => {
   const newsItem = news || sujet!;
   const { react } = useNewsReactions(newsItem.id, onUpdate);
+  const openNewsDetailGlobal = useOpenNewsDetail();
 
   const totalReactions = Object.values(newsItem.stats.reactions || {}).reduce(
     (acc: number, curr: number) => acc + (Number(curr) || 0),
@@ -46,12 +47,10 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
       return;
     }
     
-    if (onOpenDetail) {
-      onOpenDetail(newsItem.slug);
-    } else {
-      // Fallback to Link navigation if no callback provided
-      window.location.href = `/news/${newsItem.slug}`;
-    }
+    // Repli sur le BottomSheet générique si le parent (grille/page) ne
+    // gère pas son propre état de sélection via onOpenDetail -- plus de
+    // route /news/:slug vers laquelle naviguer.
+    (onOpenDetail || openNewsDetailGlobal)(newsItem.slug);
   };
 
   // Main poll & top choice calculation
@@ -61,16 +60,50 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
       ? [...sondagePrincipal.choix].sort((a, b) => (b.pourcentage || 0) - (a.pourcentage || 0))[0]
       : null;
 
-  // Medias calculation (max 3 items, image/video support)
+  // Medias : une seule image héro (80vh), demandée explicitement par
+  // Samuel plutôt que la grille de vignettes -- les médias
+  // supplémentaires restent signalés par un badge "+N", le détail
+  // complet (toute la galerie) reste accessible dans le BottomSheet.
   const allMedias = [newsItem.image, ...(newsItem.galerie || [])].filter(Boolean);
-  const displayMedias = allMedias.slice(0, 3);
-  const extraMediasCount = Math.max(0, allMedias.length - 3);
+  const heroMedia = allMedias[0];
+  const extraMediasCount = Math.max(0, allMedias.length - 1);
+  const heroIsVideo = !!heroMedia && (heroMedia.endsWith('.mp4') || heroMedia.endsWith('.webm') || heroMedia.includes('video'));
 
   return (
     <div 
       className="w-full bg-white dark:bg-[#1A1F4D] rounded-none shadow-sm transition-all duration-200 overflow-hidden mb-2 cursor-pointer"
       onClick={handleCardClick}
     >
+      {/* Hero media -- 80vh, pleine largeur de la card (demande
+          explicite : une image dominante plutôt qu'une grille de
+          vignettes). */}
+      {heroMedia && (
+        <div className="relative h-[80vh] w-full bg-slate-900 overflow-hidden group">
+          {heroIsVideo ? (
+            <video src={heroMedia} className="w-full h-full object-cover" muted loop playsInline />
+          ) : (
+            <img
+              src={heroMedia}
+              alt={newsItem.titre}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent pointer-events-none" />
+
+          {heroIsVideo && (
+            <div className="absolute top-3 left-3 bg-black/60 text-white text-[10px] px-2 py-1 font-bold">
+              VIDÉO
+            </div>
+          )}
+
+          {extraMediasCount > 0 && (
+            <div className="absolute top-3 right-3 bg-black/60 text-white text-[10px] px-2 py-1 font-bold">
+              +{extraMediasCount}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 1. Header Metadata Strip */}
       <div className="bg-gray-50 dark:bg-[#14183E] px-2 sm:px-3 py-1 flex flex-wrap items-center justify-between gap-1.5 text-[11px] sm:text-xs md:text-sm">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -105,15 +138,15 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
 
       {/* 2. Main Body: Flex Parent (Desktop: Row inline with dashboard, Mobile: Stacked vertically) */}
       <div className="p-2.5 sm:p-3 flex flex-col gap-3 items-stretch justify-between">
-        {/* Main Column (Title, Description, Tags, Author info, AND Media thumbnails stacked vertically) */}
+        {/* Main Column (Title, Description, Tags) */}
         <div className="flex-1 flex flex-col justify-between space-y-2 min-w-0">
           <div className="space-y-1.5">
-            {/* Title */}
-            <Link to={`/news/${newsItem.slug}`} data-no-card-click>
-              <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white font-display hover:text-[#5B4DFF] transition-colors leading-tight line-clamp-2">
-                {newsItem.titre}
-              </h3>
-            </Link>
+            {/* Title -- le clic ouvre les détails via le clic de la card
+                (bubbling vers handleCardClick), plus de Link vers une
+                route qui n'existe plus. */}
+            <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white font-display hover:text-[#5B4DFF] transition-colors leading-tight line-clamp-2">
+              {newsItem.titre}
+            </h3>
 
             {/* Description */}
             <ExpandableDescription content={newsItem.description} maxChars={130} />
@@ -128,57 +161,6 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Media preview strip */}
-          <div className={`grid gap-1.5 pt-2 w-full ${
-            displayMedias.length === 1
-              ? 'grid-cols-1'
-              : displayMedias.length === 2
-              ? 'grid-cols-2'
-              : 'grid-cols-3'
-          }`}>
-            {displayMedias.map((mediaUrl, idx) => {
-              const isVideo = mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.webm') || mediaUrl.includes('video');
-              const isLastWithMore = idx === 2 && extraMediasCount > 0;
-              return (
-                <div
-                  key={idx}
-                  className="relative h-[50vh] w-full bg-slate-900 overflow-hidden group"
-                >
-                  {isVideo ? (
-                    <video
-                      src={mediaUrl}
-                      className="w-full h-full object-cover opacity-90"
-                      muted
-                      loop
-                      playsInline
-                    />
-                  ) : (
-                    <img
-                      src={mediaUrl}
-                      alt={`${newsItem.titre} ${idx + 1}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90"
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none" />
-
-                  {/* Video badge if video */}
-                  {isVideo && (
-                    <div className="absolute top-1 left-1 bg-black/60 text-white text-[9px] px-1 py-0.5 font-bold">
-                      VIDÉO
-                    </div>
-                  )}
-
-                  {/* Overflow badge "+N..." on 3rd item if more medias exist */}
-                  {isLastWithMore && (
-                    <div className="absolute inset-0 bg-black/70 backdrop-blur-[1px] flex items-center justify-center text-white font-extrabold text-xs sm:text-sm">
-                      +{extraMediasCount}...
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
         </div>
 
