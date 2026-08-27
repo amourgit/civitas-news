@@ -116,7 +116,7 @@ export const newsRepository = {
       endpoint: NEWS_ENDPOINTS.react(newsId),
       body: { reaction: reactionType },
       responseSchema: NewsSchema,
-      requireAuth: false, // Réactions autorisées pour les anonymes
+      requireAuth: true, // Le backend exige un utilisateur authentifié (voir NewsPermission) : une réaction doit être attribuable, pour la crédibilité des chiffres d'engagement.
     });
     return response.data;
   },
