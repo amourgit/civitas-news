@@ -1,77 +1,101 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 
 export interface BottomSheetProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  title?: string;
 }
 
-/**
- * Panneau générique qui glisse du bas de l'écran vers le haut, occupe
- * 80vh de hauteur et toute la largeur de l'écran. Ne connaît RIEN du
- * contenu qu'il affiche (news, sondage, ou tout autre futur usage) --
- * c'est un simple conteneur, au même titre que `Modal.tsx` mais avec
- * une présentation "feuille du bas" plutôt que centrée. Le contenu est
- * fourni via `children` par l'appelant (voir GlobalBottomSheet.tsx +
- * store/bottomSheet.store.ts pour l'instance globale utilisée par les
- * cards).
- */
-export const BottomSheet: React.FC<BottomSheetProps> = ({ isOpen, onClose, children }) => {
+export const BottomSheet: React.FC<BottomSheetProps> = ({
+  isOpen,
+  onClose,
+  children,
+  title,
+}) => {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Handle animation states
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
+      setIsVisible(true);
+    } else {
+      // Wait for animation to complete before unmounting
+      const timer = setTimeout(() => setIsVisible(false), 300);
+      return () => clearTimeout(timer);
     }
+  }, [isOpen]);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll when sheet is open
+      document.body.style.overflow = 'hidden';
+    }
+
     return () => {
+      document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
-      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
 
+  // Handle click outside
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) {
+      onClose();
+    }
+  };
+
+  if (!isVisible) return null;
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-          />
-
-          {/* Sheet */}
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="relative z-10 h-[80vh] w-full bg-white dark:bg-[#1A1F4D] rounded-t-3xl shadow-[0_-16px_48px_rgba(26,31,77,0.25)] overflow-hidden flex flex-col"
-          >
-            {/* Poignée de glissement (purement visuelle) */}
-            <div className="shrink-0 flex justify-center pt-2.5 pb-1">
-              <div className="w-10 h-1.5 rounded-full bg-gray-300 dark:bg-gray-700" />
-            </div>
-
+    <div
+      ref={overlayRef}
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
+        isOpen ? 'opacity-100' : 'opacity-0'
+      }`}
+      onClick={handleOverlayClick}
+    >
+      <div
+        ref={sheetRef}
+        className={`w-full max-w-7xl h-[80vh] bg-white dark:bg-[#0E1338] rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out flex flex-col ${
+          isOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with close button */}
+        {(title || onClose) && (
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#14183E] rounded-t-3xl">
+            {title && (
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white font-display">
+                {title}
+              </h2>
+            )}
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 z-20 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
               aria-label="Fermer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
+          </div>
+        )}
 
-            {/* Contenu défilable */}
-            <div className="flex-1 overflow-y-auto overscroll-contain">{children}</div>
-          </motion.div>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          {children}
         </div>
-      )}
-    </AnimatePresence>
+      </div>
+    </div>
   );
 };

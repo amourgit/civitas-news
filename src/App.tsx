@@ -8,7 +8,6 @@ import { SideContentProvider } from './context/SideContentContext';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { ScrollToTop } from './components/utils/ScrollToTop';
 import LoginModal from './components/auth/LoginModal';
-import { GlobalBottomSheet } from './components/ui/GlobalBottomSheet';
 
 import HomePage from './pages/HomePage';
 import NewsListPage from './pages/NewsListPage';
@@ -43,11 +42,6 @@ export function App() {
                   <Route path="/" element={<HomePage />} />
                   <Route path="/news" element={<NewsListPage />} />
                   <Route path="/news/creer" element={<CreerNewsPage />} />
-                  {/* /news/:slug débranché : les détails d'une News
-                      s'affichent désormais dans le BottomSheet générique
-                      (voir GlobalBottomSheet + NewsCard), plus dans une
-                      page dédiée -- voir NewsDetailContent.tsx (ex
-                      NewsDetailPage.tsx, contenu inchangé). */}
                   <Route path="/news/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
                   <Route path="/news/:newsId/sondages/creer" element={<CreerSondagePage />} />
 
@@ -88,7 +82,6 @@ export function App() {
             <BottomNav />
           </div>
           <LoginModal />
-          <GlobalBottomSheet />
         </BrowserRouter>
       </SideContentProvider>
     </ErrorBoundary>

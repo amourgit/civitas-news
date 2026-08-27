@@ -7,6 +7,7 @@ export interface NewsSimilairesProps {
   currentSujetId?: string;
   allNews?: News[];
   allSujets?: News[];
+  onOpenDetail?: (slug: string) => void;
 }
 
 export const NewsSimilaires: React.FC<NewsSimilairesProps> = ({
@@ -14,6 +15,7 @@ export const NewsSimilaires: React.FC<NewsSimilairesProps> = ({
   currentSujetId,
   allNews,
   allSujets,
+  onOpenDetail,
 }) => {
   const currentId = currentNewsId || currentSujetId;
   const list = allNews || allSujets || [];
@@ -28,7 +30,7 @@ export const NewsSimilaires: React.FC<NewsSimilairesProps> = ({
       </h3>
       <div className="w-full flex flex-col space-y-2">
         {similar.map((s) => (
-          <NewsCard key={s.id} news={s} />
+          <NewsCard key={s.id} news={s} onOpenDetail={onOpenDetail} />
         ))}
       </div>
     </div>

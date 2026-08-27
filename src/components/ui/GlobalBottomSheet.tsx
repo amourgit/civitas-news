@@ -10,10 +10,10 @@ import { useBottomSheetStore } from '../../store/bottomSheet.store';
  * n'ait besoin de connaître ce contenu.
  */
 export const GlobalBottomSheet: React.FC = () => {
-  const { isOpen, content, closeSheet } = useBottomSheetStore();
+  const { isOpen, content, title, closeSheet } = useBottomSheetStore();
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={closeSheet}>
+    <BottomSheet isOpen={isOpen} onClose={closeSheet} title={title}>
       {content}
     </BottomSheet>
   );

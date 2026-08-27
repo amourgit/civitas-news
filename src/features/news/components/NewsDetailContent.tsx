@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
-import { useNews } from '../hooks/useNews';
-import { useNewsList } from '../hooks/useNewsList';
+import { News } from '../../../types/global.types';
 import { NewsHeaderSharePointStyle } from './NewsHeaderSharePointStyle';
 import { NewsContenu } from './NewsContenu';
 import { NewsMediaGallery } from './NewsMediaGallery';
@@ -9,39 +8,33 @@ import { NewsSimilaires } from './NewsSimilaires';
 import { SondageCard } from '../../sondages/components/SondageCard';
 import { CommentThread } from '../../discussion/components/CommentThread';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import { ArrowLeft, Building, Calendar, Info, ShieldCheck } from 'lucide-react';
-import NotFoundPage from '../../../pages/NotFoundPage';
+import { Building, Calendar, Info, ShieldCheck } from 'lucide-react';
 import { useSetSideContent } from '../../../context/SideContentContext';
 import { GooglePartnerWidget } from '../../../components/widgets/GooglePartnerWidget';
 import { AirtelGabonWidget } from '../../../components/widgets/AirtelGabonWidget';
 
 export interface NewsDetailContentProps {
-  slug: string;
-  /** Remplace l'ancienne navigation "Retour aux news" (route dédiée) :
-   * ce contenu n'est plus une page, donc "retour" == fermer le panneau. */
-  onClose: () => void;
+  newsItem: News;
+  onUpdate?: (updated: News) => void;
+  allNews?: News[];
+  allSujets?: News[];
+  onOpenDetail?: (slug: string) => void;
 }
 
-/**
- * Contenu intégral de l'ancienne page /news/:slug (et /sujets/:slug) --
- * déplacé tel quel depuis pages/NewsDetailPage.tsx (route désormais
- * débranchée dans App.tsx) pour être affiché dans le BottomSheet
- * générique plutôt que sur une page complète. `slug` arrive en prop
- * (plus de useParams, il n'y a plus de route) ; toute la logique de
- * récupération/affichage des données reste identique.
- */
-export function NewsDetailContent({ slug, onClose }: NewsDetailContentProps) {
-  const { newsItem, setNewsItem, sujet, setSujet, isLoading, error } = useNews(slug);
-  const currentItem = newsItem || sujet;
-  const setCurrentItem = setNewsItem || setSujet;
-  const { newsList, sujets: allSujets } = useNewsList();
-
+export const NewsDetailContent: React.FC<NewsDetailContentProps> = ({
+  newsItem,
+  onUpdate,
+  allNews = [],
+  allSujets = [],
+  onOpenDetail,
+}) => {
+  const setCurrentItem = onUpdate;
   const commentsRef = useRef<HTMLDivElement>(null);
   const pollsRef = useRef<HTMLDivElement>(null);
 
   // Set side content dynamically according to the current news
   useSetSideContent(
-    currentItem ? (
+    newsItem ? (
       <div className="space-y-4">
         {/* News Metadata Widget */}
         <div className="bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm space-y-3">
@@ -58,7 +51,7 @@ export function NewsDetailContent({ slug, onClose }: NewsDetailContentProps) {
               <div>
                 <span className="text-[10px] text-gray-400 block font-semibold uppercase">Initiateur :</span>
                 <span className="font-extrabold text-gray-900 dark:text-white">
-                  {currentItem.auteur.nomAffiche}
+                  {newsItem.auteur.nomAffiche}
                 </span>
               </div>
             </div>
@@ -68,7 +61,7 @@ export function NewsDetailContent({ slug, onClose }: NewsDetailContentProps) {
               <div>
                 <span className="text-[10px] text-gray-400 block font-semibold uppercase">Lancement :</span>
                 <span className="font-semibold text-gray-700 dark:text-gray-300">
-                  {new Date(currentItem.createdAt).toLocaleDateString('fr-FR', {
+                  {new Date(newsItem.createdAt).toLocaleDateString('fr-FR', {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric',
@@ -90,7 +83,7 @@ export function NewsDetailContent({ slug, onClose }: NewsDetailContentProps) {
         <AirtelGabonWidget />
       </div>
     ) : null,
-    [currentItem?.id]
+    [newsItem?.id]
   );
 
   const scrollToComments = () => {
@@ -101,66 +94,42 @@ export function NewsDetailContent({ slug, onClose }: NewsDetailContentProps) {
     pollsRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-3 max-w-5xl mx-auto py-2 px-1">
-        <Skeleton height={220} variant="card" />
-        <Skeleton height={40} variant="rectangular" />
-        <Skeleton height={150} variant="rectangular" />
-      </div>
-    );
-  }
-
-  if (error || !currentItem) {
-    return <NotFoundPage />;
-  }
-
   return (
     <div className="max-w-5xl mx-auto pb-10 space-y-3 sm:space-y-4 px-1 sm:px-2">
-      {/* Close (remplace l'ancien lien "Retour aux news", qui naviguait
-          vers une page dédiée -- ici on ferme simplement le panneau) */}
-      <button
-        onClick={onClose}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#00785a] transition-colors py-0.5"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        <span>Fermer</span>
-      </button>
-
       {/* SharePoint Style Header Banner */}
       <NewsHeaderSharePointStyle
-        news={currentItem}
-        sujet={currentItem}
+        news={newsItem}
+        sujet={newsItem}
         onUpdate={setCurrentItem}
         onScrollToComments={scrollToComments}
         onScrollToPolls={scrollToPolls}
       />
 
       {/* Main Content */}
-      <NewsContenu news={currentItem} sujet={currentItem} />
+      <NewsContenu news={newsItem} sujet={newsItem} />
 
       {/* Bento Media Gallery */}
       <NewsMediaGallery
-        medias={currentItem.medias}
-        newsTitre={currentItem.titre}
-        sujetTitre={currentItem.titre}
-        defaultImage={currentItem.image}
+        medias={newsItem.medias}
+        newsTitre={newsItem.titre}
+        sujetTitre={newsItem.titre}
+        defaultImage={newsItem.image}
       />
 
       {/* Active Polls section */}
-      {currentItem.sondages && currentItem.sondages.length > 0 && (
+      {newsItem.sondages && newsItem.sondages.length > 0 && (
         <div ref={pollsRef} className="space-y-3 pt-1">
           <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white font-display">
-            Sondages associés ({currentItem.sondages.length})
+            Sondages associés ({newsItem.sondages.length})
           </h2>
-          {currentItem.sondages.map((sondage) => (
+          {newsItem.sondages.map((sondage) => (
             <SondageCard
               key={sondage.id}
               sondage={sondage}
               onUpdate={(updatedSondage) => {
-                setCurrentItem({
-                  ...currentItem,
-                  sondages: currentItem.sondages.map((s) => (s.id === updatedSondage.id ? updatedSondage : s)),
+                setCurrentItem?.({
+                  ...newsItem,
+                  sondages: newsItem.sondages.map((s) => (s.id === updatedSondage.id ? updatedSondage : s)),
                 });
               }}
             />
@@ -169,15 +138,15 @@ export function NewsDetailContent({ slug, onClose }: NewsDetailContentProps) {
       )}
 
       {/* Attached Documents */}
-      <NewsDocuments documents={currentItem.documents} />
+      <NewsDocuments documents={newsItem.documents} />
 
       {/* WhatsApp style Discussion Thread */}
       <div ref={commentsRef}>
-        <CommentThread sujetId={currentItem.id} newsId={currentItem.id} />
+        <CommentThread sujetId={newsItem.id} newsId={newsItem.id} />
       </div>
 
       {/* Related News */}
-      <NewsSimilaires currentNewsId={currentItem.id} currentSujetId={currentItem.id} allNews={newsList || allSujets} allSujets={newsList || allSujets} />
+      <NewsSimilaires currentNewsId={newsItem.id} currentSujetId={newsItem.id} allNews={allNews || allSujets} allSujets={allNews || allSujets} onOpenDetail={onOpenDetail} />
     </div>
   );
-}
+};
