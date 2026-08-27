@@ -62,6 +62,22 @@ export interface PatchRequestConfig<TRequest, TResponse> {
   fallback?: TResponse;
 }
 
+export interface PatchFileUploadConfig<TResponse> {
+  endpoint: string;
+  resourceId: string | number;
+  files: File[];
+  fieldName?: string;
+  additionalFields?: Record<string, unknown>;
+  params?: Record<string, unknown>;
+  headers?: Record<string, string>;
+  timeout?: number;
+  requireAuth?: boolean;
+  responseSchema?: z.ZodSchema<TResponse>;
+  transform?: (data: unknown) => TResponse;
+  retry?: RetryConfig;
+  fallback?: TResponse;
+}
+
 export interface BulkUpdateConfig<TRequest, TResponse> {
   endpoint: string;
   updates: Array<{ id: string | number; data: Partial<TRequest> | TRequest; method?: 'PUT' | 'PATCH' }>;
