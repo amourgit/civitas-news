@@ -46,6 +46,10 @@ export interface NewsEcriturePayload {
   visibilite?: 'public' | 'prive' | 'limite';
 }
 
+export interface NewsUpdatePayload extends Partial<Omit<NewsEcriturePayload, 'categorieId'>> {
+  categorieId?: string;
+}
+
 /** camelCase -> snake_case, une seule profondeur (suffisant pour ce payload plat). */
 function toSnakeCaseKeys(fields: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -112,7 +116,7 @@ export const newsRepository = {
       endpoint: NEWS_ENDPOINTS.react(newsId),
       body: { reaction: reactionType },
       responseSchema: NewsSchema,
-      requireAuth: true,
+      requireAuth: false, // Réactions autorisées pour les anonymes
     });
     return response.data;
   },
@@ -134,11 +138,24 @@ export const newsRepository = {
       // multipart/form-data : pas de CamelCaseJSONParser côté backend sur
       // cette route (MultiPartParser), donc les clés doivent être en
       // snake_case et les tableaux (tags) passent en clés répétées.
+      // Convertir uniquement les champs scalaires en snake_case (pas les FKs déjà transformés)
+      const formDataFields: Record<string, unknown> = {};
+      Object.entries(scalarFields).forEach(([key, value]) => {
+        // categorie, organisation, etablissement sont déjà en snake_case (venant de buildScalarFields)
+        // Les autres champs scalaires doivent être convertis
+        if (['categorie', 'organisation', 'etablissement'].includes(key)) {
+          formDataFields[key] = value;
+        } else {
+          const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+          formDataFields[snakeKey] = value;
+        }
+      });
+
       const response = await http.post.uploadFiles<News>({
         endpoint: NEWS_ENDPOINTS.list,
         files: [payload.image],
         fieldName: 'image',
-        additionalFields: toSnakeCaseKeys(scalarFields),
+        additionalFields: formDataFields,
         responseSchema: NewsSchema,
         requireAuth: true,
       });
@@ -155,8 +172,51 @@ export const newsRepository = {
     return response.data;
   },
 
-  async update(id: string, payload: Partial<Omit<NewsEcriturePayload, 'image'>>): Promise<News> {
-    const scalarFields = buildScalarFields({ categorieId: '', ...payload } as Omit<NewsEcriturePayload, 'image'>);
+  async update(id: string, payload: NewsUpdatePayload): Promise<News> {
+    const { image, ...rest } = payload;
+
+    // Filtrer les champs undefined pour ne envoyer que les champs modifiés
+    const filteredRest: Record<string, unknown> = {};
+    Object.entries(rest).forEach(([key, value]) => {
+      if (value !== undefined) {
+        filteredRest[key] = value;
+      }
+    });
+
+    if (image) {
+      // multipart/form-data : pas de CamelCaseJSONParser côté backend sur
+      // cette route (MultiPartParser), donc les clés doivent être en
+      // snake_case et les tableaux (tags) passent en clés répétées.
+      const scalarFields = buildScalarFields({ categorieId: payload.categorieId, ...filteredRest } as Omit<NewsEcriturePayload, 'image'>);
+      if (payload.categorieId === undefined) delete scalarFields.categorie;
+
+      // Convertir uniquement les champs scalaires en snake_case (pas les FKs déjà transformés)
+      const formDataFields: Record<string, unknown> = {};
+      Object.entries(scalarFields).forEach(([key, value]) => {
+        // categorie, organisation, etablissement sont déjà en snake_case (venant de buildScalarFields)
+        // Les autres champs scalaires doivent être convertis
+        if (['categorie', 'organisation', 'etablissement'].includes(key)) {
+          formDataFields[key] = value;
+        } else {
+          const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+          formDataFields[snakeKey] = value;
+        }
+      });
+
+      const response = await http.update.patchWithFiles<News>({
+        endpoint: NEWS_ENDPOINTS.list,
+        resourceId: id,
+        files: [image],
+        fieldName: 'image',
+        additionalFields: formDataFields,
+        responseSchema: NewsSchema,
+        requireAuth: true,
+      });
+      return response.data;
+    }
+
+    // JSON : CamelCaseJSONParser convertit automatiquement côté backend.
+    const scalarFields = buildScalarFields({ categorieId: payload.categorieId, ...filteredRest } as Omit<NewsEcriturePayload, 'image'>);
     // categorieId n'est pas forcément fourni sur une mise à jour partielle :
     // on ne l'envoie que si l'appelant l'a explicitement précisé.
     if (payload.categorieId === undefined) delete scalarFields.categorie;

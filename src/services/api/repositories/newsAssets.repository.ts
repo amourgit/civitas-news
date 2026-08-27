@@ -32,6 +32,8 @@ export interface NewsMediaEcriturePayload {
   ordre?: number;
 }
 
+export interface NewsMediaUpdatePayload extends Partial<Omit<NewsMediaEcriturePayload, 'newsId'>> {}
+
 export const newsMediasRepository = {
   async listByNews(newsId: string): Promise<NewsMediaItem[]> {
     return fetchAllPages<NewsMediaItem>(async (page) => {
@@ -51,11 +53,18 @@ export const newsMediasRepository = {
     Object.keys(fields).forEach((key) => fields[key] === undefined && delete fields[key]);
 
     if (fichier) {
+      // Convertir les champs scalaires en snake_case pour FormData
+      const formDataFields: Record<string, unknown> = {};
+      Object.entries(fields).forEach(([key, value]) => {
+        const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+        formDataFields[snakeKey] = value;
+      });
+
       const response = await http.post.uploadFiles<NewsMediaItem>({
         endpoint: NEWS_ENDPOINTS.medias,
         files: vignette ? [fichier, vignette] : [fichier],
         fieldName: 'fichier',
-        additionalFields: fields,
+        additionalFields: formDataFields,
         responseSchema: NewsMediaItemSchema,
         requireAuth: true,
       });
@@ -70,7 +79,28 @@ export const newsMediasRepository = {
     return response.data;
   },
 
-  async update(id: string, payload: Partial<Omit<NewsMediaEcriturePayload, 'newsId' | 'fichier' | 'vignette'>>): Promise<NewsMediaItem> {
+  async update(id: string, payload: NewsMediaUpdatePayload): Promise<NewsMediaItem> {
+    const { fichier, vignette, ...rest } = payload;
+    const fields: Record<string, unknown> = { ...rest };
+    Object.keys(fields).forEach((key) => fields[key] === undefined && delete fields[key]);
+
+    if (fichier || vignette) {
+      const files: File[] = [];
+      if (fichier) files.push(fichier);
+      if (vignette) files.push(vignette);
+
+      const response = await http.update.patchWithFiles<NewsMediaItem>({
+        endpoint: NEWS_ENDPOINTS.medias,
+        resourceId: id,
+        files,
+        fieldName: 'fichier',
+        additionalFields: fields,
+        responseSchema: NewsMediaItemSchema,
+        requireAuth: true,
+      });
+      return response.data;
+    }
+
     const response = await http.update.patch<typeof payload, NewsMediaItem>({
       endpoint: NEWS_ENDPOINTS.medias,
       resourceId: id,
@@ -111,7 +141,22 @@ export const newsGalerieRepository = {
     return response.data;
   },
 
-  async update(id: string, payload: { legende?: string; ordre?: number }): Promise<NewsImageGalerieItem> {
+  async update(id: string, payload: { legende?: string; ordre?: number; image?: File }): Promise<NewsImageGalerieItem> {
+    const { image, ...rest } = payload;
+
+    if (image) {
+      const response = await http.update.patchWithFiles<NewsImageGalerieItem>({
+        endpoint: NEWS_ENDPOINTS.galerie,
+        resourceId: id,
+        files: [image],
+        fieldName: 'image',
+        additionalFields: rest,
+        responseSchema: NewsImageGalerieItemSchema,
+        requireAuth: true,
+      });
+      return response.data;
+    }
+
     const response = await http.update.patch<typeof payload, NewsImageGalerieItem>({
       endpoint: NEWS_ENDPOINTS.galerie,
       resourceId: id,
@@ -148,6 +193,32 @@ export const newsDocumentsRepository = {
       files: [fichier],
       fieldName: 'fichier',
       additionalFields: { news: newsId, nom: nom ?? fichier.name },
+      responseSchema: DocumentJointSchema,
+      requireAuth: true,
+    });
+    return response.data;
+  },
+
+  async update(id: string, payload: { nom?: string; fichier?: File }): Promise<DocumentJoint> {
+    const { fichier, ...rest } = payload;
+
+    if (fichier) {
+      const response = await http.update.patchWithFiles<DocumentJoint>({
+        endpoint: NEWS_ENDPOINTS.documents,
+        resourceId: id,
+        files: [fichier],
+        fieldName: 'fichier',
+        additionalFields: rest,
+        responseSchema: DocumentJointSchema,
+        requireAuth: true,
+      });
+      return response.data;
+    }
+
+    const response = await http.update.patch<typeof payload, DocumentJoint>({
+      endpoint: NEWS_ENDPOINTS.documents,
+      resourceId: id,
+      patches: payload,
       responseSchema: DocumentJointSchema,
       requireAuth: true,
     });

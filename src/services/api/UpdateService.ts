@@ -5,6 +5,7 @@ import type {
   ConflictResolutionStrategy,
   PutRequestConfig,
   PatchRequestConfig,
+  PatchFileUploadConfig,
   BulkUpdateConfig,
   ConflictInfo,
   JsonPatchOperation,
@@ -143,6 +144,104 @@ export class UpdateService extends BaseHttpService {
     }
   
     /**
+     * Upload de fichiers avec requête PATCH pour mise à jour partielle
+     */
+    async patchWithFiles<TResponse>(
+      config: PatchFileUploadConfig<TResponse>
+    ): Promise<ApiResponse<TResponse>> {
+      const {
+        endpoint,
+        resourceId,
+        files,
+        fieldName = 'files',
+        additionalFields = {},
+        params,
+        headers = {},
+        timeout = 30000,
+        requireAuth = false,
+        responseSchema,
+        transform,
+        retry,
+        fallback
+      } = config;
+
+      try {
+        // Construire FormData
+        const formData = new FormData();
+        
+        const fileArray = Array.from(files);
+        fileArray.forEach((file, index) => {
+          const name = fileArray.length > 1 ? `${fieldName}[${index}]` : fieldName;
+          formData.append(name, file);
+        });
+
+        // Ajouter les champs additionnels
+        Object.entries(additionalFields).forEach(([key, value]) => {
+          if (value === undefined || value === null) return;
+          if (Array.isArray(value)) {
+            value.forEach((item) => formData.append(key, String(item)));
+          } else {
+            formData.append(key, String(value));
+          }
+        });
+
+        // Construire l'endpoint avec l'ID
+        const resourceEndpoint = this.buildResourceEndpoint(endpoint, resourceId);
+
+        // URL complète
+        const fullUrl = UrlBuilder.buildUrl(this.baseUrl, resourceEndpoint, params);
+
+        // Headers pour upload (pas de Content-Type, le navigateur le gère)
+        const requestHeaders = await this.buildPatchHeaders(
+          headers,
+          requireAuth,
+          'merge-patch',
+          undefined,
+          undefined,
+          true // isFormData = true
+        );
+
+        // AbortController avec timeout étendu
+        const controller = this.createAbortController(timeout);
+
+        // Exécuter l'upload avec retry
+        const response = await this.executeWithRetry(
+          () => this.executePatchRequest(
+            fullUrl,
+            formData,
+            requestHeaders,
+            controller
+          ),
+          retry
+        );
+
+        // Traiter la réponse
+        const rawData = await this.handleResponse(response, resourceEndpoint);
+        const processedData = transform ? transform(rawData) : rawData;
+        const validatedData = await this.validateData(responseSchema, processedData, resourceEndpoint);
+
+        return {
+          data: validatedData,
+          status: response.status,
+          headers: response.headers,
+          cached: false
+        };
+
+      } catch (error) {
+        if (fallback !== undefined && this.shouldUseFallback(error)) {
+          return {
+            data: fallback,
+            status: 200,
+            headers: new Headers(),
+            cached: false
+          };
+        }
+
+        throw this.processError(error, endpoint);
+      }
+    }
+
+    /**
      * Requête PATCH pour mise à jour partielle
      */
     async patch<TRequest, TResponse>(
@@ -174,13 +273,15 @@ export class UpdateService extends BaseHttpService {
         // Construire l'endpoint
         const resourceEndpoint = this.buildResourceEndpoint(endpoint, resourceId);
   
-        // Validation des patches
-        const validatedPatches = validatePatches && patchSchema
+        const isFormData = typeof FormData !== 'undefined' && patches instanceof FormData;
+
+        // Validation des patches (skip if FormData, Zod doesn't easily validate FormData here)
+        const validatedPatches = validatePatches && patchSchema && !isFormData
           ? await this.validateRequestBody(patchSchema, patches, resourceEndpoint)
           : patches;
   
         // Formatage selon le type de patch
-        const formattedPatches = await this.formatPatches(
+        const formattedPatches = isFormData ? validatedPatches : await this.formatPatches(
           validatedPatches,
           patchFormat,
           sanitize
@@ -201,7 +302,8 @@ export class UpdateService extends BaseHttpService {
           requireAuth,
           patchFormat,
           etag,
-          lastModified
+          lastModified,
+          isFormData
         );
   
         // AbortController
@@ -413,13 +515,13 @@ export class UpdateService extends BaseHttpService {
       if (endpoint.includes(':id')) {
         return endpoint.replace(':id', String(resourceId));
       }
-      
+
       if (endpoint.includes('{id}')) {
         return endpoint.replace('{id}', String(resourceId));
       }
-  
-      // Sinon, ajouter l'ID à la fin
-      return `${endpoint.replace(/\/$/, '')}/${resourceId}`;
+
+      // Sinon, ajouter l'ID à la fin avec un slash final (requis par Django APPEND_SLASH)
+      return `${endpoint.replace(/\/$/, '')}/${resourceId}/`;
     }
   
     private async handleOptimisticUpdate(
@@ -501,17 +603,22 @@ export class UpdateService extends BaseHttpService {
       requireAuth: boolean,
       patchFormat: string,
       etag?: string,
-      lastModified?: string
+      lastModified?: string,
+      isFormData?: boolean
     ): Promise<Record<string, string>> {
       const baseHeaders = await this.buildUpdateHeaders(headers, requireAuth, etag, lastModified);
+      
+      // Pour FormData, supprimer le Content-Type par défaut (le navigateur le gère avec boundary)
+      if (isFormData) {
+        const { 'Content-Type': _omitted, ...formDataHeaders } = baseHeaders;
+        return formDataHeaders;
+      }
       
       // Content-Type spécifique selon le format de patch
       const contentType = patchFormat === 'json-patch' 
         ? 'application/json-patch+json'
-        : patchFormat === 'merge-patch'
-        ? 'application/merge-patch+json'
-        : 'application/json';
-  
+        : 'application/json'; 
+
       return {
         ...baseHeaders,
         'Content-Type': contentType
@@ -608,10 +715,11 @@ export class UpdateService extends BaseHttpService {
       headers: HeadersInit,
       controller: AbortController
     ): Promise<Response> {
+      const isFormData = typeof FormData !== 'undefined' && patches instanceof FormData;
       return fetch(url, {
         method: 'PATCH',
         headers,
-        body: JSON.stringify(patches),
+        body: isFormData ? patches as FormData : JSON.stringify(patches),
         signal: controller.signal
       });
     }

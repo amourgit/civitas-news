@@ -114,6 +114,7 @@ export const newsModel: ModelDef<News> = {
       type: values.type as NewsType,
       description: values.description as string,
       contenu: (values.contenu as string) || undefined,
+      image: extractImageFile(values.image),
       categorieId: (values.categorie as string) || undefined,
       organisationId: (values.organisation as string) || undefined,
       etablissementId: (values.etablissement as string) || undefined,
