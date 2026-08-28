@@ -1,14 +1,14 @@
-import { TypeReaction } from '../../../types/global.types';
+import { News, TypeReaction } from '../../../types/global.types';
 import { newsService } from '../../../services/api/news.service';
 import { useRef } from 'react';
 
 interface QueuedReaction {
   reactionType: TypeReaction;
-  resolve: (value: any) => void;
-  reject: (reason?: any) => void;
+  resolve: (value: News) => void;
+  reject: (reason?: unknown) => void;
 }
 
-export function useNewsReactions(newsId: string, onUpdate?: (updatedNews: any) => void) {
+export function useNewsReactions(newsId: string, onUpdate?: (updatedNews: News) => void) {
   const requestQueue = useRef<QueuedReaction[]>([]);
   const isProcessing = useRef(false);
 

@@ -4,7 +4,6 @@ import { Badge } from '../../../components/ui/Badge';
 import { RichTextViewer } from '../../../components/ui/RichTextViewer';
 import { ExpandableDescription } from '../../../components/ui/ExpandableDescription';
 import { TikTokHeartButton } from '../../../components/ui/TikTokHeartButton';
-import { useNewsReactions } from '../hooks/useNewsReactions';
 import { useOpenNewsDetail } from '../hooks/useOpenNewsDetail';
 import { formatDateRelative } from '../../../lib/formatDate';
 import { formatNumber } from '../../../lib/formatNumber';
@@ -31,7 +30,6 @@ export interface NewsCardProps {
 
 export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpenDetail }) => {
   const newsItem = news || sujet!;
-  const { react } = useNewsReactions(newsItem.id, onUpdate);
   const openNewsDetailGlobal = useOpenNewsDetail();
 
   const totalReactions = Object.values(newsItem.stats.reactions || {}).reduce(

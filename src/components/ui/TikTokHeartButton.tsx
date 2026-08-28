@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Heart } from 'lucide-react';
-import { newsService } from '../../services/api/news.service';
+import type { News } from '../../types/global.types';
+import { useNewsReactions } from '../../features/news/hooks/useNewsReactions';
 import { formatNumber } from '../../lib/formatNumber';
 
 interface FloatingHeart {
@@ -18,7 +19,7 @@ interface TikTokHeartButtonProps {
   newsId: string;
   initialCount: number;
   userReaction?: string | null;
-  onUpdate?: (updated: any) => void;
+  onUpdate?: (updated: News) => void;
   className?: string;
 }
 
@@ -44,6 +45,7 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
   const [count, setCount] = useState<number>(initialCount);
   const [hasHearted, setHasHearted] = useState<boolean>(userReaction === 'coeur');
   const [floatingHearts, setFloatingHearts] = useState<FloatingHeart[]>([]);
+  const { react } = useNewsReactions(newsId, onUpdate);
 
   useEffect(() => {
     setCount(initialCount);
@@ -53,16 +55,29 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
     setHasHearted(userReaction === 'coeur');
   }, [userReaction]);
 
-  const handleTap = async (e: React.MouseEvent) => {
+  const handleTap = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
 
-    // 1. Increment local exact count immediately
-    const nextCount = count + 1;
-    setCount(nextCount);
-    setHasHearted(true);
+    // 1. Bascule locale IMMÉDIATE et SYNCHRONE -- miroir exact de ce que
+    // fait basculer_reaction() côté backend (une réaction par
+    // utilisateur, on/off à chaque appel). Le compteur affiché doit
+    // suivre cette bascule (+1 quand on l'active, -1 quand on la
+    // retire), PAS un simple +1 à chaque tap : sans ça, il diverge de
+    // l'état serveur dès le deuxième tap rapproché (deux taps rapides =
+    // le serveur active PUIS désactive la réaction, mais un compteur
+    // qui incrémente aveuglément affiche +2) -- c'est précisément ce qui
+    // faisait apparaître, au rafraîchissement, moins de réactions que ce
+    // qui était affiché.
+    setHasHearted((wasHearted) => {
+      const nextHearted = !wasHearted;
+      setCount((prevCount) => Math.max(0, prevCount + (nextHearted ? 1 : -1)));
+      return nextHearted;
+    });
 
-    // 2. Create floating heart particles (1 to 2 hearts per tap)
+    // 2. Particules flottantes : purement décoratif, à chaque tap quel
+    // que soit le sens de la bascule -- c'est ce qui fait le "fun" tap
+    // TikTok, sans lien avec l'état réellement persisté.
     const particleCount = Math.floor(Math.random() * 2) + 1;
     const newParticles: FloatingHeart[] = [];
 
@@ -80,13 +95,13 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
 
     setFloatingHearts((prev) => [...prev.slice(-25), ...newParticles]);
 
-    // 3. Sync backend / memory store
-    try {
-      const updated = await newsService.incrementHeart(newsId, 1);
-      if (onUpdate) onUpdate(updated);
-    } catch (err) {
+    // 3. Enfile la requête réelle -- useNewsReactions garantit qu'AUCUN
+    // tap n'est perdu, quelle que soit la vitesse à laquelle ils sont
+    // faits : chaque appel à react() est mis en file et traité un par un
+    // dans l'ordre (voir processQueue), jamais laissé de côté.
+    react('coeur').catch((err) => {
       console.error('Error incrementing heart:', err);
-    }
+    });
   };
 
   const removeParticle = (id: string) => {
