@@ -20,7 +20,7 @@ export const liensService = {
         id: `lien-${Date.now()}`,
         newsId,
         sujetId: newsId,
-        urlPublique: payload.urlPublique || `https://civitasnews.org/news/${newsId}`,
+        urlPublique: payload.urlPublique || `https://civitasnews.org/news?news=${newsId}`,
         urlCourte: `https://civit.as/${randomHash}`,
         visibilite: payload.visibilite,
         // Lecture = "un mot de passe existe-t-il ?", pas le mot de passe lui-même.

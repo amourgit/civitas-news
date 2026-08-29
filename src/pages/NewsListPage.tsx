@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useNewsList } from '../features/news/hooks/useNewsList';
 import { useNews } from '../features/news/hooks/useNews';
 import { NewsGrid } from '../features/news/components/NewsGrid';
@@ -14,7 +15,14 @@ export default function NewsListPage() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState<NewsType | 'all'>('all');
-  const [selectedNewsSlug, setSelectedNewsSlug] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedNewsSlug, setSelectedNewsSlug] = useState<string | null>(() => searchParams.get('news'));
+
+  // Reste synchronisé si le paramètre change par un autre biais (retour
+  // navigateur, lien externe cliqué alors que la page est déjà montée).
+  useEffect(() => {
+    setSelectedNewsSlug(searchParams.get('news'));
+  }, [searchParams]);
 
   const { newsList, sujets, isLoading } = useNewsList({
     search,
@@ -28,10 +36,23 @@ export default function NewsListPage() {
 
   const handleOpenDetail = (slug: string) => {
     setSelectedNewsSlug(slug);
+    // ?news=slug rend l'URL partageable/copiable et réutilisable comme
+    // lien de notification, alors que la route dédiée /news/:slug a été
+    // débranchée au profit du BottomSheet.
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('news', slug);
+      return next;
+    });
   };
 
   const handleCloseDetail = () => {
     setSelectedNewsSlug(null);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('news');
+      return next;
+    });
   };
 
   return (
