@@ -59,25 +59,15 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
     e.stopPropagation();
     e.preventDefault();
 
-    // 1. Bascule locale IMMÉDIATE et SYNCHRONE -- miroir exact de ce que
-    // fait basculer_reaction() côté backend (une réaction par
-    // utilisateur, on/off à chaque appel). Le compteur affiché doit
-    // suivre cette bascule (+1 quand on l'active, -1 quand on la
-    // retire), PAS un simple +1 à chaque tap : sans ça, il diverge de
-    // l'état serveur dès le deuxième tap rapproché (deux taps rapides =
-    // le serveur active PUIS désactive la réaction, mais un compteur
-    // qui incrémente aveuglément affiche +2) -- c'est précisément ce qui
-    // faisait apparaître, au rafraîchissement, moins de réactions que ce
-    // qui était affiché.
-    setHasHearted((wasHearted) => {
-      const nextHearted = !wasHearted;
-      setCount((prevCount) => Math.max(0, prevCount + (nextHearted ? 1 : -1)));
-      return nextHearted;
-    });
+    // Décision produit : pas de toggle, pas de limite -- chaque tap
+    // ajoute une réaction de plus, qu'on soit connecté ou non. Le cœur
+    // reste affiché "actif" dès le premier tap (retour visuel), mais ça
+    // ne bloque jamais les taps suivants : le compteur suit fidèlement
+    // le nombre de taps réels.
+    setCount((prev) => prev + 1);
+    setHasHearted(true);
 
-    // 2. Particules flottantes : purement décoratif, à chaque tap quel
-    // que soit le sens de la bascule -- c'est ce qui fait le "fun" tap
-    // TikTok, sans lien avec l'état réellement persisté.
+    // Particules flottantes : décoratif, à chaque tap.
     const particleCount = Math.floor(Math.random() * 2) + 1;
     const newParticles: FloatingHeart[] = [];
 
@@ -95,10 +85,10 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
 
     setFloatingHearts((prev) => [...prev.slice(-25), ...newParticles]);
 
-    // 3. Enfile la requête réelle -- useNewsReactions garantit qu'AUCUN
-    // tap n'est perdu, quelle que soit la vitesse à laquelle ils sont
-    // faits : chaque appel à react() est mis en file et traité un par un
-    // dans l'ordre (voir processQueue), jamais laissé de côté.
+    // Enfile la requête réelle -- useNewsReactions garantit qu'AUCUN tap
+    // n'est perdu, quelle que soit la vitesse à laquelle ils sont faits :
+    // chaque appel à react() est mis en file et traité un par un dans
+    // l'ordre (voir processQueue), jamais laissé de côté.
     react('coeur').catch((err) => {
       console.error('Error incrementing heart:', err);
     });
