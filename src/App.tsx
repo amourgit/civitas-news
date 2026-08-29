@@ -8,6 +8,7 @@ import { SideContentProvider } from './context/SideContentContext';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { ScrollToTop } from './components/utils/ScrollToTop';
 import LoginModal from './components/auth/LoginModal';
+import { ToastContainer } from './components/ui/Toast';
 
 import HomePage from './pages/HomePage';
 import NewsListPage from './pages/NewsListPage';
@@ -82,6 +83,7 @@ export function App() {
             <BottomNav />
           </div>
           <LoginModal />
+          <ToastContainer />
         </BrowserRouter>
       </SideContentProvider>
     </ErrorBoundary>
