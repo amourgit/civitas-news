@@ -8,6 +8,7 @@ import { adminService } from '../../services/api/admin.service';
 import { newsService } from '../../services/api/news.service';
 import { formatDateRelative } from '../../lib/formatDate';
 import type { AuditLog } from '../../types/global.types';
+import { toast } from '../../hooks/useToast';
 import { groupModelsByApp } from '../../components/backoffice/registry';
 import { usePermissions } from '../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
@@ -48,6 +49,7 @@ export default function AdminDashboardPage() {
         setAuditLogs(logs);
       } catch (error) {
         console.error('Échec du chargement du tableau de bord administrateur:', error);
+        if (!cancelled) toast('error', 'Tableau de bord indisponible', 'Impossible de charger les statistiques. Réessayez dans un instant.');
       } finally {
         if (!cancelled) setIsLoading(false);
       }

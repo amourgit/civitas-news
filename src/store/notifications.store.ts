@@ -11,6 +11,7 @@ import type { NotificationItem } from '../types/global.types';
 import { env } from '../config/env';
 import { INITIAL_NOTIFICATIONS as MOCK_NOTIFICATIONS } from '../services/api/mocks/notifications.mock';
 import { notificationsRepository } from '../services/api/repositories/notifications.repository';
+import { toast } from '../hooks/useToast';
 
 let notificationsList: NotificationItem[] = env.useMockData ? [...MOCK_NOTIFICATIONS] : [];
 let hasFetchedReal = false;
@@ -50,7 +51,10 @@ export function useNotificationsStore() {
     notificationsList = notificationsList.map((n) => (n.id === id ? { ...n, lu: true } : n));
     notify();
     if (!env.useMockData) {
-      notificationsRepository.markAsRead(id).catch((error) => console.error('markAsRead a échoué:', error));
+      notificationsRepository.markAsRead(id).catch((error) => {
+        console.error('markAsRead a échoué:', error);
+        toast('error', 'Synchronisation impossible', 'Le marquage comme lu n’a pas pu être enregistré.');
+      });
     }
   };
 
@@ -58,7 +62,10 @@ export function useNotificationsStore() {
     notificationsList = notificationsList.map((n) => ({ ...n, lu: true }));
     notify();
     if (!env.useMockData) {
-      notificationsRepository.markAllAsRead().catch((error) => console.error('markAllAsRead a échoué:', error));
+      notificationsRepository.markAllAsRead().catch((error) => {
+        console.error('markAllAsRead a échoué:', error);
+        toast('error', 'Synchronisation impossible', 'Le marquage global n’a pas pu être enregistré.');
+      });
     }
   };
 
