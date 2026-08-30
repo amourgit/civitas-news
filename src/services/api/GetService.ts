@@ -34,7 +34,15 @@ export class GetService extends BaseHttpService {
       timeout = this.defaultTimeout,
       requireAuth = false,
       sanitize = true,
-      retry,
+      // Repli automatique : le premier accès (cold start Render -- le
+      // service peut mettre 30-60s à se réveiller après une période
+      // d'inactivité -- ou simple aléa réseau) échouait silencieusement
+      // sans qu'aucun appelant réel de l'app n'ait jamais pensé à passer
+      // `retry` explicitement (mécanisme déjà écrit dans
+      // BaseHttpService.executeWithRetry, jamais réellement invoqué).
+      // Sûr par défaut sur GET, contrairement à POST/PATCH/DELETE
+      // (non-idempotents) qui restent opt-in.
+      retry = { attempts: 3, delay: 1000, exponentialBackoff: true },
       fallback,
       // Nouvelles options d'authentification
       authConfig,
@@ -63,24 +71,26 @@ export class GetService extends BaseHttpService {
       // Construire les headers avec authentification complète
       const requestHeaders = await this.buildGetHeaders(headers, requireAuth, authConfig, cookieNames);
 
-      // Créer l'AbortController pour le timeout
-      const controller = this.createAbortController(timeout);
-
-      // Configuration de la requête avec support des cookies
-      const fetchConfig: RequestInit = {
-        method: 'GET',
-        headers: requestHeaders,
-        signal: controller.signal,
-        cache,
-        // Support des cookies
-        credentials: withCredentials ? 'include' : 'same-origin',
-      };
-
-      // Exécuter la requête avec retry
-      const response = await this.executeWithRetry(
-        () => fetch(fullUrl, fetchConfig),
-        retry
-      );
+      // Exécuter la requête avec retry -- l'AbortController est recréé à
+      // CHAQUE tentative (à l'intérieur de la closure), pas une seule
+      // fois avant la boucle : sinon, après un premier timeout, le
+      // signal reste définitivement "aborted" et toutes les tentatives
+      // suivantes échouent instantanément sans jamais réessayer pour de
+      // vrai -- ce qui aurait rendu le retry inutile face à un cold
+      // start Render (le service peut mettre 30-60s à se réveiller après
+      // une période d'inactivité), pourtant le cas qu'il doit couvrir.
+      const response = await this.executeWithRetry(() => {
+        const controller = this.createAbortController(timeout);
+        const fetchConfig: RequestInit = {
+          method: 'GET',
+          headers: requestHeaders,
+          signal: controller.signal,
+          cache,
+          // Support des cookies
+          credentials: withCredentials ? 'include' : 'same-origin',
+        };
+        return fetch(fullUrl, fetchConfig);
+      }, retry);
 
       // Traiter la réponse
       const rawData = await this.handleResponse(response, endpoint);

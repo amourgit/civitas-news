@@ -24,7 +24,7 @@ export abstract class BaseHttpService {
   constructor(
     baseUrl: string = env.apiBaseUrl,
     defaultHeaders: Record<string, string> = {},
-    defaultTimeout: number = 10000
+    defaultTimeout: number = 20000
   ) {
     this.baseUrl = baseUrl;
     this.defaultHeaders = {
