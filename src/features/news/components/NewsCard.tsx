@@ -83,9 +83,10 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
           {newsItem.description}
         </p>
 
-        {/* Barre d'actions : réaction (icône seule) à gauche, détails à droite */}
-        <div className="mt-2 flex items-center justify-between">
-          <div data-no-card-click>
+        {/* Barre d'actions : réaction (icône + compteur) à gauche, pile
+            d'avatars des réacteurs au centre, détails à droite */}
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div data-no-card-click className="shrink-0">
             <TikTokHeartButton
               newsId={newsItem.id}
               initialCount={newsItem.stats?.reactions?.coeur || 0}
@@ -95,12 +96,34 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
             />
           </div>
 
+          {newsItem.reacteursRecents && newsItem.reacteursRecents.length > 0 && (
+            <div className="flex items-center -space-x-2 flex-1 justify-center min-w-0" data-no-card-click title={`Ont réagi : ${newsItem.reacteursRecents.map((u) => u.nomAffiche).join(', ')}`}>
+              {newsItem.reacteursRecents.slice(0, 5).map((reacteur) =>
+                reacteur.avatar ? (
+                  <img
+                    key={reacteur.id}
+                    src={reacteur.avatar}
+                    alt={reacteur.nomAffiche}
+                    className="w-6 h-6 rounded-full object-cover border-2 border-black/40 ring-1 ring-white/20 shrink-0"
+                  />
+                ) : (
+                  <div
+                    key={reacteur.id}
+                    className="w-6 h-6 rounded-full bg-[#7B61FF] border-2 border-black/40 ring-1 ring-white/20 flex items-center justify-center text-[9px] font-extrabold text-white shrink-0"
+                  >
+                    {reacteur.nomAffiche.charAt(0).toUpperCase()}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleOpenDetail();
             }}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors shrink-0"
             aria-label="Voir les détails"
             title="Voir les détails"
           >

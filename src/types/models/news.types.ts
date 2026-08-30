@@ -150,6 +150,10 @@ export const NewsSchema = z.object({
   // ET optional, pas juste optional (JSON `null` != clé absente pour Zod).
   lienPublication: LienPublicationSchema.nullable().optional(),
   userReaction: TypeReactionSchema.nullable().optional(),
+  // Pile d'avatars affichée sur la card (voir NewsCard.tsx) : réacteurs
+  // distincts ("cœur"), anonymes exclus -- voir
+  // NewsListSerializer.get_reacteurs_recents côté backend.
+  reacteursRecents: z.array(UtilisateurSchema).optional(),
 });
 export type News = z.infer<typeof NewsSchema>;
 

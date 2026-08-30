@@ -154,7 +154,7 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
         onClick={handleTap}
         className={
           iconOnly
-            ? 'flex items-center justify-center w-9 h-9 rounded-full select-none cursor-pointer'
+            ? 'flex items-center gap-1 select-none cursor-pointer'
             : `flex items-center gap-1.5 px-2.5 py-1 rounded-none text-[11px] font-extrabold transition-all duration-150 select-none cursor-pointer ${
                 hasHearted
                   ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-sm shadow-red-500/30'
@@ -177,7 +177,11 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
             }
           />
         </motion.div>
-        {!iconOnly && <span>Soutenir ({formatNumber(count)})</span>}
+        {iconOnly ? (
+          <span className="text-xs font-bold text-white drop-shadow-md">{formatNumber(count)}</span>
+        ) : (
+          <span>Soutenir ({formatNumber(count)})</span>
+        )}
       </motion.button>
     </div>
   );
