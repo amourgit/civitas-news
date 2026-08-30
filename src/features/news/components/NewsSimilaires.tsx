@@ -28,9 +28,9 @@ export const NewsSimilaires: React.FC<NewsSimilairesProps> = ({
       <h3 className="text-sm sm:text-base font-extrabold text-gray-900 dark:text-white font-display mb-2">
         News & Publications Similaires
       </h3>
-      <div className="w-full flex flex-col space-y-2">
+      <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
         {similar.map((s) => (
-          <NewsCard key={s.id} news={s} onOpenDetail={onOpenDetail} />
+          <NewsCard key={s.id} news={s} onOpenDetail={onOpenDetail} className="h-48 sm:h-56" />
         ))}
       </div>
     </div>

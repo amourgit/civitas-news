@@ -21,6 +21,11 @@ interface TikTokHeartButtonProps {
   userReaction?: string | null;
   onUpdate?: (updated: News) => void;
   className?: string;
+  /** Rendu minimal (icône seule, sans fond ni compteur texte) -- pour un
+   * usage sur une image de couverture (voir NewsCard.tsx, panneau verre
+   * dépoli en bas de la card). Le comportement (tap, particules, file
+   * d'attente) reste identique. */
+  iconOnly?: boolean;
 }
 
 const HEART_COLORS = [
@@ -41,6 +46,7 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
   userReaction,
   onUpdate,
   className = '',
+  iconOnly = false,
 }) => {
   const [count, setCount] = useState<number>(initialCount);
   const [hasHearted, setHasHearted] = useState<boolean>(userReaction === 'coeur');
@@ -146,11 +152,15 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
         type="button"
         whileTap={{ scale: 0.88 }}
         onClick={handleTap}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-none text-[11px] font-extrabold transition-all duration-150 select-none cursor-pointer ${
-          hasHearted
-            ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-sm shadow-red-500/30'
-            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:text-red-500 hover:border-red-300 dark:hover:border-red-500/50'
-        }`}
+        className={
+          iconOnly
+            ? 'flex items-center justify-center w-9 h-9 rounded-full select-none cursor-pointer'
+            : `flex items-center gap-1.5 px-2.5 py-1 rounded-none text-[11px] font-extrabold transition-all duration-150 select-none cursor-pointer ${
+                hasHearted
+                  ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-sm shadow-red-500/30'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:text-red-500 hover:border-red-300 dark:hover:border-red-500/50'
+              }`
+        }
         title="Tapotez plusieurs fois pour envoyer des cœurs !"
       >
         <motion.div
@@ -159,9 +169,15 @@ export const TikTokHeartButton: React.FC<TikTokHeartButtonProps> = ({
           animate={{ scale: 1 }}
           transition={{ duration: 0.15 }}
         >
-          <Heart className={`w-3.5 h-3.5 ${hasHearted ? 'fill-current text-white' : 'text-red-500'}`} />
+          <Heart
+            className={
+              iconOnly
+                ? `w-5 h-5 drop-shadow-md ${hasHearted ? 'fill-red-500 text-red-500' : 'fill-white/20 text-white'}`
+                : `w-3.5 h-3.5 ${hasHearted ? 'fill-current text-white' : 'text-red-500'}`
+            }
+          />
         </motion.div>
-        <span>Soutenir ({formatNumber(count)})</span>
+        {!iconOnly && <span>Soutenir ({formatNumber(count)})</span>}
       </motion.button>
     </div>
   );
