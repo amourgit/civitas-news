@@ -64,7 +64,11 @@ export const NewsHeaderSharePointStyle: React.FC<NewsHeaderSharePointStyleProps>
   const [reportReason, setReportReason] = useState('spam');
 
   const handleShareCopy = async () => {
-    const success = await copy(window.location.href);
+    // Construit le lien directement depuis le slug plutôt que
+    // window.location.href : voir NewsActionsBar.tsx pour le raisonnement
+    // complet (faux si ouvert hors de /news, via le BottomSheet global).
+    const shareUrl = `${window.location.origin}/news?news=${currentItem.slug}`;
+    const success = await copy(shareUrl);
     if (success) {
       toast('success', 'Lien copié !', 'Le lien de la news a été copié dans votre presse-papier.');
     }

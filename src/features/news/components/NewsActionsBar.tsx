@@ -36,7 +36,14 @@ export const NewsActionsBar: React.FC<NewsActionsBarProps> = ({ news, sujet, onU
   const { copy } = useClipboard();
 
   const handleShareCopy = async () => {
-    const success = await copy(window.location.href);
+    // Construit le lien directement depuis le slug plutôt que
+    // window.location.href : la News peut être ouverte depuis /news
+    // (qui synchronise ?news=slug dans l'URL) mais aussi depuis
+    // l'accueil ou un widget via le BottomSheet global, qui ne touche
+    // pas l'URL courante -- window.location.href y aurait copié l'URL
+    // de la page en cours, sans référence à cette News précise.
+    const shareUrl = `${window.location.origin}/news?news=${currentItem.slug}`;
+    const success = await copy(shareUrl);
     if (success) {
       toast('success', 'Lien copié !', 'Le lien de la news a été copié dans votre presse-papier.');
     }
