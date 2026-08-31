@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bell, Sun, Moon, HelpCircle, ChevronLeft, ChevronRight, Sparkles, LogIn, ShieldCheck } from 'lucide-react';
+import { Search, Bell, Sun, Moon, HelpCircle, ChevronLeft, ChevronRight, Sparkles, LogIn, ShieldCheck, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUiStore } from '../../store/ui.store';
 import { useNotificationsStore } from '../../store/notifications.store';
 import { useAuthStore } from '../../store/auth.store';
+import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
 import { usePermissions } from '../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
 import topbarPatternImg from '../../assets/images/topbar_pattern_1785532678470.jpg';
@@ -59,8 +60,9 @@ export const Header: React.FC = () => {
   // uniquement ici à savoir QUOI afficher dans ce coin de la topbar
   // (avatar si connecté, bouton "Se connecter" sinon) -- jamais à
   // bloquer l'accès à quoi que ce soit.
-  const { user, isAuthenticated, isHydrating } = useAuthStore();
+  const { user, isAuthenticated, isHydrating, isAdmin } = useAuthStore();
   const { can } = usePermissions();
+  const { isCollapsed: isBackofficeCollapsed, toggle: toggleBackofficeSidebar } = useBackofficeSidebarStore();
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   // Carousel state for Homepage expanded header
@@ -131,6 +133,16 @@ export const Header: React.FC = () => {
         ) : (
           /* Compact Left Logo & Title when on non-home pages */
           <div className="flex items-center gap-2.5 shrink-0">
+            {isAdmin && (
+              <button
+                onClick={toggleBackofficeSidebar}
+                aria-label={isBackofficeCollapsed ? 'Déplier la navigation du backoffice' : 'Replier la navigation du backoffice'}
+                title="Navigation du backoffice"
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+              >
+                {isBackofficeCollapsed ? <PanelLeftOpen className="w-4.5 h-4.5" /> : <PanelLeftClose className="w-4.5 h-4.5" />}
+              </button>
+            )}
             <Link to="/" className="flex items-center gap-2 hover:opacity-95 transition-opacity">
               <motion.div
                 layoutId="civitas-logo-box"

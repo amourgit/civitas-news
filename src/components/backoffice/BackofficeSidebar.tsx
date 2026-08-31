@@ -18,11 +18,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, X, Search, ChevronDown, ChevronsLeft, ChevronsRight, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, X, Search, ChevronDown, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { groupModelsByApp } from './registry';
 import { usePermissions } from '../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
 import { useAuthStore } from '../../store/auth.store';
+import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
 
 const linkClass = (isActive: boolean, isCollapsed: boolean) =>
   `flex items-center gap-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -208,7 +209,7 @@ export interface BackofficeSidebarProps {
 }
 
 export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOpen, onCloseMobile }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed } = useBackofficeSidebarStore();
 
   // Verrouille le scroll du body pendant que le tiroir est ouvert — même
   // convention que components/ui/Modal.tsx.
@@ -247,18 +248,8 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
           <SidebarLinks isCollapsed={isCollapsed} />
         </div>
 
-        <div className="px-2 py-2 border-t border-gray-100 dark:border-gray-800/80 flex flex-col gap-1">
+        <div className="px-2 py-2 border-t border-gray-100 dark:border-gray-800/80">
           <SidebarFooter isCollapsed={isCollapsed} />
-          <button
-            onClick={() => setIsCollapsed((v) => !v)}
-            aria-label={isCollapsed ? 'Déplier la navigation' : 'Replier la navigation'}
-            className={`flex items-center gap-2 rounded-xl text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-              isCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
-            }`}
-          >
-            {isCollapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
-            {!isCollapsed && 'Replier'}
-          </button>
         </div>
       </nav>
 
