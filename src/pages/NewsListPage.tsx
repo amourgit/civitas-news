@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNewsList } from '../features/news/hooks/useNewsList';
 import { useNews } from '../features/news/hooks/useNews';
 import { NewsGrid } from '../features/news/components/NewsGrid';
@@ -8,13 +9,15 @@ import { NewsDetailContent } from '../features/news/components/NewsDetailContent
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { SearchBar } from '../features/recherche/components/SearchBar';
 import { NewsType } from '../types/global.types';
-import { Layers } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function NewsListPage() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState<NewsType | 'all'>('all');
+  const [isFiltresOpen, setIsFiltresOpen] = useState(false);
+  const filtresRef = useRef<HTMLDivElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedNewsSlug, setSelectedNewsSlug] = useState<string | null>(() => searchParams.get('news'));
 
@@ -23,6 +26,21 @@ export default function NewsListPage() {
   useEffect(() => {
     setSelectedNewsSlug(searchParams.get('news'));
   }, [searchParams]);
+
+  // Ferme la popup de filtres au clic en dehors (le clic sur l'icône
+  // elle-même bascule déjà l'état via son propre onClick).
+  useEffect(() => {
+    if (!isFiltresOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filtresRef.current && !filtresRef.current.contains(e.target as Node)) {
+        setIsFiltresOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isFiltresOpen]);
+
+  const filtresActifs = selectedCategory !== 'all' || selectedType !== 'all';
 
   const { newsList, sujets, isLoading } = useNewsList({
     search,
@@ -56,32 +74,52 @@ export default function NewsListPage() {
   };
 
   return (
-    <div className="space-y-8 pb-16">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white font-display flex items-center gap-3">
-            <Layers className="w-8 h-8 text-[#5B4DFF]" />
-            Répertoire des News & Actualités
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Découvrez, filtrez et participez aux publications et débats nationaux et provinciaux.
-          </p>
-        </div>
-
+    <div className="space-y-6 pb-16">
+      <div className="flex items-center justify-between gap-3">
         <SearchBar
           value={search}
           onChange={setSearch}
           placeholder="Rechercher une news par titre, mot-clé..."
-          className="max-w-md"
+          className="flex-1 max-w-md"
         />
-      </div>
 
-      <NewsFiltres
-        selectedCategory={selectedCategory}
-        onSelectCategory={setSelectedCategory}
-        selectedType={selectedType}
-        onSelectType={setSelectedType}
-      />
+        <div className="relative shrink-0" ref={filtresRef}>
+          <button
+            onClick={() => setIsFiltresOpen((v) => !v)}
+            aria-label="Filtres"
+            aria-expanded={isFiltresOpen}
+            className={`relative flex items-center justify-center w-10 h-10 rounded-xl border transition-colors ${
+              isFiltresOpen || filtresActifs
+                ? 'bg-[#5B4DFF] border-[#5B4DFF] text-white'
+                : 'bg-white dark:bg-[#1A1F4D] border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-gray-300'
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            {filtresActifs && !isFiltresOpen && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#5B4DFF] ring-2 ring-white dark:ring-[#0E1338]" />
+            )}
+          </button>
+
+          <AnimatePresence>
+            {isFiltresOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute right-0 top-full mt-2 z-30 w-[min(90vw,420px)] rounded-2xl bg-white dark:bg-[#1A1F4D] shadow-2xl p-3"
+              >
+                <NewsFiltres
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={setSelectedCategory}
+                  selectedType={selectedType}
+                  onSelectType={setSelectedType}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
 
       <NewsGrid
         newsList={newsList || sujets}
