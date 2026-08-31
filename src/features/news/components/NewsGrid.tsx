@@ -36,7 +36,7 @@ export const NewsGrid: React.FC<NewsGridProps> = ({
 
   if (isLoading) {
     return (
-      <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 auto-rows-[240px] sm:auto-rows-[300px] lg:auto-rows-[400px] gap-3 sm:gap-4">
+      <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 auto-rows-[480px] sm:auto-rows-[600px] lg:auto-rows-[800px] gap-3 sm:gap-4">
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className={`rounded-2xl sm:rounded-3xl overflow-hidden ${getBentoSpanClass(i)}`}>
             <Skeleton variant="card" height="100%" />
@@ -58,7 +58,7 @@ export const NewsGrid: React.FC<NewsGridProps> = ({
   }
 
   return (
-    <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 auto-rows-[240px] sm:auto-rows-[300px] lg:auto-rows-[400px] gap-3 sm:gap-4">
+    <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 auto-rows-[480px] sm:auto-rows-[600px] lg:auto-rows-[800px] gap-3 sm:gap-4">
       {list.map((item, index) => (
         <NewsCard key={item.id} news={item} onOpenDetail={onOpenDetail} className={getBentoSpanClass(index)} />
       ))}
