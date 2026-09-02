@@ -63,6 +63,12 @@ export const NewsMediaItemSchema = z.object({
 export type NewsMediaItem = z.infer<typeof NewsMediaItemSchema>;
 export type SujetMediaItem = NewsMediaItem;
 
+export const NewsGalerieImageSchema = z.object({
+  url: z.string(),
+  legende: z.string().optional(),
+});
+export type NewsGalerieImage = z.infer<typeof NewsGalerieImageSchema>;
+
 export const DocumentJointSchema = z.object({
   id: z.string(),
   nom: z.string(),
@@ -76,8 +82,8 @@ export type DocumentJoint = z.infer<typeof DocumentJointSchema>;
 /**
  * Élément de galerie d'images — endpoint dédié /news/v1/galerie/
  * (voir Backend-Core-Base news/api/v1/views.py:NewsImageGalerieViewSet).
- * Distinct du tableau `galerie: string[]` exposé en LECTURE sur `News`
- * (simple liste d'URLs, voir `NewsSchema.galerie` ci-dessous) : celui-ci
+ * Distinct du tableau `galerie: NewsGalerieImage[]` exposé en LECTURE sur
+ * `News` ({url, legende}, voir `NewsSchema.galerie` ci-dessous) : celui-ci
  * porte l'identifiant nécessaire à l'édition/suppression individuelle
  * depuis le backoffice.
  */
@@ -123,7 +129,7 @@ export const NewsSchema = z.object({
   description: z.string(),
   contenu: z.string().optional(),
   image: z.string(),
-  galerie: z.array(z.string()).optional(),
+  galerie: z.array(NewsGalerieImageSchema).optional(),
   auteur: UtilisateurSchema,
   // FK nullable côté modèle (null=True, blank=True) -> null JSON quand absent, pas une clé omise.
   organisation: OrganisationSchema.nullable().optional(),

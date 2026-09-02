@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SujetMediaItem } from '../../../types/global.types';
+import { NewsGalerieImage } from '../../../types/models/news.types';
 import { extractYouTubeId } from '../../sujets/components/MediaDetailModal';
 import { Video, Image as ImageIcon, Film, Sparkles, Eye, Clock, X, Calendar } from 'lucide-react';
 
@@ -10,10 +11,10 @@ interface NewsMediaGalleryProps {
    * Images simples de la galerie attachée à la News (modèle
    * NewsImageGalerie côté backend, related_name="galerie") -- distinctes
    * de `medias` (modèle NewsMedia : vidéos/audio/documents/images riches).
-   * `News.galerie` n'expose qu'un tableau d'URLs (voir
+   * `News.galerie` expose {url, legende} par image (voir
    * NewsSerializer.get_galerie) : converties ci-dessous en items affichables.
    */
-  galerie?: string[];
+  galerie?: NewsGalerieImage[];
   newsTitre?: string;
   sujetTitre?: string;
   defaultImage?: string;
@@ -24,16 +25,23 @@ function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
 }
 
-/** Convertit les URLs simples de `News.galerie` en items affichables par le
- * bento -- ce champ ne porte aucune métadonnée (voir NewsSerializer côté
- * backend), seul un titre générique peut être dérivé. */
-function galerieToMediaItems(galerie: string[], titreBase?: string): SujetMediaItem[] {
-  return galerie.filter(Boolean).map((url, index) => ({
-    id: `galerie-${index}-${url}`,
-    type: 'image',
-    url,
-    titre: titreBase ? `${titreBase} — Image ${index + 1}` : `Image ${index + 1}`,
-  }));
+/** Convertit les images de `News.galerie` en items affichables par le bento
+ * -- la légende (`NewsImageGalerie.legende`, facultative en base) sert de
+ * titre quand elle est renseignée, sinon un titre générique numéroté prend
+ * le relais. */
+function galerieToMediaItems(galerie: NewsGalerieImage[], titreBase?: string): SujetMediaItem[] {
+  return galerie
+    .filter((img) => !!img.url)
+    .map((img, index) => ({
+      id: `galerie-${index}-${img.url}`,
+      type: 'image',
+      url: img.url,
+      titre: img.legende?.trim()
+        ? img.legende
+        : titreBase
+        ? `${titreBase} — Image ${index + 1}`
+        : `Image ${index + 1}`,
+    }));
 }
 
 // Variété visuelle du bento selon la position et le nombre total d'items

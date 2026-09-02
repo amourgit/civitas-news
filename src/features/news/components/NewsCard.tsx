@@ -28,7 +28,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
   const openNewsDetailGlobal = useOpenNewsDetail();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
-  const heroMedia = newsItem.image || (newsItem.galerie && newsItem.galerie[0]) || null;
+  const heroMedia = newsItem.image || newsItem.galerie?.[0]?.url || null;
   const heroIsVideo = !!heroMedia && (heroMedia.endsWith('.mp4') || heroMedia.endsWith('.webm') || heroMedia.includes('video'));
 
   const handleOpenDetail = () => (onOpenDetail || openNewsDetailGlobal)(newsItem.slug);
