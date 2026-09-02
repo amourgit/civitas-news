@@ -19,6 +19,14 @@
 // seulement si elle concerne AU MOINS une News dans `allNews` (sinon
 // la sélectionner ne changerait rien à l'affichage) — voir
 // FilterPillRow ci-dessous.
+//
+// Couleurs : ce composant est rendu tantôt à même le fond de page
+// (HomePage, aucun conteneur) tantôt dans un popup translucide
+// (NewsListPage) -- dans les deux cas, le fond bascule entre clair
+// (#F7F8FC) et sombre (#0E1338) selon le thème (voir App.tsx). Toute
+// classe de couleur doit donc avoir sa paire `dark:` explicite ; ne
+// JAMAIS utiliser `text-white`/`bg-white` seuls (illisible en thème
+// clair -- texte blanc sur fond quasi blanc).
 // ============================================================
 
 import React, { useMemo } from 'react';
@@ -60,9 +68,9 @@ interface PillOption {
 /**
  * Une ligne de puces filtrables réutilisable : libellé + options,
  * avec opacité réduite pour toute option inactive et sans résultat
- * dans `availableIds`. `variant="primary"` reprend le style plein
- * (fond) historique de la ligne Thèmes ; `variant="secondary"` le
- * style plus léger (texte seul) historique de la ligne Format.
+ * dans `availableIds`. `variant="primary"` reprend le traitement fort
+ * (accent violet de marque) de la ligne Thèmes ; `variant="secondary"`
+ * le traitement plus neutre des autres lignes.
  */
 function FilterPillRow({
   label,
@@ -83,7 +91,7 @@ function FilterPillRow({
 }) {
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-      <span className="text-[10px] sm:text-xs font-extrabold text-white/60 uppercase shrink-0 flex items-center gap-1 mr-0.5">
+      <span className="text-[10px] sm:text-xs font-extrabold text-gray-500 dark:text-white/60 uppercase shrink-0 flex items-center gap-1 mr-0.5">
         {icon}
         {label} :
       </span>
@@ -104,8 +112,8 @@ function FilterPillRow({
               title={dimmed ? 'Aucune news ne correspond actuellement à cette option' : undefined}
               className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${dimClass} ${
                 isActive
-                  ? 'bg-white text-[#5B4DFF] shadow-sm'
-                  : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
+                  ? 'bg-[#5B4DFF] text-white shadow-sm'
+                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white/80 hover:bg-gray-200 dark:hover:bg-white/20 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               {opt.label}
@@ -119,7 +127,9 @@ function FilterPillRow({
             onClick={() => onSelect(opt.id)}
             title={dimmed ? 'Aucune news ne correspond actuellement à cette option' : undefined}
             className={`px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded text-[10px] sm:text-xs font-medium transition-all whitespace-nowrap shrink-0 ${dimClass} ${
-              isActive ? 'bg-white text-slate-900 font-bold' : 'text-white/60 hover:text-white'
+              isActive
+                ? 'bg-gray-900 dark:bg-white text-white dark:text-slate-900 font-bold'
+                : 'text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
             {opt.label}
@@ -188,7 +198,7 @@ export const NewsFiltres: React.FC<NewsFiltresProps> = ({
     <div className="flex flex-col gap-2 py-1.5">
       <FilterPillRow
         label="Thèmes"
-        icon={<Filter className="w-3 h-3 text-white/80" />}
+        icon={<Filter className="w-3 h-3" />}
         variant="primary"
         options={categorieOptions}
         selectedId={selectedCategorieId}
@@ -196,7 +206,7 @@ export const NewsFiltres: React.FC<NewsFiltresProps> = ({
         availableIds={availability.categorieIds}
       />
 
-      <div className="border-t border-white/15 pt-1">
+      <div className="border-t border-gray-200 dark:border-white/15 pt-1">
         <FilterPillRow
           label="Format"
           options={typeOptions}
@@ -206,7 +216,7 @@ export const NewsFiltres: React.FC<NewsFiltresProps> = ({
         />
       </div>
 
-      <div className="border-t border-white/15 pt-1">
+      <div className="border-t border-gray-200 dark:border-white/15 pt-1">
         <FilterPillRow
           label="Province"
           options={provinceOptions}
@@ -217,7 +227,7 @@ export const NewsFiltres: React.FC<NewsFiltresProps> = ({
       </div>
 
       {!isLoadingReferentiels && organisations.length > 0 && (
-        <div className="border-t border-white/15 pt-1">
+        <div className="border-t border-gray-200 dark:border-white/15 pt-1">
           <FilterPillRow
             label="Organisation"
             options={organisationOptions}
@@ -229,7 +239,7 @@ export const NewsFiltres: React.FC<NewsFiltresProps> = ({
       )}
 
       {!isLoadingReferentiels && etablissements.length > 0 && (
-        <div className="border-t border-white/15 pt-1">
+        <div className="border-t border-gray-200 dark:border-white/15 pt-1">
           <FilterPillRow
             label="Établissement"
             options={etablissementOptions}
