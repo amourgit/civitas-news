@@ -6,6 +6,7 @@ import { useUiStore } from '../../store/ui.store';
 import { useNotificationsStore } from '../../store/notifications.store';
 import { useAuthStore } from '../../store/auth.store';
 import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { usePermissions } from '../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
 import topbarPatternImg from '../../assets/images/topbar_pattern_1785532678470.jpg';
@@ -62,7 +63,12 @@ export const Header: React.FC = () => {
   // bloquer l'accès à quoi que ce soit.
   const { user, isAuthenticated, isHydrating, isAdmin } = useAuthStore();
   const { can } = usePermissions();
-  const { isCollapsed: isBackofficeCollapsed, toggle: toggleBackofficeSidebar } = useBackofficeSidebarStore();
+  const { isCollapsed: isBackofficeCollapsed, toggle: toggleBackofficeSidebar, isMobileOpen: isBackofficeMobileOpen, toggleMobile: toggleBackofficeMobile } = useBackofficeSidebarStore();
+  // Coupure au même breakpoint que le rendu (sm, voir BackofficeSidebar.tsx
+  // : nav desktop `hidden sm:flex`, tiroir mobile `sm:hidden`) -- sous ce
+  // seuil, la colonne desktop est invisible et seul isMobileOpen compte.
+  const isDesktopViewport = useMediaQuery('(min-width: 640px)');
+  const isBackofficeNavExpanded = isDesktopViewport ? !isBackofficeCollapsed : isBackofficeMobileOpen;
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   // Carousel state for Homepage expanded header
@@ -135,12 +141,12 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-2.5 shrink-0">
             {isAdmin && (
               <button
-                onClick={toggleBackofficeSidebar}
-                aria-label={isBackofficeCollapsed ? 'Déplier la navigation du backoffice' : 'Replier la navigation du backoffice'}
+                onClick={isDesktopViewport ? toggleBackofficeSidebar : toggleBackofficeMobile}
+                aria-label={isBackofficeNavExpanded ? 'Replier la navigation du backoffice' : 'Déplier la navigation du backoffice'}
                 title="Navigation du backoffice"
                 className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors shrink-0"
               >
-                {isBackofficeCollapsed ? <PanelLeftOpen className="w-4.5 h-4.5" /> : <PanelLeftClose className="w-4.5 h-4.5" />}
+                {isBackofficeNavExpanded ? <PanelLeftClose className="w-4.5 h-4.5" /> : <PanelLeftOpen className="w-4.5 h-4.5" />}
               </button>
             )}
             <Link to="/" className="flex items-center gap-2 hover:opacity-95 transition-opacity">

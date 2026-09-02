@@ -2,7 +2,7 @@
 // src/components/backoffice/BackofficeLayout.tsx
 // ============================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useParams, useLocation } from 'react-router-dom';
 import { Menu, ShieldOff } from 'lucide-react';
 import { BackofficeSidebar } from './BackofficeSidebar';
@@ -10,19 +10,20 @@ import { getModel } from './registry';
 import { usePermissions } from '../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
 import { useAuthStore } from '../../store/auth.store';
+import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
 
 export const BackofficeLayout: React.FC = () => {
   const { can } = usePermissions();
   const { isHydrating } = useAuthStore();
   const { modelKey } = useParams<{ modelKey?: string }>();
   const location = useLocation();
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const { isMobileOpen: isMobileNavOpen, openMobile: openMobileNav, closeMobile: closeMobileNav } = useBackofficeSidebarStore();
 
   // Referme le tiroir mobile à chaque changement de route (ex: après un
   // clic sur un lien, ou une navigation "Ajouter"/"Retour" déclenchée
   // par le contenu plutôt que par la navbar elle-même).
   useEffect(() => {
-    setIsMobileNavOpen(false);
+    closeMobileNav();
   }, [location.pathname]);
 
   if (isHydrating) return null;
@@ -54,7 +55,7 @@ export const BackofficeLayout: React.FC = () => {
           au scroll (même position d'accroche, chevauchement visuel). */}
       <div className="sm:hidden flex items-center gap-3 -mx-2 px-2 py-2 border-b border-gray-100 dark:border-gray-800">
         <button
-          onClick={() => setIsMobileNavOpen(true)}
+          onClick={openMobileNav}
           aria-label="Ouvrir la navigation du backoffice"
           className="p-2 rounded-xl bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 shrink-0"
         >
@@ -65,7 +66,7 @@ export const BackofficeLayout: React.FC = () => {
         </span>
       </div>
 
-      <BackofficeSidebar isMobileOpen={isMobileNavOpen} onCloseMobile={() => setIsMobileNavOpen(false)} />
+      <BackofficeSidebar isMobileOpen={isMobileNavOpen} onCloseMobile={closeMobileNav} />
 
       <div className="flex-1 min-w-0">
         <Outlet />
