@@ -86,8 +86,12 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
           {newsItem.description}
         </p>
 
-        {/* Barre d'actions : [cœur + avatars] à gauche | [flèche] au centre | [détails] à droite */}
-        <div className="mt-2 flex items-center gap-2">
+        {/* Barre d'actions : [cœur + avatars] à gauche | [détails] à droite.
+            La flèche trappe n'est plus ici : c'est un bouton flottant
+            indépendant du panneau (voir plus bas dans la card), sinon
+            elle disparaît sous le tiroir (z-20 > panneau z-10) une fois
+            celui-ci ouvert -- impossible de refermer sans elle. */}
+        <div className="mt-2 flex items-center justify-between gap-2">
           {/* GAUCHE : réaction cœur + pile d'avatars des réacteurs */}
           <div className="flex items-center gap-1.5 shrink-0" data-no-card-click>
             <TikTokHeartButton
@@ -117,18 +121,6 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
             )}
           </div>
 
-          {/* CENTRE : bouton trappe commentaires */}
-          <button
-            onClick={(e) => { e.stopPropagation(); setIsCommentsOpen((v) => !v); }}
-            className="flex-1 flex items-center justify-center gap-1 text-white/70 hover:text-white transition-colors"
-            aria-label="Commentaires"
-            data-no-card-click
-          >
-            <motion.div animate={{ rotate: isCommentsOpen ? 180 : 0 }} transition={{ duration: 0.25 }}>
-              <ChevronUp className="w-5 h-5 drop-shadow" />
-            </motion.div>
-          </button>
-
           {/* DROITE : bouton détail BottomSheet */}
           <button
             onClick={(e) => { e.stopPropagation(); handleOpenDetail(); }}
@@ -139,24 +131,47 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
             <AlertCircle className="w-4 h-4" />
           </button>
         </div>
-
-        {/* Tiroir commentaires : absolu, 100% largeur, 90% hauteur de la card,
-            slide bas -> haut. Glassmorphisme transparent. */}
-        <AnimatePresence>
-          {isCommentsOpen && (
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute inset-x-0 bottom-0 h-[90%] rounded-t-2xl bg-black/40 backdrop-blur-xl overflow-hidden flex flex-col z-20"
-            >
-              <NewsCardCommentsDrawer newsId={newsItem.id} />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
+
+      {/* Bouton flottant flèche trappe : enfant DIRECT de la card (pas du
+          panneau), indépendant de sa hauteur/contenu. Centré au bas de
+          la card, z-30 -- au-dessus du tiroir (z-20) pour rester visible
+          et cliquable même tiroir ouvert. */}
+      <button
+        onClick={(e) => { e.stopPropagation(); setIsCommentsOpen((v) => !v); }}
+        className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors"
+        aria-label="Commentaires"
+        data-no-card-click
+      >
+        <motion.div animate={{ rotate: isCommentsOpen ? 180 : 0 }} transition={{ duration: 0.25 }}>
+          <ChevronUp className="w-4 h-4 drop-shadow" />
+        </motion.div>
+      </button>
+
+      {/* Tiroir commentaires : absolu, 100% largeur, 90% hauteur de LA
+          CARD, slide bas -> haut, glassmorphisme transparent. Enfant
+          DIRECT de la card (pas du panneau, dont la hauteur est "auto" --
+          un h-[90%] posé dessus ne se serait pas résolu correctement).
+          La card a une hauteur définie (grille bento, voir
+          auto-rows-[...] dans NewsGrid.tsx), donc 90% s'y calcule
+          correctement. overflow-hidden sur la card ne le clippe pas : il
+          reste entièrement contenu dans sa boîte (inset-x-0, 90% de haut
+          ancré en bas) -- et ça arrondit gratuitement ses coins bas
+          carrés sur la forme arrondie de la card. */}
+      <AnimatePresence>
+        {isCommentsOpen && (
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-x-0 bottom-0 h-[90%] rounded-t-2xl bg-black/40 backdrop-blur-xl overflow-hidden flex flex-col z-20"
+          >
+            <NewsCardCommentsDrawer newsId={newsItem.id} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
