@@ -135,18 +135,28 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
 
       {/* Bouton flottant flèche trappe : enfant DIRECT de la card (pas du
           panneau), indépendant de sa hauteur/contenu. Centré au bas de
-          la card, z-30 -- au-dessus du tiroir (z-20) pour rester visible
-          et cliquable même tiroir ouvert. */}
-      <button
-        onClick={(e) => { e.stopPropagation(); setIsCommentsOpen((v) => !v); }}
-        className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors"
-        aria-label="Commentaires"
-        data-no-card-click
-      >
-        <motion.div animate={{ rotate: isCommentsOpen ? 180 : 0 }} transition={{ duration: 0.25 }}>
-          <ChevronUp className="w-4 h-4 drop-shadow" />
-        </motion.div>
-      </button>
+          la card. Masqué (fondu + léger scale) quand le tiroir est
+          ouvert : sinon il reste affiché par-dessus le composer de
+          commentaire en bas du tiroir (z-30 > tiroir z-20) et gêne la
+          saisie. La fermeture reste possible via la flèche dédiée en
+          haut à droite du tiroir (voir NewsCardCommentsDrawer.tsx). */}
+      <AnimatePresence>
+        {!isCommentsOpen && (
+          <motion.button
+            key="comments-toggle"
+            onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }}
+            initial={{ opacity: 0, scale: 0.6, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.6, y: 8 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors"
+            aria-label="Ouvrir les commentaires"
+            data-no-card-click
+          >
+            <ChevronUp className="w-4 h-4 drop-shadow" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Tiroir commentaires : absolu, 100% largeur, 90% hauteur de LA
           CARD, slide bas -> haut, glassmorphisme transparent. Enfant
