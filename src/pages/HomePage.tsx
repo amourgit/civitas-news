@@ -72,9 +72,6 @@ export default function HomePage() {
       {/* Section Statistiques Preview */}
       {/* <HomeStatsPreviewSection /> */}
 
-      {/* Section Autonome CIVITAS & Ambitions */}
-      <CivitasAmbitionsSection />
-
       {/* Filter Bar */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -114,6 +111,9 @@ export default function HomePage() {
           onOpenDetail={handleOpenDetail}
         />
       </section>
+
+      {/* Section Autonome CIVITAS & Ambitions */}
+      <CivitasAmbitionsSection />
 
       {/* Bottom Sheet for News Details */}
       <BottomSheet
