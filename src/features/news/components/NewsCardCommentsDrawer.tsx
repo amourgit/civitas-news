@@ -5,11 +5,13 @@ import { CommentNode } from '../../discussion/components/CommentNode';
 import { CommentComposer } from '../../discussion/components/CommentComposer';
 import { Commentaire } from '../../../types/global.types';
 import { useAuthStore } from '../../../store/auth.store';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, ChevronDown } from 'lucide-react';
 import { EmptyState } from '../../../components/ui/EmptyState';
 
 export interface NewsCardCommentsDrawerProps {
   newsId: string;
+  /** Ferme le tiroir (bouton flèche en haut à droite du header). */
+  onClose: () => void;
 }
 
 /**
@@ -29,7 +31,7 @@ export interface NewsCardCommentsDrawerProps {
  * n'importe quel commentaire alimente seulement replyTarget (état local
  * à ce tiroir), qui pilote le seul et même composer, fixe en bas.
  */
-export function NewsCardCommentsDrawer({ newsId }: NewsCardCommentsDrawerProps) {
+export function NewsCardCommentsDrawer({ newsId, onClose }: NewsCardCommentsDrawerProps) {
   const [replyTarget, setReplyTarget] = useState<Commentaire | null>(null);
   const { comments, isLoading, addComment, voteComment, reactComment, togglePin } = useComments(newsId, 'recents');
   const { user, isAdmin } = useAuthStore();
@@ -44,9 +46,26 @@ export function NewsCardCommentsDrawer({ newsId }: NewsCardCommentsDrawerProps) 
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="shrink-0 flex items-center gap-1.5 px-4 pt-3 pb-2 text-white/90">
-        <MessageSquare className="w-4 h-4" />
-        <span className="text-sm font-extrabold font-display">Commentaires ({comments.length})</span>
+      <div className="shrink-0 flex items-center justify-between px-4 pt-3 pb-2 text-white/90">
+        <div className="flex items-center gap-1.5">
+          <MessageSquare className="w-4 h-4" />
+          <span className="text-sm font-extrabold font-display">Commentaires ({comments.length})</span>
+        </div>
+        {/* Flèche de fermeture, en haut à droite -- animée (survol/appui,
+            + rotation à l'entrée pour attirer l'œil sur l'ouverture). */}
+        <motion.button
+          onClick={onClose}
+          initial={{ opacity: 0, rotate: -90, scale: 0.6 }}
+          animate={{ opacity: 1, rotate: 0, scale: 1 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.85 }}
+          className="flex items-center justify-center w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors shrink-0"
+          aria-label="Fermer les commentaires"
+          data-no-card-click
+        >
+          <ChevronDown className="w-4 h-4" />
+        </motion.button>
       </div>
 
       {/* Sous-composant 1 : liste défilante */}

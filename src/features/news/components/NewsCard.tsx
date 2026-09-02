@@ -168,7 +168,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
             onClick={(e) => e.stopPropagation()}
             className="absolute inset-x-0 bottom-0 h-[90%] rounded-t-2xl bg-black/40 backdrop-blur-xl overflow-hidden flex flex-col z-20"
           >
-            <NewsCardCommentsDrawer newsId={newsItem.id} />
+            <NewsCardCommentsDrawer newsId={newsItem.id} onClose={() => setIsCommentsOpen(false)} />
           </motion.div>
         )}
       </AnimatePresence>
