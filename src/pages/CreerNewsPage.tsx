@@ -13,25 +13,13 @@ import { FilePlus, ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, X } from 'luc
 import { RichTextViewer } from '../components/ui/RichTextViewer';
 import { MarkdownToolbar } from '../components/ui/MarkdownToolbar';
 import { useOpenNewsDetail } from '../features/news/hooks/useOpenNewsDetail';
+import { PROVINCES_GABON } from '../features/news/constants/newsFieldOptions';
 
 const WIZARD_STEPS = [
   { id: 'step-1', title: '1. Informations', description: 'Titre & Thématique' },
   { id: 'step-2', title: '2. Contenu & Médias', description: 'Description & Image' },
   { id: 'step-3', title: '3. Sondage (Option)', description: 'Question & Choix' },
   { id: 'step-4', title: '4. Validation', description: 'Aperçu & Publication' },
-];
-
-/** Les 9 provinces du Gabon (voir news/models.py: Province, côté backend). */
-const PROVINCES_GABON = [
-  'Estuaire',
-  'Haut-Ogooué',
-  'Moyen-Ogooué',
-  'Ngounié',
-  'Nyanga',
-  'Ogooué-Ivindo',
-  'Ogooué-Lolo',
-  'Ogooué-Maritime',
-  'Woleu-Ntem',
 ];
 
 /** Formate une Date en valeur compatible avec <input type="datetime-local">. */

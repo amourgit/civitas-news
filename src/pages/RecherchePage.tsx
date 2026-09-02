@@ -7,18 +7,9 @@ import { NewsGrid } from '../features/news/components/NewsGrid';
 import { NewsDetailContent } from '../features/news/components/NewsDetailContent';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { Tabs } from '../components/ui/Tabs';
+import { useReferentiels } from '../features/news/hooks/useReferentiels';
 import { Search, Filter, Sparkles } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
-
-const CATEGORY_OPTIONS = [
-  { id: 'all', label: 'Toutes les catégories' },
-  { id: 'cat-transports', label: 'Transports & Mobilité' },
-  { id: 'cat-numerique', label: 'Innovation & Numérique' },
-  { id: 'cat-emploi', label: 'Emploi & Économie' },
-  { id: 'cat-sante', label: 'Santé & Alimentation' },
-  { id: 'cat-education', label: 'Éducation & Jeunesse' },
-  { id: 'cat-ecologie', label: 'Environnement & Écologie' },
-];
 
 export default function RecherchePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -27,8 +18,14 @@ export default function RecherchePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('tous');
   const [selectedNewsSlug, setSelectedNewsSlug] = useState<string | null>(null);
+  // Catégories réelles (referentiels.Categorie) — pas de liste en dur ici :
+  // voir features/news/hooks/useReferentiels.ts, déjà utilisé par
+  // NewsFiltres pour la même raison (les anciens id "cat-transports" etc.
+  // ne correspondent à aucune Categorie réelle du backend).
+  const { categories } = useReferentiels();
+  const categoryOptions = [{ id: 'all', label: 'Toutes les catégories' }, ...categories.map((c) => ({ id: c.id, label: c.nom }))];
 
-  const { newsList, sujets, isLoading } = useNewsList({ search: query, category: selectedCategory !== 'all' ? selectedCategory : undefined });
+  const { newsList, sujets, isLoading } = useNewsList({ search: query, categorieId: selectedCategory !== 'all' ? selectedCategory : undefined });
   const rawList = newsList || sujets || [];
 
   const { newsItem, setNewsItem, sujet, setSujet, isLoading: isDetailLoading } = useNews(selectedNewsSlug);
@@ -84,7 +81,7 @@ export default function RecherchePage() {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
-          {CATEGORY_OPTIONS.map((cat) => {
+          {categoryOptions.map((cat) => {
             const isActive = selectedCategory === cat.id;
             return (
               <button

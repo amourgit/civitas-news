@@ -18,9 +18,10 @@ describe('NewsService', () => {
     expect(item?.slug).toBe(targetSlug);
   });
 
-  it('filters news by category', async () => {
-    const data = await newsService.getNewsList({ category: 'education' });
-    expect(data.every((s) => s.categorie.id === 'education')).toBe(true);
+  it('filters news by categorie', async () => {
+    const data = await newsService.getNewsList({ categorieId: 'cat-numerique' });
+    expect(data.length).toBeGreaterThan(0);
+    expect(data.every((s) => s.categorie.id === 'cat-numerique')).toBe(true);
   });
 
   it('adds a reaction to a news item', async () => {

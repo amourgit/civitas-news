@@ -14,8 +14,11 @@ import { Skeleton } from '../components/ui/Skeleton';
 
 export default function NewsListPage() {
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategorieId, setSelectedCategorieId] = useState('all');
   const [selectedType, setSelectedType] = useState<NewsType | 'all'>('all');
+  const [selectedProvince, setSelectedProvince] = useState('all');
+  const [selectedOrganisationId, setSelectedOrganisationId] = useState('all');
+  const [selectedEtablissementId, setSelectedEtablissementId] = useState('all');
   const [isFiltresOpen, setIsFiltresOpen] = useState(false);
   const filtresRef = useRef<HTMLDivElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,16 +43,27 @@ export default function NewsListPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isFiltresOpen]);
 
-  const filtresActifs = selectedCategory !== 'all' || selectedType !== 'all';
+  const filtresActifs =
+    selectedCategorieId !== 'all' ||
+    selectedType !== 'all' ||
+    selectedProvince !== 'all' ||
+    selectedOrganisationId !== 'all' ||
+    selectedEtablissementId !== 'all';
 
   const { newsList, sujets, isLoading } = useNewsList({
     search,
-    category: selectedCategory,
+    categorieId: selectedCategorieId,
     type: selectedType === 'all' ? undefined : selectedType,
+    province: selectedProvince,
+    organisationId: selectedOrganisationId,
+    etablissementId: selectedEtablissementId,
   });
 
   const { newsItem, setNewsItem, sujet, setSujet, isLoading: isDetailLoading } = useNews(selectedNewsSlug);
   const currentItem = newsItem || sujet;
+  // Jeu NON filtré, déjà nécessaire pour la navigation "précédent/suivant"
+  // du BottomSheet — réutilisé tel quel comme référence pour l'opacité
+  // des options de NewsFiltres (voir NewsFiltres.tsx : `allNews`).
   const { newsList: allNews, sujets: allSujets } = useNewsList();
 
   const handleOpenDetail = (slug: string) => {
@@ -110,10 +124,17 @@ export default function NewsListPage() {
                 className="absolute right-0 top-full mt-2 z-30 w-[min(90vw,420px)] rounded-2xl bg-white/10 dark:bg-black/20 backdrop-blur-2xl shadow-2xl p-3"
               >
                 <NewsFiltres
-                  selectedCategory={selectedCategory}
-                  onSelectCategory={setSelectedCategory}
+                  selectedCategorieId={selectedCategorieId}
+                  onSelectCategorieId={setSelectedCategorieId}
                   selectedType={selectedType}
                   onSelectType={setSelectedType}
+                  selectedProvince={selectedProvince}
+                  onSelectProvince={setSelectedProvince}
+                  selectedOrganisationId={selectedOrganisationId}
+                  onSelectOrganisationId={setSelectedOrganisationId}
+                  selectedEtablissementId={selectedEtablissementId}
+                  onSelectEtablissementId={setSelectedEtablissementId}
+                  allNews={allNews || allSujets}
                 />
               </motion.div>
             )}
@@ -126,8 +147,11 @@ export default function NewsListPage() {
         isLoading={isLoading}
         onResetFilters={() => {
           setSearch('');
-          setSelectedCategory('all');
+          setSelectedCategorieId('all');
           setSelectedType('all');
+          setSelectedProvince('all');
+          setSelectedOrganisationId('all');
+          setSelectedEtablissementId('all');
         }}
         onOpenDetail={handleOpenDetail}
       />
@@ -159,4 +183,3 @@ export default function NewsListPage() {
 }
 
 export const SujetsListPage = NewsListPage;
-

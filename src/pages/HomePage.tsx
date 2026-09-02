@@ -14,17 +14,26 @@ import { CivitasAmbitionsSection } from '../components/home/CivitasAmbitionsSect
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function HomePage() {
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategorieId, setSelectedCategorieId] = useState('all');
   const [selectedType, setSelectedType] = useState<NewsType | 'all'>('all');
+  const [selectedProvince, setSelectedProvince] = useState('all');
+  const [selectedOrganisationId, setSelectedOrganisationId] = useState('all');
+  const [selectedEtablissementId, setSelectedEtablissementId] = useState('all');
   const [selectedNewsSlug, setSelectedNewsSlug] = useState<string | null>(null);
 
   const { newsList, sujets, isLoading } = useNewsList({
-    category: selectedCategory,
+    categorieId: selectedCategorieId,
     type: selectedType === 'all' ? undefined : selectedType,
+    province: selectedProvince,
+    organisationId: selectedOrganisationId,
+    etablissementId: selectedEtablissementId,
   });
 
   const { newsItem, setNewsItem, sujet, setSujet, isLoading: isDetailLoading } = useNews(selectedNewsSlug);
   const currentItem = newsItem || sujet;
+  // Jeu NON filtré, déjà nécessaire pour la navigation "précédent/suivant"
+  // du BottomSheet — réutilisé tel quel comme référence pour l'opacité
+  // des options de NewsFiltres (voir NewsFiltres.tsx : `allNews`).
   const { newsList: allNews, sujets: allSujets } = useNewsList();
 
   const list = newsList || sujets;
@@ -79,18 +88,28 @@ export default function HomePage() {
         </div>
 
         <NewsFiltres
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
+          selectedCategorieId={selectedCategorieId}
+          onSelectCategorieId={setSelectedCategorieId}
           selectedType={selectedType}
           onSelectType={setSelectedType}
+          selectedProvince={selectedProvince}
+          onSelectProvince={setSelectedProvince}
+          selectedOrganisationId={selectedOrganisationId}
+          onSelectOrganisationId={setSelectedOrganisationId}
+          selectedEtablissementId={selectedEtablissementId}
+          onSelectEtablissementId={setSelectedEtablissementId}
+          allNews={allNews || allSujets}
         />
 
         <NewsGrid
           newsList={list}
           isLoading={isLoading}
           onResetFilters={() => {
-            setSelectedCategory('all');
+            setSelectedCategorieId('all');
             setSelectedType('all');
+            setSelectedProvince('all');
+            setSelectedOrganisationId('all');
+            setSelectedEtablissementId('all');
           }}
           onOpenDetail={handleOpenDetail}
         />

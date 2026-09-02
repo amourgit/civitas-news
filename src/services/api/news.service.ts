@@ -29,18 +29,29 @@ export const INITIAL_SUJETS = INITIAL_NEWS;
  */
 let newsMemory: News[] = env.useMockData ? [...MOCK_NEWS] : [];
 
+/** Sentinelle UI pour "aucun filtre sur ce champ" (valeur des puces "Tous/Toutes") — voir news.repository.ts. */
+const ALL_SENTINEL = 'all';
+
+/** Reproduit en mémoire (mode mock) exactement les mêmes champs filtrables que le backend réel (voir news.repository.ts: NewsQueryParams / buildWireParams), pour un comportement identique en dev (mock) et en prod (API réelle). */
 function applyFilters(list: News[], params?: NewsQueryParams): News[] {
   let result = [...list];
   if (params?.type) {
     result = result.filter((s) => s.type === params.type);
   }
-  if (params?.category && params.category !== 'all') {
-    result = result.filter(
-      (s) => s.categorie.id === params.category || s.categorie.nom.toLowerCase().includes(params.category!.toLowerCase())
-    );
+  if (params?.categorieId && params.categorieId !== ALL_SENTINEL) {
+    result = result.filter((s) => s.categorie.id === params.categorieId);
   }
-  if (params?.province && params.province !== 'all') {
+  if (params?.organisationId && params.organisationId !== ALL_SENTINEL) {
+    result = result.filter((s) => s.organisation?.id === params.organisationId);
+  }
+  if (params?.etablissementId && params.etablissementId !== ALL_SENTINEL) {
+    result = result.filter((s) => s.etablissement?.id === params.etablissementId);
+  }
+  if (params?.province && params.province !== ALL_SENTINEL) {
     result = result.filter((s) => s.province === params.province);
+  }
+  if (params?.auteur) {
+    result = result.filter((s) => s.auteur.id === params.auteur);
   }
   if (params?.search) {
     const q = params.search.toLowerCase();

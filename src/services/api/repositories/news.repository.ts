@@ -11,11 +11,68 @@ import { NEWS_ENDPOINTS } from '../endpoints';
 import { NewsSchema, type News, type NewsType, type TypeReaction } from '../../../types/global.types';
 import { paginatedSchema, fetchAllPages } from '../utils/pagination';
 
+/**
+ * Paramètres de filtrage de la liste News — un champ par champ
+ * réellement filtrable côté backend (voir Backend-Core-Base
+ * news/api/v1/views.py: NewsViewSet.filterset_fields =
+ * ['type', 'categorie', 'province', 'statut', 'organisation',
+ * 'etablissement', 'auteur'] + SearchFilter sur search_fields =
+ * ['titre', 'description', 'tags__nom']).
+ *
+ * Nommage délibérément explicite (`categorieId`, pas `category`) :
+ * la clé de FILTRE envoyée sur le fil (voir buildWireParams
+ * ci-dessous) doit être le nom de champ DRF exact (`categorie`), or
+ * DjangoFilterBackend ignore silencieusement toute clé de query
+ * string qu'il ne reconnaît pas — un mauvais nommage ici ne casse
+ * rien bruyamment, il rend juste le filtre inopérant en silence.
+ *
+ * `statut`/`visibilite` sont volontairement ABSENTS : la queryset
+ * publique (NewsViewSet.get_queryset) ne renvoie déjà que
+ * statut=publie + visibilite=public (sauf à l'auteur, pour ses
+ * propres brouillons) — un sélecteur sur ces deux champs serait donc
+ * soit un no-op (une seule valeur possible), soit trompeur pour un
+ * visiteur non authentifié.
+ */
 export interface NewsQueryParams {
-  category?: string;
   type?: NewsType;
-  search?: string;
+  categorieId?: string;
+  organisationId?: string;
+  etablissementId?: string;
   province?: string;
+  search?: string;
+  /** Filtre "mes publications" (page Profil) — id utilisateur. */
+  auteur?: string;
+}
+
+/** Sentinelle UI pour "aucun filtre sur ce champ" (valeur des puces "Tous/Toutes"). */
+const ALL_SENTINEL = 'all';
+
+/**
+ * Traduit les noms de champs "lisibles" du frontend vers les noms de
+ * query params EXACTS attendus par DjangoFilterBackend côté backend,
+ * et élimine les valeurs sentinelles ("all"/vide) pour ne jamais les
+ * envoyer sur le fil (sinon DRF les ignore silencieusement -- mais
+ * autant ne pas polluer l'URL avec une clé qui ne filtre jamais rien).
+ */
+function buildWireParams(params?: NewsQueryParams): Record<string, unknown> | undefined {
+  if (!params) return undefined;
+  const { categorieId, organisationId, etablissementId, type, province, search, auteur } = params;
+  const wire: Record<string, unknown> = {
+    type,
+    categorie: categorieId,
+    organisation: organisationId,
+    etablissement: etablissementId,
+    province,
+    search,
+    auteur,
+  };
+  Object.keys(wire).forEach((key) => {
+    const value = wire[key];
+    if (value === undefined || value === null || value === '' || value === ALL_SENTINEL) {
+      delete wire[key];
+    }
+  });
+  return wire;
 }
 
 /**
@@ -87,10 +144,11 @@ function buildScalarFields(payload: Omit<NewsEcriturePayload, 'image'>): Record<
 
 export const newsRepository = {
   async list(params?: NewsQueryParams): Promise<News[]> {
+    const wireParams = buildWireParams(params);
     return fetchAllPages<News>(async (page) => {
       const response = await http.get.get({
         endpoint: NEWS_ENDPOINTS.list,
-        params: { ...(params as Record<string, unknown> | undefined), page },
+        params: { ...wireParams, page },
         schema: paginatedSchema(NewsSchema),
         requireAuth: false,
       });
