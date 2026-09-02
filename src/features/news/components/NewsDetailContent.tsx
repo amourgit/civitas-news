@@ -111,6 +111,7 @@ export const NewsDetailContent: React.FC<NewsDetailContentProps> = ({
       {/* Bento Media Gallery */}
       <NewsMediaGallery
         medias={newsItem.medias}
+        galerie={newsItem.galerie}
         newsTitre={newsItem.titre}
         sujetTitre={newsItem.titre}
         defaultImage={newsItem.image}

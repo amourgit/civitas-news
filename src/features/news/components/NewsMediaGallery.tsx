@@ -6,6 +6,14 @@ import { Video, Image as ImageIcon, Film, Sparkles, Eye, Clock, X, Calendar } fr
 
 interface NewsMediaGalleryProps {
   medias?: SujetMediaItem[];
+  /**
+   * Images simples de la galerie attachée à la News (modèle
+   * NewsImageGalerie côté backend, related_name="galerie") -- distinctes
+   * de `medias` (modèle NewsMedia : vidéos/audio/documents/images riches).
+   * `News.galerie` n'expose qu'un tableau d'URLs (voir
+   * NewsSerializer.get_galerie) : converties ci-dessous en items affichables.
+   */
+  galerie?: string[];
   newsTitre?: string;
   sujetTitre?: string;
   defaultImage?: string;
@@ -14,6 +22,18 @@ interface NewsMediaGalleryProps {
 /** Concatène des classes conditionnelles (pas de clsx/tailwind-merge dans ce projet). */
 function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
+}
+
+/** Convertit les URLs simples de `News.galerie` en items affichables par le
+ * bento -- ce champ ne porte aucune métadonnée (voir NewsSerializer côté
+ * backend), seul un titre générique peut être dérivé. */
+function galerieToMediaItems(galerie: string[], titreBase?: string): SujetMediaItem[] {
+  return galerie.filter(Boolean).map((url, index) => ({
+    id: `galerie-${index}-${url}`,
+    type: 'image',
+    url,
+    titre: titreBase ? `${titreBase} — Image ${index + 1}` : `Image ${index + 1}`,
+  }));
 }
 
 // Variété visuelle du bento selon la position et le nombre total d'items
@@ -141,18 +161,31 @@ function ExpandedContent({ item }: { item: SujetMediaItem }) {
   );
 }
 
-export const NewsMediaGallery: React.FC<NewsMediaGalleryProps> = ({ medias, defaultImage }) => {
+export const NewsMediaGallery: React.FC<NewsMediaGalleryProps> = ({
+  medias,
+  galerie,
+  newsTitre,
+  sujetTitre,
+  defaultImage,
+}) => {
   const [selected, setSelected] = useState<SujetMediaItem | null>(null);
 
-  // Données réelles uniquement : la galerie dédiée (medias) en priorité ;
-  // à défaut, l'image de couverture de la News comme unique carte -- plus
-  // aucun contenu factice. Rien à montrer -> la section disparaît.
-  const items: SujetMediaItem[] =
-    medias && medias.length > 0
-      ? medias
-      : defaultImage
-      ? [{ id: 'cover', type: 'image', url: defaultImage, titre: 'Image de couverture' }]
-      : [];
+  // Données réelles uniquement, plus aucun contenu factice : on affiche
+  // TOUTES les images de la galerie (NewsImageGalerie -> `galerie`) suivies
+  // des médias riches éventuels (NewsMedia -> `medias` : vidéos, audio,
+  // documents, images annotées) -- les deux collections sont distinctes
+  // côté backend et s'additionnent, elles ne se substituent pas l'une à
+  // l'autre. La couverture ne sert plus que de dernier recours, quand la
+  // News n'a ni galerie ni média riche. Rien à montrer -> la section
+  // disparaît.
+  const titreBase = newsTitre || sujetTitre;
+  const items: SujetMediaItem[] = (() => {
+    const galerieItems = galerie && galerie.length > 0 ? galerieToMediaItems(galerie, titreBase) : [];
+    const mediaItems = medias && medias.length > 0 ? medias : [];
+    const combined = [...galerieItems, ...mediaItems];
+    if (combined.length > 0) return combined;
+    return defaultImage ? [{ id: 'cover', type: 'image', url: defaultImage, titre: 'Image de couverture' }] : [];
+  })();
 
   useEffect(() => {
     if (!selected) return;
