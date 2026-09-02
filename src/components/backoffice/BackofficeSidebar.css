@@ -46,7 +46,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transform: translateX(-100%);
   box-shadow: 12px 0 48px rgba(0, 0, 0, 0.28);
 }
 
@@ -62,7 +61,6 @@
 .backdrop-layer {
   position: absolute;
   inset: 0;
-  transform: translateX(-101%);
   background: var(--civitas-bg-surface);
 }
 

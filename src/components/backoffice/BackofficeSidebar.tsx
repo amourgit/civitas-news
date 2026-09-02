@@ -1,23 +1,24 @@
 // ============================================================
 // src/components/backoffice/BackofficeSidebar.tsx
-// Reprend intégralement l'animation "kinetic navigation" (GSAP +
-// CustomEase, panneaux en éventail, fond animé de formes, révélation
-// des liens) fournie comme référence — mais MIROIR : le panneau
-// s'ouvre désormais à GAUCHE de l'écran (tous les xPercent/insets
-// horizontaux sont inversés par rapport à l'original, qui s'ouvrait à
-// droite). Le contenu de navigation n'est plus une démo statique :
-// c'est le VRAI registre de modèles (voir registry/), les VRAIES
-// permissions, les VRAIES routes /admin/:modelKey et le VRAI
-// utilisateur connecté — aucune donnée fictive.
+// Menu "kinetic" (GSAP + CustomEase, panneaux en éventail, formes
+// ambiantes au survol, révélation animée des liens), miroir pour
+// s'ouvrir à GAUCHE. Contenu de navigation réel : registre de
+// modèles, permissions, routes /admin/:modelKey, utilisateur connecté.
 //
-// Un seul mode de rendu, piloté entièrement par les props
-// (isMobileOpen / onCloseMobile), utilisé aussi bien sur desktop que
-// sur mobile : cliquer sur l'icône de navigation du backoffice (voir
-// Header.tsx) ouvre ce même panneau plein-écran quel que soit le
-// viewport.
+// Volontairement simple : DEUX effets seulement.
+//   1. Mise en place unique (easing + survol des formes, par
+//      délégation d'événements -> aucun re-câblage nécessaire quand
+//      la recherche filtre la liste).
+//   2. Ouverture/fermeture (+ verrou de scroll + touche Échap),
+//      piloté uniquement par isMobileOpen.
+// Rendu directement dans document.body via un portail : le panneau
+// est en position fixed, donc ne doit dépendre d'AUCUN ancêtre
+// (un `transform`/`overflow` posé un jour plus haut dans l'arbre ne
+// pourra plus jamais le casser).
 // ============================================================
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink } from 'react-router-dom';
 import gsap from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
@@ -33,16 +34,11 @@ if (typeof window !== 'undefined') {
 }
 
 export interface BackofficeSidebarProps {
-  /** Panneau ouvert ? (unique état, partagé desktop + mobile — voir Header.tsx / BackofficeLayout.tsx). */
+  /** Panneau ouvert ? (unique état, partagé desktop + mobile.) */
   isMobileOpen: boolean;
   onCloseMobile: () => void;
 }
 
-/** Contenu de navigation : dashboard + groupes d'apps du registre,
- * filtrés par permission et par la recherche en temps réel. Partagé
- * entre le rendu et le câblage GSAP (le hover des formes cible
- * `.menu-list-item[data-shape]`, quel que soit le nombre réel de
- * groupes). */
 function useMenuGroups(search: string) {
   const { can } = usePermissions();
   return useMemo(() => {
@@ -65,112 +61,78 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const groups = useMenuGroups(search);
 
-  // Montage paresseux : le panneau ne rentre dans le DOM qu'à la
-  // première ouverture, puis y reste (display GSAP géré ensuite) --
-  // évite tout flash et garde `role="dialog"` absent tant que jamais
-  // ouvert.
-  const [hasOpenedOnce, setHasOpenedOnce] = useState(isMobileOpen);
-  useEffect(() => {
-    if (isMobileOpen) setHasOpenedOnce(true);
-  }, [isMobileOpen]);
-
   const toggleGroup = (appLabel: string) =>
     setExpandedGroups((prev) => ({ ...prev, [appLabel]: prev[appLabel] === false ? true : false }));
 
-  // Verrouille le scroll du body pendant que le panneau est ouvert.
-  useEffect(() => {
-    if (!isMobileOpen) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [isMobileOpen]);
-
-  // Échap referme le panneau.
-  useEffect(() => {
-    if (!isMobileOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseMobile();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMobileOpen, onCloseMobile]);
-
-  // Easing custom + hover des formes ambiantes — mis en place une fois
-  // que le panneau est réellement monté dans le DOM (montage paresseux
-  // ci-dessus, donc dépendance sur hasOpenedOnce et non `[]`).
-  useEffect(() => {
-    if (!hasOpenedOnce || !containerRef.current) return;
+  // 1) Mise en place unique — easing custom + survol des formes ambiantes
+  // par délégation (un seul listener sur .menu-list : fonctionne quel que
+  // soit le nombre de groupes, y compris quand la recherche en ajoute/retire).
+  useLayoutEffect(() => {
+    const list = containerRef.current?.querySelector('.menu-list');
+    const shapesContainer = containerRef.current?.querySelector('.ambient-background-shapes');
+    if (!list || !shapesContainer) return;
 
     try {
       if (!gsap.parseEase('main')) {
         CustomEase.create('main', '0.65, 0.01, 0.05, 0.99');
         gsap.defaults({ ease: 'main', duration: 0.7 });
       }
-    } catch (e) {
-      console.warn('CustomEase failed to load, falling back to default.', e);
+    } catch {
       gsap.defaults({ ease: 'power2.out', duration: 0.7 });
     }
 
-    const ctx = gsap.context(() => {
-      const menuItems = containerRef.current!.querySelectorAll('.menu-list-item[data-shape]');
-      const shapesContainer = containerRef.current!.querySelector('.ambient-background-shapes');
-
-      menuItems.forEach((item) => {
-        const shapeIndex = item.getAttribute('data-shape');
-        const shape = shapesContainer ? shapesContainer.querySelector(`.bg-shape-${shapeIndex}`) : null;
-        if (!shape) return;
-
-        const shapeEls = shape.querySelectorAll('.shape-element');
-
-        const onEnter = () => {
-          if (shapesContainer) {
-            shapesContainer.querySelectorAll('.bg-shape').forEach((s) => s.classList.remove('active'));
-          }
-          shape.classList.add('active');
-          gsap.fromTo(
-            shapeEls,
-            { scale: 0.5, opacity: 0, rotation: -10 },
-            { scale: 1, opacity: 1, rotation: 0, duration: 0.6, stagger: 0.08, ease: 'back.out(1.7)', overwrite: 'auto' },
-          );
-        };
-
-        const onLeave = () => {
-          gsap.to(shapeEls, {
-            scale: 0.8,
-            opacity: 0,
-            duration: 0.3,
-            ease: 'power2.in',
-            onComplete: () => shape.classList.remove('active'),
-            overwrite: 'auto',
-          });
-        };
-
-        item.addEventListener('mouseenter', onEnter);
-        item.addEventListener('mouseleave', onLeave);
-        (item as any)._cleanup = () => {
-          item.removeEventListener('mouseenter', onEnter);
-          item.removeEventListener('mouseleave', onLeave);
-        };
-      });
-    }, containerRef);
-
-    return () => {
-      ctx.revert();
-      if (containerRef.current) {
-        const items = containerRef.current.querySelectorAll('.menu-list-item[data-shape]');
-        items.forEach((item: any) => item._cleanup && item._cleanup());
-      }
+    const shapeFor = (target: EventTarget | null) => {
+      const item = (target as HTMLElement)?.closest?.('.menu-list-item[data-shape]');
+      if (!item) return null;
+      return shapesContainer.querySelector(`.bg-shape-${item.getAttribute('data-shape')}`);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasOpenedOnce, groups.length]);
 
-  // Timeline d'ouverture / fermeture — MIROIR de l'original : tous les
-  // xPercent horizontaux qui faisaient entrer les panneaux depuis la
-  // DROITE sont inversés pour les faire entrer depuis la GAUCHE.
-  useEffect(() => {
-    if (!hasOpenedOnce || !containerRef.current) return;
+    const handleOver = (e: Event) => {
+      const shape = shapeFor(e.target);
+      if (!shape) return;
+      shapesContainer.querySelectorAll('.bg-shape').forEach((s) => s.classList.remove('active'));
+      shape.classList.add('active');
+      gsap.fromTo(
+        shape.querySelectorAll('.shape-element'),
+        { scale: 0.5, opacity: 0, rotation: -10 },
+        { scale: 1, opacity: 1, rotation: 0, duration: 0.6, stagger: 0.08, ease: 'back.out(1.7)', overwrite: 'auto' },
+      );
+    };
+
+    const handleOut = (e: Event) => {
+      const shape = shapeFor(e.target);
+      if (!shape) return;
+      gsap.to(shape.querySelectorAll('.shape-element'), {
+        scale: 0.8,
+        opacity: 0,
+        duration: 0.3,
+        ease: 'power2.in',
+        onComplete: () => shape.classList.remove('active'),
+        overwrite: 'auto',
+      });
+    };
+
+    list.addEventListener('mouseover', handleOver);
+    list.addEventListener('mouseout', handleOut);
+    return () => {
+      list.removeEventListener('mouseover', handleOver);
+      list.removeEventListener('mouseout', handleOut);
+    };
+  }, []);
+
+  // 2) Ouverture / fermeture + verrou de scroll + touche Échap — tout ce qui
+  // dépend de isMobileOpen, au même endroit.
+  useLayoutEffect(() => {
+    if (!containerRef.current) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseMobile();
+    };
+    if (isMobileOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    }
 
     const ctx = gsap.context(() => {
       const navWrap = containerRef.current!.querySelector('.nav-overlay-wrapper');
@@ -179,7 +141,6 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
       const bgPanels = containerRef.current!.querySelectorAll('.backdrop-layer');
       const menuLinks = containerRef.current!.querySelectorAll('.nav-link');
       const fadeTargets = containerRef.current!.querySelectorAll('[data-menu-fade]');
-
       const menuButton = containerRef.current!.querySelector('.nav-close-btn');
       const menuButtonTexts = menuButton?.querySelectorAll('p');
       const menuButtonIcon = menuButton?.querySelector('.menu-button-icon');
@@ -195,7 +156,7 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
           .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.2 })
           .fromTo(menuButtonIcon, { rotate: 0 }, { rotate: 315 }, '<')
           .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1 }, '<')
-          // Miroir : xPercent 101 -> 0 devient -101 -> 0 (entrée par la gauche)
+          // Miroir : entrée par la GAUCHE (xPercent -101 -> 0, au lieu de 101 -> 0 à droite)
           .fromTo(bgPanels, { xPercent: -101 }, { xPercent: 0, stagger: 0.12, duration: 0.575 }, '<')
           .fromTo(menuLinks, { yPercent: 140, rotate: 10 }, { yPercent: 0, rotate: 0, stagger: 0.05 }, '<+=0.35');
 
@@ -207,7 +168,7 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
         if (navWrap) navWrap.setAttribute('data-nav', 'closed');
 
         tl.to(overlay, { autoAlpha: 0 })
-          // Miroir : sortie vers la gauche (-120) au lieu de la droite (120)
+          // Miroir : sortie par la GAUCHE (-120 au lieu de 120)
           .to(menu, { xPercent: -120 }, '<')
           .to(menuButtonTexts, { yPercent: 0 }, '<')
           .to(menuButtonIcon, { rotate: 0 }, '<')
@@ -215,14 +176,16 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
       }
     }, containerRef);
 
-    return () => ctx.revert();
-  }, [isMobileOpen, hasOpenedOnce]);
-
-  if (!hasOpenedOnce) return null;
+    return () => {
+      ctx.revert();
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMobileOpen, onCloseMobile]);
 
   const handleNavigate = () => onCloseMobile();
 
-  return (
+  return createPortal(
     <div ref={containerRef}>
       <div className="nav-overlay-wrapper" data-nav={isMobileOpen ? 'open' : 'closed'}>
         <div className="overlay" onClick={onCloseMobile} aria-hidden="true" />
@@ -328,12 +291,7 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
                 const shapeIndex = ((idx + 1) % 5) + 1;
                 return (
                   <li className="menu-list-item" data-shape={shapeIndex} key={group.appLabel}>
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(group.appLabel)}
-                      className="nav-link"
-                      aria-expanded={isOpen}
-                    >
+                    <button type="button" onClick={() => toggleGroup(group.appLabel)} className="nav-link" aria-expanded={isOpen}>
                       <p className="nav-link-text">{group.appLabel}</p>
                       <ChevronDown className={`nav-link-chevron${isOpen ? '' : ' is-collapsed'}`} />
                       <div className="nav-link-hover-bg" />
@@ -382,6 +340,7 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
           </div>
         </nav>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
