@@ -26,6 +26,28 @@
 // restent en blanc (mêmes rapports de contraste, juste sur violet
 // plutôt que sur noir). Aucune classe de layout, espacement, taille,
 // arrondi ou animation n'a été touchée.
+//
+// Passe suivante (fond image + topbar transparente) :
+//   - Le cadre racine (`fixed inset-0 ...`, contenait juste
+//     bg-[#5B4DFF]) porte maintenant une image de fond
+//     (app_background_blurred.jpg -- l'ancien pattern de la topbar
+//     historique, préflouté au moment du build via Pillow plutôt que
+//     par un filtre CSS : image ~15 Ko au lieu de ~900 Ko, aucun coût
+//     de recalcul du flou au scroll/resize). bg-[#5B4DFF] reste en
+//     background-color de secours (image absente/lente à charger).
+//   - Les 4 "notches" (logo, menu centre, actions droite desktop,
+//     île compacte mobile) passent de bg-[#5B4DFF] à bg-transparent :
+//     c'est LE fond flouté ci-dessus qui doit maintenant se voir au
+//     travers, plus une couleur plate propre à la barre. Les petits
+//     accents SVG (NotchLeftWing/RightWing/CornerWing, fill
+//     text-[#5B4DFF]) sont volontairement laissés tels quels -- ce
+//     sont des connecteurs de jointure, pas "le fond".
+//   - Exception : le contenu du tiroir déroulant mobile (liste de
+//     pages, s'ouvre au tap sur l'île compacte) récupère SON PROPRE
+//     bg-[#5B4DFF] -- ses items (`text-white/60`, pas de fond propre
+//     hors sélection/hover) deviendraient illisibles livrés
+//     transparents au-dessus d'un contenu de page clair qui aurait
+//     défilé dessous.
 // ============================================================
 
 import {
@@ -53,6 +75,7 @@ import type {
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "../../lib/utils";
+import appBackgroundImg from "../../assets/images/app_background_blurred.jpg";
 
 export type NotchPosition = "top" | "bottom";
 
@@ -446,9 +469,10 @@ export function NotchNav({
   return (
     <div
       className={cn(
-        "fixed inset-0 h-screen w-screen overflow-hidden bg-[#5B4DFF] p-0 md:p-2 transition-colors duration-200",
+        "fixed inset-0 h-screen w-screen overflow-hidden bg-[#5B4DFF] bg-cover bg-center p-0 md:p-2 transition-colors duration-200",
         className
       )}
+      style={{ backgroundImage: `url(${appBackgroundImg})` }}
       {...props}
     >
       <div className="relative flex h-full w-full flex-col rounded-none md:rounded-2xl bg-[#F7F8FC] dark:bg-[#0E1338] text-gray-900 dark:text-gray-100 antialiased transition-colors duration-200">
@@ -468,7 +492,7 @@ export function NotchNav({
           <aside
             aria-label="Brand logo notch"
             className={cn(
-              "hidden xl:flex absolute left-0 z-50 h-10 px-5 select-none transition-colors duration-200 bg-[#5B4DFF]",
+              "hidden xl:flex absolute left-0 z-50 h-10 px-5 select-none transition-colors duration-200 bg-transparent",
               isBottom
                 ? "bottom-0 rounded-tr-[24px] md:items-end"
                 : "top-0 rounded-br-[24px] md:items-baseline"
@@ -489,7 +513,7 @@ export function NotchNav({
           role="tablist"
           aria-orientation="horizontal"
           className={cn(
-            "hidden xl:flex absolute left-1/2 -translate-x-1/2 z-50 h-11 px-4 bg-[#5B4DFF] text-white select-none transition-colors duration-200",
+            "hidden xl:flex absolute left-1/2 -translate-x-1/2 z-50 h-11 px-4 bg-transparent text-white select-none transition-colors duration-200",
             isBottom
               ? "bottom-0 rounded-t-[24px] md:items-end"
               : "top-0 rounded-b-[24px] md:items-start"
@@ -529,7 +553,7 @@ export function NotchNav({
           <aside
             aria-label="User actions notch"
             className={cn(
-              "hidden xl:flex absolute right-0 z-50 h-10 w-fit pl-5 pr-6 select-none transition-colors duration-200 bg-[#5B4DFF]",
+              "hidden xl:flex absolute right-0 z-50 h-10 w-fit pl-5 pr-6 select-none transition-colors duration-200 bg-transparent",
               isBottom
                 ? "bottom-0 rounded-tl-[24px] md:items-end"
                 : "top-0 rounded-bl-[24px] md:items-start"
@@ -551,7 +575,7 @@ export function NotchNav({
         <div
           ref={containerRef}
           className={cn(
-            "xl:hidden absolute z-50 flex flex-col bg-[#5B4DFF] text-white select-none transition-colors duration-200",
+            "xl:hidden absolute z-50 flex flex-col bg-transparent text-white select-none transition-colors duration-200",
             "w-auto left-1/2 -translate-x-1/2 px-4",
             isBottom
               ? "bottom-0 rounded-t-[24px]"
@@ -643,7 +667,7 @@ export function NotchNav({
             <div className="overflow-hidden">
               <div
                 className={cn(
-                  "flex w-full flex-col gap-0.5 px-0.5",
+                  "flex w-full flex-col gap-0.5 px-0.5 rounded-2xl bg-[#5B4DFF]",
                   isBottom ? "pb-2 pt-1.5" : "pt-1.5 pb-2.5"
                 )}
               >
