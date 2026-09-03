@@ -12,6 +12,7 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 import { NotchNav, type NotchItemData } from '../ui/notch-nav';
+import { ProfileDropdown } from './ProfileDropdown';
 import { useUiStore } from '../../store/ui.store';
 import { useAuthStore } from '../../store/auth.store';
 import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
@@ -45,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   // uniquement ici à savoir QUOI afficher dans ce coin de la topbar
   // (avatar si connecté, bouton "Se connecter" sinon) -- jamais à
   // bloquer l'accès à quoi que ce soit.
-  const { user, isAuthenticated, isHydrating, isAdmin } = useAuthStore();
+  const { isAuthenticated, isHydrating, isAdmin } = useAuthStore();
   const { can } = usePermissions();
   // BackofficeSidebar est un panneau plein-écran unique (voir
   // BackofficeSidebar.tsx) : un seul état isMobileOpen piloté quel que
@@ -112,19 +113,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
       {isHydrating ? (
         <div className="w-6 h-6 rounded-full bg-white/15 animate-pulse shrink-0" aria-hidden="true" />
       ) : isAuthenticated ? (
-        <Link
-          to="/profil"
-          className="flex items-center justify-center w-6 h-6 rounded-full overflow-hidden border border-white/30 hover:border-white/70 transition-colors shrink-0"
-          title={user.nomAffiche}
-        >
-          {user.avatar ? (
-            <img src={user.avatar} alt={user.nomAffiche} className="w-full h-full object-cover" />
-          ) : (
-            <span className="w-full h-full flex items-center justify-center bg-white/15 text-white text-[10px] font-bold uppercase">
-              {user.nomAffiche.charAt(0)}
-            </span>
-          )}
-        </Link>
+        <ProfileDropdown />
       ) : (
         <button
           type="button"

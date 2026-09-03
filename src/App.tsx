@@ -19,6 +19,7 @@ import RecherchePage from './pages/RecherchePage';
 import StatistiquesPage from './pages/StatistiquesPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ProfilPage from './pages/ProfilPage';
+import ParametresPage from './pages/ParametresPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import BackofficeListPage from './pages/admin/BackofficeListPage';
 import BackofficeRecordPage from './pages/admin/BackofficeRecordPage';
@@ -57,6 +58,7 @@ export function App() {
                     <Route path="/statistiques" element={<StatistiquesPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/profil" element={<ProfilPage />} />
+                    <Route path="/parametres" element={<ParametresPage />} />
                     {/* Backoffice « à la Django admin » — voir
                         src/components/backoffice/. Une seule paire de
                         pages génériques (BackofficeListPage /
