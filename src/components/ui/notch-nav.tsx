@@ -674,7 +674,7 @@ export function NotchNav({
         <div
           id="notch-nav-scroll-viewport"
           className={cn(
-            "relative flex w-full items-start h-full justify-center overflow-y-auto overflow-x-hidden px-3 sm:px-4 md:px-6",
+            "relative flex w-full items-start h-full justify-center overflow-y-auto overflow-x-hidden",
             isBottom ? "pt-3 pb-17.5" : "pt-17.5 pb-3"
           )}
         >
