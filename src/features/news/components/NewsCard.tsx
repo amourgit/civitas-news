@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { News } from '../../../types/global.types';
 import { TikTokHeartButton } from '../../../components/ui/TikTokHeartButton';
+import { AvatarGroup } from '../../../components/ui/AvatarGroup';
 import { useOpenNewsDetail } from '../hooks/useOpenNewsDetail';
 import { NewsCardCommentsDrawer } from './NewsCardCommentsDrawer';
 import { AlertCircle, ChevronUp } from 'lucide-react';
@@ -92,7 +93,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
             elle disparaît sous le tiroir (z-20 > panneau z-10) une fois
             celui-ci ouvert -- impossible de refermer sans elle. */}
         <div className="mt-2 flex items-center justify-between gap-2">
-          {/* GAUCHE : réaction cœur + pile d'avatars des réacteurs */}
+          {/* GAUCHE : réaction cœur + pile d'avatars animée des réacteurs */}
           <div className="flex items-center gap-1.5 shrink-0" data-no-card-click>
             <TikTokHeartButton
               newsId={newsItem.id}
@@ -102,22 +103,23 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
               iconOnly
             />
             {newsItem.reacteursRecents && newsItem.reacteursRecents.length > 0 && (
-              <div
-                className="flex items-center -space-x-2"
-                title={`Ont réagi : ${newsItem.reacteursRecents.map((u) => u.nomAffiche).join(', ')}`}
-              >
-                {newsItem.reacteursRecents.slice(0, 5).map((reacteur) =>
-                  reacteur.avatar ? (
-                    <img key={reacteur.id} src={reacteur.avatar} alt={reacteur.nomAffiche}
-                      className="w-5 h-5 rounded-full object-cover border-2 border-black/40 shrink-0" />
-                  ) : (
-                    <div key={reacteur.id}
-                      className="w-5 h-5 rounded-full bg-[#7B61FF] border-2 border-black/40 flex items-center justify-center text-[8px] font-extrabold text-white shrink-0">
-                      {reacteur.nomAffiche.charAt(0).toUpperCase()}
-                    </div>
-                  )
-                )}
-              </div>
+              <AvatarGroup
+                items={newsItem.reacteursRecents.map((reacteur) => ({
+                  id: reacteur.id,
+                  name: reacteur.nomAffiche,
+                  designation:
+                    reacteur.role === 'administrateur'
+                      ? 'Administrateur'
+                      : reacteur.role === 'moderateur'
+                      ? 'Modérateur'
+                      : reacteur.role === 'etudiant'
+                      ? 'Étudiant'
+                      : 'Citoyen',
+                  image: reacteur.avatar,
+                }))}
+                size="xs"
+                maxVisible={4}
+              />
             )}
           </div>
 
