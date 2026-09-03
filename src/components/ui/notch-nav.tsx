@@ -84,7 +84,7 @@ export function NotchLeftWing({
       fill="none"
       shapeRendering="geometricPrecision"
       className={cn(
-        "pointer-events-none absolute right-full size-2.5 md:size-4 overflow-visible select-none text-[#5B4DFF] transition-colors duration-200",
+        "pointer-events-none absolute right-full size-2.5 md:size-4 overflow-visible select-none text-[#3B3DD9] transition-colors duration-200",
         isBottom ? "bottom-0" : "top-0",
         className
       )}
@@ -116,7 +116,7 @@ export function NotchRightWing({
       fill="none"
       shapeRendering="geometricPrecision"
       className={cn(
-        "pointer-events-none absolute left-full size-2.5 md:size-4 overflow-visible select-none text-[#5B4DFF] transition-colors duration-200",
+        "pointer-events-none absolute left-full size-2.5 md:size-4 overflow-visible select-none text-[#3B3DD9] transition-colors duration-200",
         isBottom ? "bottom-0" : "top-0",
         className
       )}
@@ -148,7 +148,7 @@ export function NotchCornerLeftWing({
       fill="none"
       shapeRendering="geometricPrecision"
       className={cn(
-        "pointer-events-none absolute left-0 size-2.5 md:size-4 overflow-visible select-none text-[#5B4DFF] transition-colors duration-200",
+        "pointer-events-none absolute left-0 size-2.5 md:size-4 overflow-visible select-none text-[#3B3DD9] transition-colors duration-200",
         isBottom ? "bottom-full" : "top-full",
         className
       )}
@@ -180,7 +180,7 @@ export function NotchCornerRightWing({
       fill="none"
       shapeRendering="geometricPrecision"
       className={cn(
-        "pointer-events-none absolute right-0 size-2.5 md:size-4 overflow-visible select-none text-[#5B4DFF] transition-colors duration-200",
+        "pointer-events-none absolute right-0 size-2.5 md:size-4 overflow-visible select-none text-[#3B3DD9] transition-colors duration-200",
         isBottom ? "bottom-full" : "top-full",
         className
       )}
@@ -446,7 +446,7 @@ export function NotchNav({
   return (
     <div
       className={cn(
-        "fixed inset-0 h-screen w-screen overflow-hidden bg-[#5B4DFF] p-0 md:p-2 transition-colors duration-200",
+        "fixed inset-0 h-screen w-screen overflow-hidden bg-[#3B3DD9] p-0 md:p-2 transition-colors duration-200",
         className
       )}
       {...props}
@@ -468,7 +468,7 @@ export function NotchNav({
           <aside
             aria-label="Brand logo notch"
             className={cn(
-              "hidden xl:flex absolute left-0 z-50 h-10 px-5 select-none transition-colors duration-200 bg-[#5B4DFF]",
+              "hidden xl:flex absolute left-0 z-50 h-10 px-5 select-none transition-colors duration-200 bg-[#3B3DD9]",
               isBottom
                 ? "bottom-0 rounded-tr-[24px] md:items-end"
                 : "top-0 rounded-br-[24px] md:items-baseline"
@@ -489,7 +489,7 @@ export function NotchNav({
           role="tablist"
           aria-orientation="horizontal"
           className={cn(
-            "hidden xl:flex absolute left-1/2 -translate-x-1/2 z-50 h-11 px-4 bg-[#5B4DFF] text-white select-none transition-colors duration-200",
+            "hidden xl:flex absolute left-1/2 -translate-x-1/2 z-50 h-11 px-4 bg-[#3B3DD9] text-white select-none transition-colors duration-200",
             isBottom
               ? "bottom-0 rounded-t-[24px] md:items-end"
               : "top-0 rounded-b-[24px] md:items-start"
@@ -529,7 +529,7 @@ export function NotchNav({
           <aside
             aria-label="User actions notch"
             className={cn(
-              "hidden xl:flex absolute right-0 z-50 h-10 w-fit pl-5 pr-6 select-none transition-colors duration-200 bg-[#5B4DFF]",
+              "hidden xl:flex absolute right-0 z-50 h-10 w-fit pl-5 pr-6 select-none transition-colors duration-200 bg-[#3B3DD9]",
               isBottom
                 ? "bottom-0 rounded-tl-[24px] md:items-end"
                 : "top-0 rounded-bl-[24px] md:items-start"
@@ -551,7 +551,7 @@ export function NotchNav({
         <div
           ref={containerRef}
           className={cn(
-            "xl:hidden absolute z-50 flex flex-col bg-[#5B4DFF] text-white select-none transition-colors duration-200",
+            "xl:hidden absolute z-50 flex flex-col bg-[#3B3DD9] text-white select-none transition-colors duration-200",
             "w-auto left-1/2 -translate-x-1/2 px-4",
             isBottom
               ? "bottom-0 rounded-t-[24px]"
