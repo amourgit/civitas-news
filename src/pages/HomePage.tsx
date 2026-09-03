@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNewsList } from '../features/news/hooks/useNewsList';
 import { useNews } from '../features/news/hooks/useNews';
+import { useStatistiquesGlobales } from '../features/statistiques/hooks/useStatistiquesGlobales';
 import { NewsGrid } from '../features/news/components/NewsGrid';
 import { NewsFiltres } from '../features/news/components/NewsFiltres';
 import { NewsDetailContent } from '../features/news/components/NewsDetailContent';
@@ -36,6 +37,9 @@ export default function HomePage() {
   // des options de NewsFiltres (voir NewsFiltres.tsx : `allNews`).
   const { newsList: allNews, sujets: allSujets } = useNewsList();
 
+  const { stats, isLoading: isStatsLoading } = useStatistiquesGlobales();
+  const formatNombre = (n: number) => n.toLocaleString('fr-FR');
+
   const list = newsList || sujets;
 
   const handleOpenDetail = (slug: string) => {
@@ -51,18 +55,38 @@ export default function HomePage() {
       {/* Netflix-Style Automatic Hero Carousel */}
       <NetflixHeroCarousel newsList={list} sujets={list} />
 
-      {/* Quick Metrics Strip */}
+      {/* Quick Metrics Strip -- alimenté par le backend (statistiques/v1/globales/) */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-1 sm:gap-1.5">
         {[
-          { label: 'News & Publications Actives', val: '86', icon: <CheckSquare className="w-3.5 h-3.5 text-[#5B4DFF]" /> },
-          { label: 'Votes Comptabilisés', val: '38,940', icon: <BarChart2 className="w-3.5 h-3.5 text-emerald-500" /> },
-          { label: 'Avis & Inquiétudes', val: '12,480', icon: <MessageSquare className="w-3.5 h-3.5 text-amber-500" /> },
-          { label: 'Taux de Transparence', val: '100%', icon: <ShieldCheck className="w-3.5 h-3.5 text-cyan-500" /> },
+          {
+            label: 'News & Publications Actives',
+            val: stats ? formatNombre(stats.totalNewsActives) : null,
+            icon: <CheckSquare className="w-3.5 h-3.5 text-[#5B4DFF]" />,
+          },
+          {
+            label: 'Votes Comptabilisés',
+            val: stats ? formatNombre(stats.totalVotes) : null,
+            icon: <BarChart2 className="w-3.5 h-3.5 text-emerald-500" />,
+          },
+          {
+            label: 'Avis & Inquiétudes',
+            val: stats ? formatNombre(stats.totalCommentaires) : null,
+            icon: <MessageSquare className="w-3.5 h-3.5 text-amber-500" />,
+          },
+          {
+            label: 'Taux de Transparence',
+            val: stats && typeof stats.tauxTransparence === 'number' ? `${Math.round(stats.tauxTransparence)}%` : null,
+            icon: <ShieldCheck className="w-3.5 h-3.5 text-cyan-500" />,
+          },
         ].map((item, idx) => (
           <div key={idx} className="bg-white dark:bg-[#1A1F4D] p-1 sm:p-1.5 rounded-none border border-gray-100 dark:border-gray-800 flex items-center gap-1.5 shadow-sm">
             <div className="p-1 rounded-none bg-gray-50 dark:bg-gray-800">{item.icon}</div>
             <div>
-              <div className="text-xs sm:text-sm font-extrabold text-gray-900 dark:text-white font-display leading-none">{item.val}</div>
+              {isStatsLoading || item.val === null ? (
+                <div className="h-3.5 w-10 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+              ) : (
+                <div className="text-xs sm:text-sm font-extrabold text-gray-900 dark:text-white font-display leading-none">{item.val}</div>
+              )}
               <div className="text-[9px] text-gray-400 font-semibold uppercase mt-0.5">{item.label}</div>
             </div>
           </div>

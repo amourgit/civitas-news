@@ -3,8 +3,9 @@
 // Service Statistiques globales — bascule automatique mock/réel
 // selon `env.useMockData`.
 //
-// Le backend réel (/statistiques/v1/globales/) ne renvoie que les 10
-// champs "de base" (voir statistiques/api/v1/serializers.py). Il n'y a
+// Le backend réel (/statistiques/v1/globales/) ne renvoie que les 11
+// champs "de base" (voir statistiques/api/v1/serializers.py, dont
+// `tauxTransparence` : % de News publiées avec un LienPublication généré). Il n'y a
 // pas de champ backend pour `evolutionMensuelle` ni pour une notion de
 // "statuts de consultation" façon workflow gouvernemental — et il n'y a
 // aucune donnée démographique (genre/tranche d'âge) sur le modèle User,

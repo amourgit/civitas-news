@@ -14,6 +14,7 @@ export const MOCK_STATISTIQUES_GLOBALES: StatistiquesGlobales = {
       totalOrganisations: 34,
       totalCitoyensInscrits: 18420,
       croissanceMensuelle: 24.5,
+      tauxTransparence: 91.5,
       // Provinces du Gabon (cohérent avec BentoBarProvinces et la mention
       // "9 provinces et la diaspora" de StatistiquesPage.tsx).
       participationParProvince: [

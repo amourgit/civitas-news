@@ -15,6 +15,11 @@ export const StatistiquesGlobalesSchema = z.object({
   /** Citoyens inscrits sur la plateforme (distinct de totalVisiteurs, qui compte aussi les anonymes). */
   totalCitoyensInscrits: z.number().int().nonnegative().optional(),
   croissanceMensuelle: z.number(),
+  /** % de News publiées disposant d'un LienPublication généré (voir
+   * statistiques/api/v1/services.py:calculer_statistiques_globales côté
+   * backend) -- pas automatique à la publication, un ratio < 100% est
+   * normal. */
+  tauxTransparence: z.number().min(0).max(100).optional(),
   participationParProvince: z.array(
     z.object({
       province: z.string(),
