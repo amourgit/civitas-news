@@ -517,12 +517,19 @@ export function NotchNav({
           </LayoutGroup>
         </header>
 
-        {/* 3. Desktop Right Action Notch */}
+        {/* 3. Desktop Right Action Notch
+            w-fit : la largeur reste pilotée par le contenu (nombre
+            d'icônes variable selon le rôle : invité, connecté, admin)
+            — jamais figée. pr-6 (> pl-5) : léger supplément de
+            padding À DROITE UNIQUEMENT pour compenser l'arrondi
+            rounded-bl-[24px] du bord opposé, qui donne visuellement
+            l'impression que la dernière icône touche/dépasse le
+            cadre si le padding est symétrique. */}
         {showRightContent && rightContent && (
           <aside
             aria-label="User actions notch"
             className={cn(
-              "hidden xl:flex absolute right-0 z-50 h-10 px-5 select-none transition-colors duration-200 bg-[#5B4DFF]",
+              "hidden xl:flex absolute right-0 z-50 h-10 w-fit pl-5 pr-6 select-none transition-colors duration-200 bg-[#5B4DFF]",
               isBottom
                 ? "bottom-0 rounded-tl-[24px] md:items-end"
                 : "top-0 rounded-bl-[24px] md:items-start"
@@ -532,7 +539,7 @@ export function NotchNav({
 
             <NotchCornerRightWing position={position} />
 
-            <div className="flex items-center text-white">
+            <div className="flex w-fit shrink-0 items-center text-white">
               {rightContent}
             </div>
           </aside>
@@ -555,7 +562,20 @@ export function NotchNav({
 
           <NotchRightWing position={position} />
 
-          {/* Unified Horizontal Bar */}
+          {/* Unified Horizontal Bar
+              Logo et slot droit sont shrink-0 (taille fixe, jamais
+              compressés) ; SEUL le déclencheur central doit absorber
+              la pression de largeur. flex-1 min-w-0 (au lieu de
+              w-full) : un enfant flex avec juste w-full garde un
+              min-width implicite = son contenu (le label ne peut pas
+              rétrécir sous son propre texte), donc sur les largeurs
+              serrées (surtout lg:w-full, ~1024-1279px) la ligne
+              entière peut dépasser du cadre et pousser le slot droit
+              hors de la pilule — c'était la cause des icônes visibles
+              hors du cadre. min-w-0 autorise ce bouton à rétrécir
+              réellement (le label se tronque via `truncate`) afin que
+              logo + options à droite restent TOUJOURS entièrement
+              visibles, quel que soit le nombre d'options. */}
           <div
             className={cn(
               "w-auto xl:w-max lg:w-full flex h-10 sm:h-10 items-center justify-between gap-3 sm:gap-5",
@@ -576,25 +596,25 @@ export function NotchNav({
               aria-haspopup="listbox"
               aria-label="Toggle navigation menu"
               onClick={handleToggleDropdown}
-              className="group flex h-8 sm:h-8.5 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full px-2.5 py-2.5 sm:p-2.5 text-xs sm:text-sm font-semibold text-white outline-none transition-colors sm:hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/50"
+              className="group flex h-8 sm:h-8.5 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-2.5 py-2.5 sm:p-2.5 text-xs sm:text-sm font-semibold text-white outline-none transition-colors sm:hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/50"
             >
               {activeItem?.icon && (
                 <activeItem.icon className="size-3.5 sm:size-4 shrink-0 text-white/60" />
               )}
 
-              <span className="leading-none">{activeItem?.label}</span>
+              <span className="min-w-0 truncate leading-none">{activeItem?.label}</span>
 
               {isBottom ? (
                 <ChevronUp
                   className={cn(
-                    "size-3.5 text-white/60 transition-transform duration-200",
+                    "size-3.5 shrink-0 text-white/60 transition-transform duration-200",
                     isDropdownOpen && "rotate-180"
                   )}
                 />
               ) : (
                 <ChevronDown
                   className={cn(
-                    "size-3.5 text-white/60 transition-transform duration-200",
+                    "size-3.5 shrink-0 text-white/60 transition-transform duration-200",
                     isDropdownOpen && "rotate-180"
                   )}
                 />
@@ -603,7 +623,7 @@ export function NotchNav({
 
             {/* Right Action Slot */}
             {showRightContent && rightContent && (
-              <div className="flex shrink-0 items-center justify-end text-white w-max">
+              <div className="flex w-fit shrink-0 items-center justify-end pr-1 text-white">
                 {rightContent}
               </div>
             )}
@@ -640,11 +660,21 @@ export function NotchNav({
           </div>
         </div>
 
-        {/* Scrollable Content Viewport */}
+        {/* Scrollable Content Viewport
+            items-start (PAS items-center) : dans un conteneur flex-row
+            avec overflow-y-auto, un enfant centré verticalement
+            (align-items: center) qui dépasse la hauteur du conteneur
+            voit sa moitié "haute" clippée et inaccessible au scroll —
+            seule la moitié "basse" reste atteignable (bug CSS connu
+            "centered flex item + overflow"). Nos pages étant presque
+            toujours plus hautes que le viewport, ça coupait
+            systématiquement le haut de chaque page. items-start
+            restaure un flux document normal (contenu ancré en haut,
+            scroll classique de haut en bas). */}
         <div
           id="notch-nav-scroll-viewport"
           className={cn(
-            "relative flex w-full items-center h-full justify-center overflow-y-auto overflow-x-hidden px-3 sm:px-4 md:px-6",
+            "relative flex w-full items-start h-full justify-center overflow-y-auto overflow-x-hidden px-3 sm:px-4 md:px-6",
             isBottom ? "pt-3 pb-17.5" : "pt-17.5 pb-3"
           )}
         >
