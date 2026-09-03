@@ -12,6 +12,7 @@ import { BarChart2, ShieldCheck, CheckSquare, MessageSquare, TrendingUp } from '
 import { NetflixHeroCarousel } from '../components/home/NetflixHeroCarousel';
 import { HomeStatsPreviewSection } from '../components/home/HomeStatsPreviewSection';
 import { CivitasAmbitionsSection } from '../components/home/CivitasAmbitionsSection';
+import { MeteoLiquidGlassSection } from '../components/home/MeteoLiquidGlassSection';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function HomePage() {
@@ -92,6 +93,9 @@ export default function HomePage() {
           </div>
         ))}
       </section>
+
+      {/* Section Météo des Provinces — cartes LiquidGlassCard, données dynamiques (mock isolé, voir features/meteo) */}
+      <MeteoLiquidGlassSection />
 
       {/* Section Statistiques Preview */}
       {/* <HomeStatsPreviewSection /> */}
