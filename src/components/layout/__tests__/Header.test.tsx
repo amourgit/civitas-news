@@ -22,8 +22,11 @@ describe('Header — action de connexion pour un visiteur anonyme', () => {
 
     // Le store d'auth s'hydrate de façon asynchrone (voir auth.store.ts) ;
     // sans cookie de session, il retombe immédiatement sur l'état anonyme.
-    const loginButton = await waitFor(() => screen.getByTitle('Se connecter'));
-    expect(loginButton.tagName).toBe('BUTTON');
+    // NotchNav rend le même rightContent une fois pour le notch desktop et
+    // une fois pour le notch mobile compact (un seul visible selon le
+    // breakpoint, voir notch-nav.tsx) : on prend le premier des deux.
+    const loginButtons = await waitFor(() => screen.getAllByTitle('Se connecter'));
+    expect(loginButtons[0].tagName).toBe('BUTTON');
   });
 
   it('ouvre le popup de connexion au clic, sans jamais naviguer', async () => {
@@ -34,8 +37,8 @@ describe('Header — action de connexion pour un visiteur anonyme', () => {
       </MemoryRouter>
     );
 
-    const loginButton = await waitFor(() => screen.getByTitle('Se connecter'));
-    fireEvent.click(loginButton);
+    const loginButtons = await waitFor(() => screen.getAllByTitle('Se connecter'));
+    fireEvent.click(loginButtons[0]);
 
     await waitFor(() => screen.getByRole('dialog'));
     expect(screen.getByRole('heading', { name: 'Connexion' })).toBeInTheDocument();

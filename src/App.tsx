@@ -36,50 +36,53 @@ export function App() {
               désormais via LoginModal, un popup global déclenchable depuis
               n'importe quelle page (topbar, ProfilPage...) sans navigation. */}
           <div className="min-h-screen flex flex-col bg-[#F7F8FC] dark:bg-[#0E1338] text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
-            <Header />
-            <div className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 pt-2 sm:pt-4 pb-12 md:pb-6 flex items-start gap-6">
-              <main className="flex-1 min-w-0 w-full">
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/news" element={<NewsListPage />} />
-                  <Route path="/news/creer" element={<CreerNewsPage />} />
-                  <Route path="/news/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
-                  <Route path="/news/:newsId/sondages/creer" element={<CreerSondagePage />} />
+            <Header>
+              <div className="w-full flex flex-col">
+              <div className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 pt-2 sm:pt-4 pb-12 md:pb-6 flex items-start gap-6">
+                <main className="flex-1 min-w-0 w-full">
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/news" element={<NewsListPage />} />
+                    <Route path="/news/creer" element={<CreerNewsPage />} />
+                    <Route path="/news/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
+                    <Route path="/news/:newsId/sondages/creer" element={<CreerSondagePage />} />
 
-                  {/* Redirects/Aliases for legacy /sujets URLs */}
-                  <Route path="/sujets" element={<NewsListPage />} />
-                  <Route path="/sujets/creer" element={<CreerNewsPage />} />
-                  <Route path="/sujets/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
-                  <Route path="/sujets/:sujetId/sondages/creer" element={<CreerSondagePage />} />
+                    {/* Redirects/Aliases for legacy /sujets URLs */}
+                    <Route path="/sujets" element={<NewsListPage />} />
+                    <Route path="/sujets/creer" element={<CreerNewsPage />} />
+                    <Route path="/sujets/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
+                    <Route path="/sujets/:sujetId/sondages/creer" element={<CreerSondagePage />} />
 
-                  <Route path="/recherche" element={<RecherchePage />} />
-                  <Route path="/statistiques" element={<StatistiquesPage />} />
-                  <Route path="/notifications" element={<NotificationsPage />} />
-                  <Route path="/profil" element={<ProfilPage />} />
-                  {/* Backoffice « à la Django admin » — voir
-                      src/components/backoffice/. Une seule paire de
-                      pages génériques (BackofficeListPage /
-                      BackofficeRecordPage) pilotée par le registre de
-                      modèles dessert TOUTES les tables ; AdminDashboardPage
-                      reste la page d'accueil du panneau (index).
-                      PAS de route ":modelKey/nouveau" séparée : "nouveau"
-                      littéral capté comme SEGMENT STATIQUE ne peuple
-                      jamais le paramètre ":id" (useParams().id serait
-                      undefined), cassant la détection isCreate côté
-                      BackofficeRecordPage. ":modelKey/:id" gère déjà
-                      correctement id="nouveau" comme n'importe quel
-                      autre id. */}
-                  <Route path="/admin" element={<BackofficeLayout />}>
-                    <Route index element={<AdminDashboardPage />} />
-                    <Route path=":modelKey" element={<BackofficeListPage />} />
-                    <Route path=":modelKey/:id" element={<BackofficeRecordPage />} />
-                  </Route>
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </main>
-              <SideContent />
-            </div>
-            <Footer />
+                    <Route path="/recherche" element={<RecherchePage />} />
+                    <Route path="/statistiques" element={<StatistiquesPage />} />
+                    <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route path="/profil" element={<ProfilPage />} />
+                    {/* Backoffice « à la Django admin » — voir
+                        src/components/backoffice/. Une seule paire de
+                        pages génériques (BackofficeListPage /
+                        BackofficeRecordPage) pilotée par le registre de
+                        modèles dessert TOUTES les tables ; AdminDashboardPage
+                        reste la page d'accueil du panneau (index).
+                        PAS de route ":modelKey/nouveau" séparée : "nouveau"
+                        littéral capté comme SEGMENT STATIQUE ne peuple
+                        jamais le paramètre ":id" (useParams().id serait
+                        undefined), cassant la détection isCreate côté
+                        BackofficeRecordPage. ":modelKey/:id" gère déjà
+                        correctement id="nouveau" comme n'importe quel
+                        autre id. */}
+                    <Route path="/admin" element={<BackofficeLayout />}>
+                      <Route index element={<AdminDashboardPage />} />
+                      <Route path=":modelKey" element={<BackofficeListPage />} />
+                      <Route path=":modelKey/:id" element={<BackofficeRecordPage />} />
+                    </Route>
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </main>
+                <SideContent />
+              </div>
+              <Footer />
+              </div>
+            </Header>
             <BottomNav />
           </div>
           <LoginModal />
