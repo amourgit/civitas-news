@@ -589,74 +589,12 @@ export function NotchNav({
               </div>
             )}
 
-            {/* Center Dropdown Page Trigger */}
-            <button
-              type="button"
-              aria-expanded={isDropdownOpen}
-              aria-haspopup="listbox"
-              aria-label="Toggle navigation menu"
-              onClick={handleToggleDropdown}
-              className="group flex h-8 sm:h-8.5 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-2.5 py-2.5 sm:p-2.5 text-xs sm:text-sm font-semibold text-white outline-none transition-colors sm:hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/50"
-            >
-              {activeItem?.icon && (
-                <activeItem.icon className="size-3.5 sm:size-4 shrink-0 text-white/60" />
-              )}
-
-              <span className="min-w-0 truncate leading-none">{activeItem?.label}</span>
-
-              {isBottom ? (
-                <ChevronUp
-                  className={cn(
-                    "size-3.5 shrink-0 text-white/60 transition-transform duration-200",
-                    isDropdownOpen && "rotate-180"
-                  )}
-                />
-              ) : (
-                <ChevronDown
-                  className={cn(
-                    "size-3.5 shrink-0 text-white/60 transition-transform duration-200",
-                    isDropdownOpen && "rotate-180"
-                  )}
-                />
-              )}
-            </button>
-
             {/* Right Action Slot */}
             {showRightContent && rightContent && (
-              <div className="flex w-fit shrink-0 items-center justify-end pr-1 text-white">
+              <div className="flex w-fit shrink-0 items-center justify-end pr-5 text-white">
                 {rightContent}
               </div>
             )}
-          </div>
-
-          {/* Expandable Dropdown Drawer */}
-          <div
-            role="listbox"
-            aria-label="Navigation options"
-            className={cn(
-              "grid transition-[grid-template-rows,opacity] duration-200 ease-out w-full",
-              isDropdownOpen
-                ? "grid-rows-[1fr] opacity-100"
-                : "grid-rows-[0fr] opacity-0 pointer-events-none"
-            )}
-          >
-            <div className="overflow-hidden">
-              <div
-                className={cn(
-                  "flex w-full flex-col gap-0.5 px-0.5",
-                  isBottom ? "pb-2 pt-1.5" : "pt-1.5 pb-2.5"
-                )}
-              >
-                {items.map((item) => (
-                  <NotchDropdownItem
-                    key={item.id}
-                    item={item}
-                    isSelected={item.id === activeId}
-                    onSelect={handleSelect}
-                  />
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 

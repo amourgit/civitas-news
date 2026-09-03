@@ -6,17 +6,13 @@ import {
   Search as SearchIcon,
   BarChart3,
   HelpCircle,
-  Sun,
-  Moon,
   LogIn,
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
-  Bell,
 } from 'lucide-react';
 import { NotchNav, type NotchItemData } from '../ui/notch-nav';
 import { useUiStore } from '../../store/ui.store';
-import { useNotificationsStore } from '../../store/notifications.store';
 import { useAuthStore } from '../../store/auth.store';
 import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
 import { usePermissions } from '../../lib/permissions/usePermissions';
@@ -43,8 +39,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { theme, toggleTheme, openLoginModal } = useUiStore();
-  const { unreadCount } = useNotificationsStore();
+  const { openLoginModal } = useUiStore();
   // La connexion est STRICTEMENT OPTIONNELLE : aucune route ni requête
   // n'exige de session (voir LoginModal.tsx). `useAuthStore` sert donc
   // uniquement ici à savoir QUOI afficher dans ce coin de la topbar
@@ -72,11 +67,11 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
       <img
         src="/images/ChatGPT_Image_10_juin_2026__02_11_18-removebg-preview.png"
         alt="Logo CIVITAS"
-        className="w-7 h-7 object-contain drop-shadow-sm"
+        className="w-7 h-7 sm:w-7 sm:h-7 object-contain drop-shadow-sm"
       />
-      <div className="hidden sm:flex items-center gap-1.5 font-display">
-        <span className="font-extrabold text-sm tracking-tight text-white">CIVITAS</span>
-        <span className="bg-white/20 text-white text-[10px] font-black px-1.5 py-0.5 rounded tracking-wider border border-white/20">
+      <div className="flex items-center gap-1.5 font-display">
+        <span className="font-extrabold text-xs sm:text-sm tracking-tight text-white">CIVITAS</span>
+        <span className="bg-white/20 text-white text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded tracking-wider border border-white/20">
           NEWS
         </span>
       </div>
@@ -94,31 +89,6 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
         <HelpCircle className="w-4 h-4" />
       </button>
 
-      {/* Theme switcher */}
-      <button
-        type="button"
-        onClick={toggleTheme}
-        className="flex p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
-        title="Changer de thème"
-      >
-        {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4" />}
-      </button>
-
-      {/* Ouverture/fermeture de la navigation backoffice (voir
-          Header.tsx historique / BackofficeSidebar.tsx) — visible
-          uniquement pour les admins. */}
-      {isAdmin && (
-        <button
-          type="button"
-          onClick={toggleBackofficeNav}
-          aria-label={isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice'}
-          title="Navigation du backoffice"
-          className="flex p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
-        >
-          {isBackofficeNavExpanded ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-        </button>
-      )}
-
       {/* Backoffice — icône visible uniquement pour les
           modérateurs/administrateurs (voir permissions.catalog.ts :
           BACKOFFICE_ACCESS/ADMIN_ACCESS), même niveau d'accès que
@@ -132,20 +102,6 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
           <ShieldCheck className="w-4 h-4" />
         </Link>
       )}
-
-      {/* Notifications Trigger */}
-      <Link
-        to="/notifications"
-        className="relative p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors flex items-center justify-center"
-        title="Notifications"
-      >
-        <Bell className="w-4 h-4" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border border-[#5B4DFF]">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </Link>
 
       {/* Connexion / Profil — la topbar est la source de vérité de
           l'état d'authentification, affichée sur toutes les pages
@@ -177,6 +133,21 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
           title="Se connecter"
         >
           <LogIn className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* Ouverture/fermeture de la navigation backoffice (voir
+          Header.tsx historique / BackofficeSidebar.tsx) — visible
+          uniquement pour les admins. */}
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={toggleBackofficeNav}
+          aria-label={isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice'}
+          title="Navigation du backoffice"
+          className="flex p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+        >
+          {isBackofficeNavExpanded ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
         </button>
       )}
     </div>
