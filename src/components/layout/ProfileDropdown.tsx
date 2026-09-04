@@ -61,7 +61,22 @@ const ROLE_LABELS: Record<string, string> = {
   administrateur: 'Administrateur',
 };
 
-const PANEL_WIDTH = 300;
+// Largeur du panneau par palier d'écran — alignée sur les points de
+// rupture RÉELS de la topbar (voir ui/notch-nav.tsx : `xl:hidden` =
+// îlot compact tablette/mobile jusqu'à 1279px, `xl:` = notch desktop
+// pleine largeur à partir de 1280px). Petite sur mobile, moyenne sur
+// tablette, identique à l'existant sur desktop.
+// - Sert à la fois de base pour le calcul JS de position (`right`, qui
+//   doit connaître une largeur approximative pour ne jamais pousser le
+//   panneau hors de l'écran à gauche) ET doit rester cohérente avec la
+//   largeur réellement appliquée en CSS (voir PANEL_WIDTH_CLASSES).
+function estimatePanelWidth(viewportWidth: number): number {
+  if (viewportWidth < 640) return Math.min(viewportWidth * 0.86, 272);
+  if (viewportWidth < 1280) return 320;
+  return 300;
+}
+
+const PANEL_WIDTH_CLASSES = 'w-[min(86vw,272px)] sm:w-80 xl:w-[300px] max-w-[calc(100vw-1rem)]';
 const VIEWPORT_MARGIN = 8;
 
 interface MenuRowProps {
@@ -77,7 +92,7 @@ const MenuRow: React.FC<MenuRowProps> = ({ icon, label, trailing, dev, danger, o
   <button
     type="button"
     onClick={onSelect}
-    className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-colors ${
+    className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-xl text-sm font-medium text-left transition-colors ${
       dev
         ? 'text-gray-400 dark:text-gray-500 opacity-60 hover:opacity-90 hover:bg-gray-50 dark:hover:bg-gray-800/50'
         : danger
@@ -86,7 +101,7 @@ const MenuRow: React.FC<MenuRowProps> = ({ icon, label, trailing, dev, danger, o
     }`}
   >
     <span className="flex items-center gap-2.5 min-w-0">
-      <span className="shrink-0 [&>svg]:w-[18px] [&>svg]:h-[18px]">{icon}</span>
+      <span className="shrink-0 [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-[18px] sm:[&>svg]:h-[18px]">{icon}</span>
       <span className="truncate">{label}</span>
       {dev && (
         <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500">
@@ -104,7 +119,7 @@ export const ProfileDropdown: React.FC = () => {
   const { theme, toggleTheme } = useUiStore();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState({ top: 0, right: 0 });
+  const [position, setPosition] = useState({ top: 0, right: 0, maxHeight: 480 });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -114,9 +129,22 @@ export const ProfileDropdown: React.FC = () => {
   const computePosition = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const maxRight = window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN;
+    const estimatedWidth = estimatePanelWidth(window.innerWidth);
+    const maxRight = window.innerWidth - estimatedWidth - VIEWPORT_MARGIN;
     const right = Math.max(VIEWPORT_MARGIN, Math.min(window.innerWidth - rect.right, maxRight));
-    setPosition({ top: rect.bottom + VIEWPORT_MARGIN, right });
+    const top = rect.bottom + VIEWPORT_MARGIN;
+    // Plafond de hauteur = place réellement disponible sous le
+    // déclencheur, jamais plus des 3/4 de l'écran : le menu (une
+    // douzaine de lignes) déborde largement des petits écrans
+    // (mobile/tablette en hauteur réduite, mode paysage...) — sans ce
+    // plafond + le défilement interne posé sur le contenu (voir plus
+    // bas), il se retrouvait coupé sous le bas de l'écran au lieu de
+    // s'afficher proprement sous le bouton.
+    const maxHeight = Math.min(
+      Math.max(200, window.innerHeight - top - VIEWPORT_MARGIN),
+      window.innerHeight * 0.75,
+    );
+    setPosition({ top, right, maxHeight });
   };
 
   const handleTriggerClick = () => {
@@ -206,73 +234,82 @@ export const ProfileDropdown: React.FC = () => {
             exit={{ opacity: 0, scale: 0.95, y: -8 }}
             transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
             style={{ position: 'fixed', top: position.top, right: position.right, transformOrigin: 'top right' }}
-            className="z-50 w-[300px] max-w-[calc(100vw-16px)] rounded-2xl bg-gray-50 dark:bg-black/90 p-0 shadow-[0_16px_48px_rgba(26,31,77,0.2)]"
+            className={`z-50 ${PANEL_WIDTH_CLASSES} rounded-2xl bg-gray-50 dark:bg-black/90 p-0 shadow-[0_16px_48px_rgba(26,31,77,0.2)] overflow-hidden`}
           >
-            <section className="bg-white dark:bg-gray-100/10 backdrop-blur-lg rounded-2xl p-1.5 shadow border border-gray-200 dark:border-gray-700/20">
-              {/* En-tête : identité réelle de l'utilisateur connecté */}
-              <div className="flex items-center gap-2.5 p-2">
-                <Avatar src={user.avatar ?? undefined} name={user.nomAffiche} size="md" />
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{user.nomAffiche}</h3>
-                  <p className="text-muted-foreground text-xs truncate">@{user.username}</p>
+            {/* Défilement interne plafonné à la place réellement
+                disponible sous le bouton (voir computePosition) : sur
+                un petit écran (mobile, tablette en paysage...), la
+                douzaine de lignes du menu ne rentre pas toujours sous
+                la topbar — plutôt que de déborder hors de l'écran, le
+                panneau reste entièrement visible et devient
+                défilable. */}
+            <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: position.maxHeight }}>
+              <section className="bg-white dark:bg-gray-100/10 backdrop-blur-lg rounded-2xl p-1.5 shadow border border-gray-200 dark:border-gray-700/20">
+                {/* En-tête : identité réelle de l'utilisateur connecté */}
+                <div className="flex items-center gap-2.5 p-2">
+                  <Avatar src={user.avatar ?? undefined} name={user.nomAffiche} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{user.nomAffiche}</h3>
+                    <p className="text-muted-foreground text-xs truncate">@{user.username}</p>
+                  </div>
+                  <Badge variant={isAdmin ? 'purple' : 'outline'} size="sm" className="shrink-0">
+                    {roleLabel}
+                  </Badge>
                 </div>
-                <Badge variant={isAdmin ? 'purple' : 'outline'} size="sm" className="shrink-0">
-                  {roleLabel}
-                </Badge>
-              </div>
 
-              <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
+                <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
 
-              {/* Aucun système de présence (en ligne/hors ligne) dans
-                  CIVITAS NEWS aujourd'hui — conservé comme option
-                  visible mais étiquetée (dev). */}
-              <MenuRow icon={<Smile />} label="Changer de statut" dev onSelect={notYetAvailable} />
+                {/* Aucun système de présence (en ligne/hors ligne) dans
+                    CIVITAS NEWS aujourd'hui — conservé comme option
+                    visible mais étiquetée (dev). */}
+                <MenuRow icon={<Smile />} label="Changer de statut" dev onSelect={notYetAvailable} />
 
-              <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
+                <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
 
-              <MenuRow icon={<User />} label="Votre profil" onSelect={() => goTo('/profil')} />
-              <MenuRow
-                icon={theme === 'dark' ? <Moon /> : <Sun />}
-                label="Apparence"
-                trailing={theme === 'dark' ? 'Sombre' : 'Clair'}
-                onSelect={() => {
-                  toggleTheme();
-                  setIsOpen(false);
-                }}
-              />
-              <MenuRow icon={<Bell />} label="Notifications" onSelect={() => goTo('/notifications')} />
-              <MenuRow icon={<Settings />} label="Paramètres" onSelect={() => goTo('/parametres')} />
+                <MenuRow icon={<User />} label="Votre profil" onSelect={() => goTo('/profil')} />
+                <MenuRow
+                  icon={theme === 'dark' ? <Moon /> : <Sun />}
+                  label="Apparence"
+                  trailing={theme === 'dark' ? 'Sombre' : 'Clair'}
+                  onSelect={() => {
+                    toggleTheme();
+                    setIsOpen(false);
+                  }}
+                />
+                <MenuRow icon={<Bell />} label="Notifications" onSelect={() => goTo('/notifications')} />
+                <MenuRow icon={<Settings />} label="Paramètres" onSelect={() => goTo('/parametres')} />
 
-              <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
+                <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
 
-              {/* Pas de compte vérifié ni de parrainage côté CIVITAS
-                  NEWS pour l'instant. */}
-              <MenuRow icon={<BadgeCheck />} label="Compte vérifié" dev onSelect={notYetAvailable} />
-              <MenuRow icon={<Gift />} label="Parrainage" dev onSelect={notYetAvailable} />
+                {/* Pas de compte vérifié ni de parrainage côté CIVITAS
+                    NEWS pour l'instant. */}
+                <MenuRow icon={<BadgeCheck />} label="Compte vérifié" dev onSelect={notYetAvailable} />
+                <MenuRow icon={<Gift />} label="Parrainage" dev onSelect={notYetAvailable} />
 
-              <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
+                <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
 
-              {/* Pas d'app installable, de journal des nouveautés ni de
-                  centre d'aide dédié pour l'instant (le bouton "Aide"
-                  de la topbar n'a lui non plus aucune action câblée). */}
-              <MenuRow icon={<Download />} label="Télécharger l'application" dev onSelect={notYetAvailable} />
-              <MenuRow icon={<Sparkles />} label="Quoi de neuf ?" dev onSelect={notYetAvailable} />
-              <MenuRow icon={<HelpCircle />} label="Aide & Support" dev onSelect={notYetAvailable} />
-            </section>
+                {/* Pas d'app installable, de journal des nouveautés ni de
+                    centre d'aide dédié pour l'instant (le bouton "Aide"
+                    de la topbar n'a lui non plus aucune action câblée). */}
+                <MenuRow icon={<Download />} label="Télécharger l'application" dev onSelect={notYetAvailable} />
+                <MenuRow icon={<Sparkles />} label="Quoi de neuf ?" dev onSelect={notYetAvailable} />
+                <MenuRow icon={<HelpCircle />} label="Aide & Support" dev onSelect={notYetAvailable} />
+              </section>
 
-            <section className="mt-1 p-1.5 rounded-2xl">
-              {/* Pas de multi-comptes dans CIVITAS NEWS aujourd'hui. */}
-              <MenuRow icon={<Users />} label="Changer de compte" dev onSelect={notYetAvailable} />
-              <MenuRow
-                icon={<LogOut />}
-                label="Se déconnecter"
-                danger
-                onSelect={() => {
-                  setIsOpen(false);
-                  setShowLogoutConfirm(true);
-                }}
-              />
-            </section>
+              <section className="mt-1 p-1.5 rounded-2xl">
+                {/* Pas de multi-comptes dans CIVITAS NEWS aujourd'hui. */}
+                <MenuRow icon={<Users />} label="Changer de compte" dev onSelect={notYetAvailable} />
+                <MenuRow
+                  icon={<LogOut />}
+                  label="Se déconnecter"
+                  danger
+                  onSelect={() => {
+                    setIsOpen(false);
+                    setShowLogoutConfirm(true);
+                  }}
+                />
+              </section>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
