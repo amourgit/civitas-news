@@ -8,6 +8,10 @@ export interface RichTextViewerProps {
   content: string;
   className?: string;
   compact?: boolean;
+  /** Échelle typographique élargie pour une lecture éditoriale (page
+   * article pleine largeur) -- ignoré si `compact` est vrai. N'affecte
+   * aucun appelant existant (par défaut à `false` partout ailleurs). */
+  articleSize?: boolean;
 }
 
 const CodeBlock: React.FC<{ children: React.ReactNode; className?: string }> = ({
@@ -67,6 +71,7 @@ export const RichTextViewer: React.FC<RichTextViewerProps> = ({
   content,
   className = '',
   compact = false,
+  articleSize = false,
 }) => {
   if (!content || !content.trim()) return null;
 
@@ -78,7 +83,7 @@ export const RichTextViewer: React.FC<RichTextViewerProps> = ({
           h1: ({ children }) => (
             <h1
               className={`${
-                compact ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'
+                compact ? 'text-base sm:text-lg' : articleSize ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'
               } font-black text-gray-900 dark:text-white font-display border-b border-gray-200 dark:border-gray-800 pb-2 mt-5 mb-3 leading-tight`}
             >
               {children}
@@ -87,7 +92,7 @@ export const RichTextViewer: React.FC<RichTextViewerProps> = ({
           h2: ({ children }) => (
             <h2
               className={`${
-                compact ? 'text-sm sm:text-base' : 'text-lg sm:text-xl'
+                compact ? 'text-sm sm:text-base' : articleSize ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'
               } font-extrabold text-gray-900 dark:text-white font-display border-b border-gray-100 dark:border-gray-800/80 pb-1.5 mt-5 mb-2.5 leading-snug`}
             >
               {children}
@@ -96,7 +101,7 @@ export const RichTextViewer: React.FC<RichTextViewerProps> = ({
           h3: ({ children }) => (
             <h3
               className={`${
-                compact ? 'text-xs sm:text-sm' : 'text-base sm:text-lg'
+                compact ? 'text-xs sm:text-sm' : articleSize ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'
               } font-bold text-[#5B4DFF] dark:text-sky-400 font-display mt-4 mb-2 leading-snug`}
             >
               {children}
@@ -110,7 +115,7 @@ export const RichTextViewer: React.FC<RichTextViewerProps> = ({
           p: ({ children }) => (
             <p
               className={`${
-                compact ? 'text-xs' : 'text-xs sm:text-sm'
+                compact ? 'text-xs' : articleSize ? 'text-base sm:text-lg leading-loose' : 'text-xs sm:text-sm'
               } leading-relaxed text-gray-700 dark:text-gray-300 mb-3 break-words`}
             >
               {children}
@@ -127,7 +132,7 @@ export const RichTextViewer: React.FC<RichTextViewerProps> = ({
           ul: ({ children }) => (
             <ul
               className={`list-disc pl-5 sm:pl-6 space-y-1.5 my-3 text-gray-700 dark:text-gray-300 ${
-                compact ? 'text-xs' : 'text-xs sm:text-sm'
+                compact ? 'text-xs' : articleSize ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'
               }`}
             >
               {children}
@@ -136,7 +141,7 @@ export const RichTextViewer: React.FC<RichTextViewerProps> = ({
           ol: ({ children }) => (
             <ol
               className={`list-decimal pl-5 sm:pl-6 space-y-1.5 my-3 text-gray-700 dark:text-gray-300 font-medium ${
-                compact ? 'text-xs' : 'text-xs sm:text-sm'
+                compact ? 'text-xs' : articleSize ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'
               }`}
             >
               {children}

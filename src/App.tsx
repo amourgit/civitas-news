@@ -12,6 +12,7 @@ import { ToastContainer } from './components/ui/Toast';
 
 import HomePage from './pages/HomePage';
 import NewsListPage from './pages/NewsListPage';
+import NewsDetailPage from './pages/NewsDetailPage';
 import SondageFocusPage from './pages/SondageFocusPage';
 import CreerNewsPage from './pages/CreerNewsPage';
 import CreerSondagePage from './pages/CreerSondagePage';
@@ -48,12 +49,16 @@ export function App() {
                     <Route path="/news/creer" element={<CreerNewsPage />} />
                     <Route path="/news/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
                     <Route path="/news/:newsId/sondages/creer" element={<CreerSondagePage />} />
+                    {/* Page détail dédiée (lien canonique/partageable) -- coexiste avec le
+                        BottomSheet ouvert au clic sur une card (voir useOpenNewsDetail) */}
+                    <Route path="/news/:slug" element={<NewsDetailPage />} />
 
                     {/* Redirects/Aliases for legacy /sujets URLs */}
                     <Route path="/sujets" element={<NewsListPage />} />
                     <Route path="/sujets/creer" element={<CreerNewsPage />} />
                     <Route path="/sujets/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
                     <Route path="/sujets/:sujetId/sondages/creer" element={<CreerSondagePage />} />
+                    <Route path="/sujets/:slug" element={<NewsDetailPage />} />
 
                     <Route path="/recherche" element={<RecherchePage />} />
                     <Route path="/reels" element={<ReelsDirectsPage />} />
