@@ -1,0 +1,109 @@
+/* ============================================================
+   src/components/ui/AnimatedTabBar.css
+   Habillage du composant AnimatedTabBar.tsx (copié tel quel — voir
+   ce fichier) : bordure SVG en vague (clip-path #menu-clip-path,
+   défini dans le .tsx) qui glisse pour se placer sous l'onglet actif,
+   dont l'icône flotte au-dessus du dock dans un badge circulaire de
+   couleur (--bgColorItem, fournie par chaque TabItem).
+   Design de référence : https://dribbble.com/shots/5619509-Animated-Tab-Bar
+
+   Aucune feuille de style n'accompagnait le composant fourni : ce
+   fichier reproduit fidèlement le MÉCANISME (mêmes proportions
+   relatives em, même logique de badge/vague/tirets de dessin
+   d'icône), simplement recalibré depuis l'échelle "démo desktop
+   surdimensionnée" vers un vrai dock mobile, avec la couleur de
+   marque CIVITAS.
+   ============================================================ */
+
+.menu {
+  --bgColorMenu: #1a1f4d;
+
+  margin: 0;
+  list-style: none;
+  display: flex;
+  width: 100%;
+  font-size: 9px; /* base d'échelle — tout le reste est en em, proportions du design d'origine conservées */
+  padding: 0 2.85em;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bgColorMenu);
+}
+
+.menu__item {
+  all: unset;
+  flex-grow: 1;
+  z-index: 100;
+  display: flex;
+  cursor: pointer;
+  position: relative;
+  border-radius: 50%;
+  align-items: center;
+  will-change: transform;
+  justify-content: center;
+  padding: 0.55em 0 0.85em;
+  transition: transform var(--timeOut, 0.7s);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu__item::before {
+  content: "";
+  z-index: -1;
+  width: 4.2em;
+  height: 4.2em;
+  border-radius: 50%;
+  position: absolute;
+  transform: scale(0);
+  transition: background-color 0.7s, transform 0.7s;
+}
+
+.menu__item.active {
+  transform: translate3d(0, -0.8em, 0);
+}
+
+.menu__item.active::before {
+  transform: scale(1);
+  background-color: var(--bgColorItem);
+}
+
+.menu__item .icon {
+  width: 2.6em;
+  height: 2.6em;
+  stroke: #fff;
+  fill: transparent;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 400;
+}
+
+.menu__item:not(.active) .icon {
+  stroke: rgba(255, 255, 255, 0.6);
+}
+
+.menu__item.active .icon {
+  animation: tabbar-icon-draw 0.9s reverse;
+}
+
+@keyframes tabbar-icon-draw {
+  100% {
+    stroke-dashoffset: 400;
+  }
+}
+
+.menu__border {
+  left: 0;
+  bottom: 99%;
+  width: 10.9em;
+  height: 2.4em;
+  position: absolute;
+  clip-path: url(#menu-clip-path);
+  will-change: transform;
+  background-color: var(--bgColorMenu);
+  transition: transform var(--timeOut, 0.7s);
+}
+
+.svg-container {
+  width: 0;
+  height: 0;
+  position: absolute;
+}

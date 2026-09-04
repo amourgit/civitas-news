@@ -15,13 +15,15 @@ import { Skeleton } from '../components/ui/Skeleton';
 export default function NewsListPage() {
   const [search, setSearch] = useState('');
   const [selectedCategorieId, setSelectedCategorieId] = useState('all');
-  const [selectedType, setSelectedType] = useState<NewsType | 'all'>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedType, setSelectedType] = useState<NewsType | 'all'>(
+    () => (searchParams.get('type') as NewsType | null) ?? 'all',
+  );
   const [selectedProvince, setSelectedProvince] = useState('all');
   const [selectedOrganisationId, setSelectedOrganisationId] = useState('all');
   const [selectedEtablissementId, setSelectedEtablissementId] = useState('all');
   const [isFiltresOpen, setIsFiltresOpen] = useState(false);
   const filtresRef = useRef<HTMLDivElement>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedNewsSlug, setSelectedNewsSlug] = useState<string | null>(() => searchParams.get('news'));
 
   // Reste synchronisé si le paramètre change par un autre biais (retour

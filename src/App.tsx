@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
-import { BottomNav } from './components/layout/BottomNav';
+import { MobileDock } from './components/layout/MobileDock';
 import { SideContent } from './components/layout/SideContent';
 import { SideContentProvider } from './context/SideContentContext';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
@@ -16,6 +16,7 @@ import SondageFocusPage from './pages/SondageFocusPage';
 import CreerNewsPage from './pages/CreerNewsPage';
 import CreerSondagePage from './pages/CreerSondagePage';
 import RecherchePage from './pages/RecherchePage';
+import ReelsDirectsPage from './pages/ReelsDirectsPage';
 import StatistiquesPage from './pages/StatistiquesPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ProfilPage from './pages/ProfilPage';
@@ -55,6 +56,7 @@ export function App() {
                     <Route path="/sujets/:sujetId/sondages/creer" element={<CreerSondagePage />} />
 
                     <Route path="/recherche" element={<RecherchePage />} />
+                    <Route path="/reels" element={<ReelsDirectsPage />} />
                     <Route path="/statistiques" element={<StatistiquesPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/profil" element={<ProfilPage />} />
@@ -85,7 +87,7 @@ export function App() {
               <Footer />
               </div>
             </Header>
-            <BottomNav />
+            <MobileDock />
           </div>
           <LoginModal />
           <ToastContainer />
