@@ -86,7 +86,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
           handlePrimaryAction();
         }
       }}
-      className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-gray-900 cursor-pointer shadow-md hover:shadow-2xl transition-shadow duration-300 ${className}`}
+      className={`group/card relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-gray-900 cursor-pointer shadow-md hover:shadow-2xl transition-shadow duration-300 ${className}`}
     >
       {/* Image/vidéo de couverture -- plein cadre */}
       <div className="absolute inset-0">
@@ -97,7 +97,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
             <img
               src={heroMedia}
               alt={newsItem.titre}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
             />
           )
         ) : (
