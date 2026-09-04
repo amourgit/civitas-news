@@ -6,12 +6,13 @@
 // ============================================================
 
 import React, { useMemo, useState } from 'react';
-import { Save, X, Plus } from 'lucide-react';
+import { Save, Plus } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { DatePicker } from '../ui/DatePicker';
 import { FkSelectField } from './fields/FkSelectField';
+import { TagsField } from './fields/TagsField';
 import type { FieldDef, ModelDef } from './registry/types';
-import { extractFkId, toDatetimeLocalValue, toDateValue } from './utils';
+import { buildInitialValues } from './utils';
 import { toast } from '../../hooks/useToast';
 
 export interface BackofficeRecordFormProps<TRecord extends Record<string, unknown>> {
@@ -23,79 +24,9 @@ export interface BackofficeRecordFormProps<TRecord extends Record<string, unknow
   canManage: boolean;
 }
 
-/** Construit l'état initial du formulaire à partir de l'enregistrement de LECTURE. */
-function buildInitialValues<TRecord extends Record<string, unknown>>(
-  fields: FieldDef<TRecord>[],
-  record: TRecord | undefined,
-): Record<string, unknown> {
-  const values: Record<string, unknown> = {};
-  for (const field of fields) {
-    const raw = record ? (record as Record<string, unknown>)[field.name] : undefined;
-    switch (field.type) {
-      case 'fk':
-        values[field.name] = extractFkId(raw);
-        break;
-      case 'datetime':
-        values[field.name] = toDatetimeLocalValue(raw);
-        break;
-      case 'date':
-        values[field.name] = toDateValue(raw);
-        break;
-      case 'tags':
-        values[field.name] = Array.isArray(raw) ? [...raw] : [];
-        break;
-      case 'boolean':
-        values[field.name] = Boolean(raw);
-        break;
-      default:
-        values[field.name] = raw ?? '';
-    }
-  }
-  return values;
-}
-
 const inputClass =
   'w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-[#242A5C] border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#5B4DFF] transition-all disabled:opacity-60 disabled:cursor-not-allowed';
 const labelClass = 'text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5';
-
-function TagsField({
-  id, value, onChange, disabled,
-}: { id?: string; value: string[]; onChange: (v: string[]) => void; disabled?: boolean }) {
-  const [draft, setDraft] = useState('');
-  const commit = () => {
-    const clean = draft.trim();
-    if (clean && !value.includes(clean)) onChange([...value, clean]);
-    setDraft('');
-  };
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#242A5C] border border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-[#5B4DFF]">
-      {value.map((tag) => (
-        <span key={tag} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#5B4DFF]/10 text-[#5B4DFF] text-xs font-semibold">
-          {tag}
-          {!disabled && (
-            <X className="w-3 h-3 cursor-pointer" onClick={() => onChange(value.filter((t) => t !== tag))} />
-          )}
-        </span>
-      ))}
-      {!disabled && (
-        <input
-          id={id}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ',') {
-              e.preventDefault();
-              commit();
-            }
-          }}
-          onBlur={commit}
-          placeholder={value.length === 0 ? 'Ajouter un tag, Entrée pour valider…' : 'Ajouter…'}
-          className="flex-1 min-w-[8rem] bg-transparent text-sm outline-none text-gray-900 dark:text-white placeholder:text-gray-400 py-0.5"
-        />
-      )}
-    </div>
-  );
-}
 
 function FieldRenderer<TRecord extends Record<string, unknown>>({
   field, value, onChange, disabled, record,

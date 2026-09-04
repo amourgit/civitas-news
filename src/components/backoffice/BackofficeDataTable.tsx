@@ -6,15 +6,23 @@
 // convention que features/administration/components/AdminDataTable.tsx
 // (le reste de l'app n'utilise pas de pagination serveur pour ces vues
 // d'administration).
+//
+// Édition en ligne : chaque cellule éditable (voir
+// `BackofficeEditableCell`) se modifie directement dans le tableau —
+// select/fk en menu déroulant chargeant les vraies données métier,
+// booléen en interrupteur, texte/nombre/date en saisie in-situ,
+// texte long/tags en petit panneau Enregistrer/Annuler. La navigation
+// vers la page de détail (bouton crayon) reste disponible pour les
+// champs non éditables en ligne (image, contenu enrichi complet,
+// onglets `DetailExtras`...).
 // ============================================================
 
 import React, { useMemo, useState } from 'react';
 import { Search, Plus, ChevronLeft, ChevronRight, Pencil, Trash2, Inbox } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
-import type { FieldDef, ModelDef } from './registry/types';
-import { formatListDate } from './utils';
+import { BackofficeEditableCell } from './BackofficeEditableCell';
+import type { ModelDef } from './registry/types';
 
 const PAGE_SIZE = 12;
 
@@ -26,57 +34,20 @@ export interface BackofficeDataTableProps<TRecord extends Record<string, unknown
   onCreate: () => void;
   onOpen: (record: TRecord) => void;
   onDelete: (record: TRecord) => void;
-}
-
-function renderCell<TRecord extends Record<string, unknown>>(field: FieldDef<TRecord>, record: TRecord): React.ReactNode {
-  const raw = (record as Record<string, unknown>)[field.name];
-
-  if (field.renderList) return field.renderList(raw, record);
-
-  switch (field.type) {
-    case 'boolean':
-      return raw ? (
-        <Badge variant="success" size="sm">Oui</Badge>
-      ) : (
-        <Badge variant="default" size="sm">Non</Badge>
-      );
-    case 'fk': {
-      if (raw && typeof raw === 'object') {
-        const nested = raw as Record<string, unknown>;
-        const label = (nested.nom ?? nested.titre ?? nested.nomAffiche ?? nested.id) as string | undefined;
-        return label ?? '—';
-      }
-      return raw ? String(raw) : '—';
-    }
-    case 'date':
-    case 'datetime':
-      return formatListDate(raw);
-    case 'image':
-      return raw && typeof raw === 'string'
-        ? <img src={raw} alt="" className="w-9 h-9 rounded-lg object-cover" />
-        : '—';
-    case 'tags':
-      return Array.isArray(raw) && raw.length > 0 ? `${raw.length} tag${raw.length > 1 ? 's' : ''}` : '—';
-    case 'select': {
-      const option = field.options?.find((o) => o.value === raw);
-      return option?.label ?? (raw ? String(raw) : '—');
-    }
-    case 'json-readonly':
-      return raw !== undefined && raw !== null ? String(raw) : '—';
-    default:
-      if (raw === null || raw === undefined || raw === '') return '—';
-      if (typeof raw === 'string' && raw.length > 60) return `${raw.slice(0, 60)}…`;
-      return String(raw);
-  }
+  /** Appelé quand une cellule est modifiée en ligne avec succès, avec
+   * l'enregistrement renvoyé par l'API — le parent doit le fusionner
+   * dans sa liste locale (voir BackofficeListPage). */
+  onRecordUpdated: (record: TRecord) => void;
 }
 
 export function BackofficeDataTable<TRecord extends Record<string, unknown>>({
-  model, records, isLoading, canManage, onCreate, onOpen, onDelete,
+  model, records, isLoading, canManage, onCreate, onOpen, onDelete, onRecordUpdated,
 }: BackofficeDataTableProps<TRecord>) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
   const columns = useMemo(() => model.fields.filter((f) => !f.hiddenInList), [model.fields]);
+  const canEditInline = canManage && model.capabilities.edit && !!model.data.update;
 
   const filtered = useMemo(() => {
     if (!search.trim()) return records;
@@ -116,6 +87,12 @@ export function BackofficeDataTable<TRecord extends Record<string, unknown>>({
         )}
       </div>
 
+      {canEditInline && pageItems.length > 0 && (
+        <p className="text-xs text-gray-400 dark:text-gray-500 -mt-1.5">
+          Cliquez sur une cellule pour la modifier directement.
+        </p>
+      )}
+
       <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -152,26 +129,32 @@ export function BackofficeDataTable<TRecord extends Record<string, unknown>>({
               {!isLoading && pageItems.map((record) => (
                 <tr
                   key={String((record as Record<string, unknown>).id)}
-                  onClick={() => onOpen(record)}
-                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
                 >
                   {columns.map((col) => (
-                    <td key={col.name} className="px-4 py-3 text-gray-700 dark:text-gray-200 max-w-xs truncate">
-                      {renderCell(col, record)}
+                    <td key={col.name} className="px-4 py-3 text-gray-700 dark:text-gray-200 max-w-xs align-middle">
+                      <BackofficeEditableCell
+                        model={model}
+                        field={col}
+                        record={record}
+                        canEdit={canEditInline}
+                        onSaved={onRecordUpdated}
+                      />
                     </td>
                   ))}
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        onClick={(e) => { e.stopPropagation(); onOpen(record); }}
+                        onClick={() => onOpen(record)}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-[#5B4DFF] hover:bg-[#5B4DFF]/10 transition-colors"
                         aria-label="Ouvrir"
+                        title="Ouvrir la fiche complète"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       {canManage && model.capabilities.delete && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); onDelete(record); }}
+                          onClick={() => onDelete(record)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                           aria-label="Supprimer"
                         >

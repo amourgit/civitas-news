@@ -58,6 +58,13 @@ export default function BackofficeListPage() {
     }
   };
 
+  /** Fusionne l'enregistrement renvoyé par l'API après une édition en
+   * ligne (voir BackofficeDataTable/BackofficeEditableCell) dans la
+   * liste locale, sans recharger toute la table. */
+  const handleRecordUpdated = (updated: Record<string, unknown>) => {
+    setRecords((prev) => prev.map((r) => (String(r.id) === String(updated.id) ? updated : r)));
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -79,6 +86,7 @@ export default function BackofficeListPage() {
         onCreate={() => navigate(`/admin/${model.key}/nouveau`)}
         onOpen={(record) => navigate(`/admin/${model.key}/${(record as Record<string, unknown>).id}`)}
         onDelete={(record) => setPendingDelete(record as Record<string, unknown>)}
+        onRecordUpdated={handleRecordUpdated}
       />
 
       <ConfirmDialog
