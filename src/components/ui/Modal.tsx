@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -40,7 +41,22 @@ export const Modal: React.FC<ModalProps> = ({
     '4xl': 'max-w-4xl',
   };
 
-  return (
+  // Portail vers document.body -- indispensable pour que `fixed inset-0`
+  // se positionne réellement par rapport au VIEWPORT, et pas par
+  // rapport d'un ancêtre transformé. Ce composant est notamment ouvert
+  // depuis des boutons logés dans la topbar (voir ConfirmDialog, utilisé
+  // par ProfileDropdown pour la confirmation de déconnexion) : en
+  // dessous de `xl` (mobile ET la plupart des tablettes), la topbar
+  // regroupe logo/menu/actions dans un unique îlot compact centré via
+  // `left-1/2 -translate-x-1/2` (voir notch-nav.tsx) -- et tout élément
+  // ayant un `transform` CSS devient, par spécification, le "containing
+  // block" de ses descendants en `position: fixed`. Sans portail, ce
+  // Modal (fixed inset-0) se retrouvait donc positionné par rapport à
+  // ce petit îlot au lieu du plein écran : visuellement écrasé/caché
+  // dans la topbar plutôt que centré à l'écran. Même correctif, pour la
+  // même raison, que celui déjà appliqué au panneau de ProfileDropdown
+  // (voir le commentaire en tête de ce fichier).
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -91,6 +107,7 @@ export const Modal: React.FC<ModalProps> = ({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 };
