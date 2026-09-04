@@ -12,8 +12,10 @@ export interface SidebarWidgetCardProps {
 
 /**
  * Enveloppe visuelle commune à tous les widgets de la sidebar de la
- * page détail -- carte blanche/navy, coins arrondis, ombre légère.
- * Simple habillage présentationnel, aucune logique.
+ * page détail -- bordure quasi invisible à première vue (pas de trait
+ * visible, juste un très léger ombrage) et coins bien moins arrondis
+ * qu'avant : on garde la séparation des sections sans l'effet "carte
+ * de dashboard encadrée".
  */
 export const SidebarWidgetCard: React.FC<SidebarWidgetCardProps> = ({
   title,
@@ -24,7 +26,7 @@ export const SidebarWidgetCard: React.FC<SidebarWidgetCardProps> = ({
 }) => {
   return (
     <section
-      className={`rounded-2xl bg-white dark:bg-[#161B40] border border-gray-100 dark:border-gray-800/80 shadow-sm overflow-hidden ${className}`}
+      className={`rounded-md bg-white dark:bg-[#161B40] shadow-[0_1px_3px_rgba(15,23,42,0.05)] dark:shadow-none overflow-hidden ${className}`}
     >
       {title && (
         <div className="flex items-center gap-2 px-5 pt-4 pb-3">

@@ -16,7 +16,7 @@ export interface ArticleMiniCardProps {
 export const ArticleMiniCard: React.FC<ArticleMiniCardProps> = ({ news }) => {
   return (
     <Link to={`/news/${news.slug}`} className="flex items-start gap-3 group">
-      <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800">
+      <div className="w-16 h-16 rounded-md overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800">
         <img
           src={news.image}
           alt={news.titre}

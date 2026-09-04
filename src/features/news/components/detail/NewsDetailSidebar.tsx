@@ -23,6 +23,14 @@ const RECENT_LIMIT = 4;
  * SideContent reste désactivé partout ailleurs, voir
  * components/layout/SideContent.tsx). Composé de blocs modulaires
  * pouvant être réordonnés/retirés indépendamment.
+ *
+ * Scroll indépendant : `sticky` + `max-h-[calc(100vh-7rem)]` +
+ * `overflow-y-auto` sur le même élément -- une fois épinglée sous la
+ * nav (top-24), la sidebar est bornée à la hauteur de viewport
+ * restante ; si son contenu dépasse cette hauteur, elle défile sur
+ * elle-même (scrollbar propre), sans jamais faire défiler la page.
+ * `overscroll-contain` empêche le "scroll chaining" vers la page une
+ * fois le haut/bas de ce scroll interne atteint.
  */
 export const NewsDetailSidebar: React.FC<NewsDetailSidebarProps> = ({
   news,
@@ -46,7 +54,9 @@ export const NewsDetailSidebar: React.FC<NewsDetailSidebarProps> = ({
   }, [allNews, news.id, news.categorie?.id]);
 
   return (
-    <aside className="w-full lg:sticky lg:top-24 space-y-5">
+    <aside
+      className="w-full lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:pb-2 space-y-5"
+    >
       <ShareWidget news={news} onUpdate={onUpdate} />
       <InfoStatsWidget news={news} />
       <CategoryTagsWidget news={news} />
