@@ -6,6 +6,8 @@ import { TikTokHeartButton } from '../../../components/ui/TikTokHeartButton';
 import { AvatarGroup } from '../../../components/ui/AvatarGroup';
 import { useOpenNewsDetail } from '../hooks/useOpenNewsDetail';
 import { NewsCardCommentsDrawer } from './NewsCardCommentsDrawer';
+import { NewsCardCornerMenu } from './NewsCardCornerMenu';
+import { NewsCardAuthorBadge } from './NewsCardAuthorBadge';
 import { AlertCircle, ChevronUp } from 'lucide-react';
 
 export interface NewsCardProps {
@@ -104,6 +106,20 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         {/* Assombrit le tiers inférieur pour la lisibilité du texte, même
             avant le survol/le panneau verre dépoli. */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+      </div>
+
+      {/* Coin haut-gauche : auteur + tenant (organisation) -- verre
+          dépoli, estompé au repos, plein au survol de la card. */}
+      <NewsCardAuthorBadge news={newsItem} />
+
+      {/* Coin haut-droit : menu contextuel flottant -- verre dépoli,
+          petite taille (40px fermé) pour ne pas gêner le média. */}
+      <div
+        className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-30"
+        onClick={(e) => e.stopPropagation()}
+        data-no-card-click
+      >
+        <NewsCardCornerMenu />
       </div>
 
       {/* Panneau verre dépoli : titre + description, ancré en bas */}
