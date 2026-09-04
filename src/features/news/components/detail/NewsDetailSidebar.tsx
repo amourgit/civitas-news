@@ -24,13 +24,24 @@ const RECENT_LIMIT = 4;
  * components/layout/SideContent.tsx). Composé de blocs modulaires
  * pouvant être réordonnés/retirés indépendamment.
  *
- * Scroll indépendant : `sticky` + `max-h-[calc(100vh-7rem)]` +
- * `overflow-y-auto` sur le même élément -- une fois épinglée sous la
- * nav (top-24), la sidebar est bornée à la hauteur de viewport
- * restante ; si son contenu dépasse cette hauteur, elle défile sur
- * elle-même (scrollbar propre), sans jamais faire défiler la page.
- * `overscroll-contain` empêche le "scroll chaining" vers la page une
- * fois le haut/bas de ce scroll interne atteint.
+ * Scroll indépendant, SANS `position: sticky` : la sidebar a sa propre
+ * hauteur bornée (`h-[calc(100vh-7rem)]`, identique à celle du `<main>`
+ * dans NewsDetailPage) et son propre `overflow-y-auto` -- si son
+ * contenu dépasse cette hauteur, elle défile sur elle-même, sans jamais
+ * faire défiler la page ni être affectée par le scroll de l'article.
+ * `sticky` a été volontairement écarté : un élément sticky reste
+ * couplé, par construction, à la hauteur de son bloc englobant (ici la
+ * colonne `<main>`, presque toujours plus haute) et "décroche"
+ * brutalement de son point d'ancrage dès que ce bloc se termine -- ce
+ * qui produisait un à-coup visible juste avant la fin du défilement de
+ * l'article. Deux panneaux à hauteur fixe et scroll propre, plutôt
+ * qu'un panneau sticky dépendant de la hauteur de l'autre, garantit une
+ * indépendance totale entre les deux défilements, dans les deux sens.
+ * `overscroll-contain` empêche en plus le "scroll chaining" vers la
+ * page une fois le haut/bas de ce scroll interne atteint. La
+ * scrollbar de ce panneau est masquée via `.no-scrollbar` (voir
+ * src/index.css) : le contenu reste scrollable, seul son rendu visuel
+ * disparaît.
  */
 export const NewsDetailSidebar: React.FC<NewsDetailSidebarProps> = ({
   news,
@@ -55,7 +66,7 @@ export const NewsDetailSidebar: React.FC<NewsDetailSidebarProps> = ({
 
   return (
     <aside
-      className="w-full lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:pb-2 space-y-5"
+      className="w-full lg:h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:pb-2 space-y-5 no-scrollbar"
     >
       <ShareWidget news={news} onUpdate={onUpdate} />
       <InfoStatsWidget news={news} />

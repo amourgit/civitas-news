@@ -20,6 +20,29 @@ import NotFoundPage from './NotFoundPage';
  * logique métier (hooks/services), disposition entièrement nouvelle :
  * colonne principale (article) + sidebar séparée (widgets, articles
  * similaires/récents) -- voir NewsDetailSidebar.
+ *
+ * Étanchéité des scrolls (desktop, lg+) : `<main>` et `<NewsDetailSidebar>`
+ * sont DEUX panneaux de défilement indépendants, chacun avec sa propre
+ * hauteur bornée (`h-[calc(100vh-7rem)]`) et son propre `overflow-y-auto`
+ * -- exactement le même calcul de hauteur des deux côtés, pour qu'ils
+ * démarrent et se terminent au même niveau visuel. Aucun des deux
+ * n'utilise `position: sticky` : un sidebar "sticky" reste par nature
+ * couplé à la position de scroll de son bloc englobant (ici la hauteur
+ * de `<main>`, presque toujours plus grande) et "décroche" brutalement
+ * dès que ce bloc se termine -- c'est précisément ce comportement qui
+ * donnait l'impression que la colonne de widgets "réagissait" en fin de
+ * défilement de l'article. En rendant les deux colonnes autonomes (deux
+ * `overflow-y-auto` distincts, sans lien de parenté de scroll), faire
+ * défiler l'une n'a plus aucun effet sur l'autre, dans un sens comme
+ * dans l'autre. `overscroll-contain` empêche en plus le scroll de
+ * déborder vers le scroll global de la page une fois en haut/bas de
+ * chacun. La barre de défilement de ces deux panneaux est masquée via
+ * la classe utilitaire `.no-scrollbar` (voir src/index.css) : le
+ * contenu reste scrollable (molette, trackpad, tactile, clavier), seul
+ * le rendu visuel de la scrollbar disparaît. En dessous de `lg`, aucune
+ * de ces classes ne s'applique : la mise en page repasse en une seule
+ * colonne empilée, avec le défilement naturel de la page (comportement
+ * mobile inchangé).
  */
 export default function NewsDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -49,7 +72,7 @@ export default function NewsDetailPage() {
   return (
     <div className="w-full pb-16 max-w-6xl mx-auto px-1 sm:px-2">
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-8 lg:gap-10 items-start">
-        <main className="min-w-0 space-y-7 sm:space-y-8">
+        <main className="min-w-0 space-y-7 sm:space-y-8 lg:h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1 no-scrollbar">
           <NewsDetailHero news={news} onUpdate={setNews} onScrollToComments={scrollToComments} />
 
           <NewsDetailCoverImage news={news} />
@@ -101,7 +124,7 @@ function NewsDetailPageSkeleton() {
   return (
     <div className="w-full pb-16 max-w-6xl mx-auto px-1 sm:px-2 animate-pulse">
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-8 lg:gap-10 items-start">
-        <div className="min-w-0 space-y-6">
+        <div className="min-w-0 space-y-6 lg:h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1 no-scrollbar">
           <Skeleton variant="text" height={14} width="40%" />
           <Skeleton variant="text" height={38} width="85%" />
           <Skeleton variant="text" height={38} width="55%" />
@@ -114,7 +137,7 @@ function NewsDetailPageSkeleton() {
           <Skeleton variant="text" height={14} />
           <Skeleton variant="text" height={14} width="80%" />
         </div>
-        <div className="space-y-5">
+        <div className="space-y-5 lg:h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1 no-scrollbar">
           <Skeleton variant="card" height={140} />
           <Skeleton variant="card" height={180} />
           <Skeleton variant="card" height={220} />

@@ -81,6 +81,24 @@
   background: rgba(91, 77, 255, 0.6);
 }
 
+/* Masque la scrollbar d'un élément tout en le laissant scrollable
+   (molette, trackpad, tactile, clavier -- seul le rendu visuel de la
+   scrollbar disparaît, `overflow`/`overflow-y` restent inchangés sur
+   l'élément où cette classe est posée). Utilisée par ex. sur les
+   rangées de filtres/tabs en scroll horizontal, et sur les panneaux à
+   scroll interne indépendant de la page détail news (voir
+   NewsDetailPage.tsx / NewsDetailSidebar.tsx). */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ / anciens Edge */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chrome, Safari, Edge (Chromium), Opera */
+}
+
 @keyframes pulse-subtle {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.85; transform: scale(1.02); }
