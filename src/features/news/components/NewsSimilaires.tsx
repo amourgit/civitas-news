@@ -30,7 +30,7 @@ export const NewsSimilaires: React.FC<NewsSimilairesProps> = ({
       </h3>
       <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
         {similar.map((s) => (
-          <NewsCard key={s.id} news={s} onOpenDetail={onOpenDetail} className="h-48 sm:h-56" />
+          <NewsCard key={s.id} news={s} onOpenDetail={onOpenDetail} onCardClick="sheet" className="h-48 sm:h-56" />
         ))}
       </div>
     </div>

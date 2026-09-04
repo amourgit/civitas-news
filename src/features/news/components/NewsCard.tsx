@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { News } from '../../../types/global.types';
 import { TikTokHeartButton } from '../../../components/ui/TikTokHeartButton';
 import { AvatarGroup } from '../../../components/ui/AvatarGroup';
@@ -12,6 +13,16 @@ export interface NewsCardProps {
   sujet?: News;
   onUpdate?: (updated: News) => void;
   onOpenDetail?: (slug: string) => void;
+  /**
+   * Comportement du CLIC DIRECT sur la card (hors bouton "détails", qui
+   * ouvre TOUJOURS le BottomSheet, inchangé) :
+   * - 'navigate' (défaut) : accède à la page détail dédiée (/news/:slug).
+   * - 'sheet' : ouvre/actualise le BottomSheet, comme avant -- réservé
+   *   aux cards affichées À L'INTÉRIEUR d'un BottomSheet déjà ouvert
+   *   (voir NewsSimilaires), pour ne pas perturber la navigation
+   *   "articles similaires" existante au sein du tiroir.
+   */
+  onCardClick?: 'navigate' | 'sheet';
   /** Classes de span de grille (bento) fournies par NewsGrid.tsx --
    * NewsCard ne connaît pas sa propre position dans la grille. */
   className?: string;
@@ -24,22 +35,42 @@ export interface NewsCardProps {
  * calqué sur le modèle BentoCard fourni (eyebrow/titre/description sur
  * un graphic plein cadre). Aucune bordure visible.
  */
-export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpenDetail, className = '' }) => {
+export const NewsCard: React.FC<NewsCardProps> = ({
+  news,
+  sujet,
+  onUpdate,
+  onOpenDetail,
+  onCardClick = 'navigate',
+  className = '',
+}) => {
   const newsItem = news || sujet!;
+  const navigate = useNavigate();
   const openNewsDetailGlobal = useOpenNewsDetail();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
   const heroMedia = newsItem.image || newsItem.galerie?.[0]?.url || null;
   const heroIsVideo = !!heroMedia && (heroMedia.endsWith('.mp4') || heroMedia.endsWith('.webm') || heroMedia.includes('video'));
 
-  const handleOpenDetail = () => (onOpenDetail || openNewsDetailGlobal)(newsItem.slug);
+  /** Bouton "détails" (AlertCircle) -- ouvre TOUJOURS le BottomSheet, quel
+   * que soit le contexte : comportement explicitement à ne pas toucher. */
+  const handleOpenSheet = () => (onOpenDetail || openNewsDetailGlobal)(newsItem.slug);
+
+  /** Clic direct sur la card (ou touche Entrée/Espace) -- va vers la page
+   * détail dédiée par défaut, sauf override explicite ('sheet'). */
+  const handlePrimaryAction = () => {
+    if (onCardClick === 'sheet') {
+      handleOpenSheet();
+    } else {
+      navigate(`/news/${newsItem.slug}`);
+    }
+  };
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Les éléments avec leur propre logique de clic (réaction, bouton
     // détails) sont marqués data-no-card-click ou sont des <button> --
-    // on ne déclenche l'ouverture du détail que pour le reste de la card.
+    // on ne déclenche l'action principale que pour le reste de la card.
     if ((e.target as HTMLElement).closest('[data-no-card-click]')) return;
-    handleOpenDetail();
+    handlePrimaryAction();
   };
 
   return (
@@ -50,7 +81,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          handleOpenDetail();
+          handlePrimaryAction();
         }
       }}
       className={`group relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-gray-900 cursor-pointer shadow-md hover:shadow-2xl transition-shadow duration-300 ${className}`}
@@ -123,9 +154,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({ news, sujet, onUpdate, onOpe
             )}
           </div>
 
-          {/* DROITE : bouton détail BottomSheet */}
+          {/* DROITE : bouton détail BottomSheet -- toujours le sheet, jamais la navigation */}
           <button
-            onClick={(e) => { e.stopPropagation(); handleOpenDetail(); }}
+            onClick={(e) => { e.stopPropagation(); handleOpenSheet(); }}
             className="flex items-center justify-center w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors shrink-0"
             aria-label="Voir les détails"
             data-no-card-click
