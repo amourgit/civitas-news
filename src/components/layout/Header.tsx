@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { NotchNav, type NotchItemData } from '../ui/notch-nav';
 import { ProfileDropdown } from './ProfileDropdown';
+import { BackofficeSidebar } from '../backoffice/BackofficeSidebar';
 import { useUiStore } from '../../store/ui.store';
 import { useAuthStore } from '../../store/auth.store';
 import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
@@ -51,7 +52,11 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   // BackofficeSidebar est un panneau plein-écran unique (voir
   // BackofficeSidebar.tsx) : un seul état isMobileOpen piloté quel que
   // soit le viewport.
-  const { isMobileOpen: isBackofficeNavExpanded, toggleMobile: toggleBackofficeNav } = useBackofficeSidebarStore();
+  const {
+    isMobileOpen: isBackofficeNavExpanded,
+    toggleMobile: toggleBackofficeNav,
+    closeMobile: closeBackofficeNav,
+  } = useBackofficeSidebarStore();
 
   const activeItem = [...NAV_ITEMS]
     .reverse()
@@ -125,8 +130,8 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
         </button>
       )}
 
-      {/* Ouverture/fermeture de la navigation backoffice (voir
-          Header.tsx historique / BackofficeSidebar.tsx) — visible
+      {/* Ouverture/fermeture du panneau BackofficeSidebar monté
+          ci-dessous (visible sur toutes les pages) — visible
           uniquement pour les admins. */}
       {isAdmin && (
         <button
@@ -143,14 +148,24 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   );
 
   return (
-    <NotchNav
-      items={NAV_ITEMS}
-      activeId={activeId}
-      onActiveChange={handleActiveChange}
-      logo={logo}
-      rightContent={rightContent}
-    >
-      {children}
-    </NotchNav>
+    <>
+      <NotchNav
+        items={NAV_ITEMS}
+        activeId={activeId}
+        onActiveChange={handleActiveChange}
+        logo={logo}
+        rightContent={rightContent}
+      >
+        {children}
+      </NotchNav>
+
+      {/* Panneau de navigation backoffice — monté ici une seule fois,
+          donc disponible sur TOUTES les pages (pas seulement /admin/*),
+          et rendu directement dans document.body via un portail (voir
+          BackofficeSidebar.tsx), donc sa position dans cet arbre n'a
+          aucun impact sur son affichage. Réservé aux administrateurs :
+          même condition que le bouton de déclenchement ci-dessus. */}
+      {isAdmin && <BackofficeSidebar isMobileOpen={isBackofficeNavExpanded} onCloseMobile={closeBackofficeNav} />}
+    </>
   );
 };

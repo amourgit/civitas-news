@@ -1,12 +1,10 @@
 /* ============================================================
    src/components/backoffice/BackofficeSidebar.css
    Habillage visuel du menu "kinetic" (fond animé, panneaux en
-   éventail, révélation des liens) — repositionné pour s'ouvrir
-   à GAUCHE de l'écran (le composant d'origine s'ouvrait à droite :
-   tous les décalages horizontaux ci-dessous/dans le .tsx sont le
-   miroir des valeurs d'origine). Thème 100% piloté par les
-   variables CSS globales (src/index.css) pour rester cohérent en
-   dark mode.
+   éventail, révélation des liens) — fidèle au composant de
+   référence : s'ouvre à DROITE de l'écran. Thème 100% piloté par
+   les variables CSS globales (src/index.css) pour rester cohérent
+   en dark mode.
    ============================================================ */
 
 .nav-overlay-wrapper {
@@ -36,17 +34,17 @@
   visibility: hidden;
 }
 
-/* Panneau principal — épinglé à GAUCHE (miroir de l'original en right:0) */
+/* Panneau principal — épinglé à DROITE */
 .menu-content {
   position: fixed;
   top: 0;
-  left: 0;
+  right: 0;
   bottom: 0;
   width: min(440px, 92vw);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 12px 0 48px rgba(0, 0, 0, 0.28);
+  box-shadow: -12px 0 48px rgba(0, 0, 0, 0.28);
 }
 
 .menu-bg {
@@ -57,7 +55,7 @@
   z-index: 0;
 }
 
-/* Trois panneaux en éventail qui glissent depuis la GAUCHE (miroir) */
+/* Trois panneaux en éventail qui glissent depuis la DROITE */
 .backdrop-layer {
   position: absolute;
   inset: 0;
@@ -71,7 +69,7 @@
 
 .backdrop-layer.second {
   z-index: 2;
-  left: 5%;
+  right: 5%;
   width: 95%;
   background: linear-gradient(200deg, var(--civitas-purple) 0%, var(--civitas-purple-accent) 100%);
   opacity: 0.92;
@@ -79,7 +77,7 @@
 
 .backdrop-layer:not(.first):not(.second) {
   z-index: 3;
-  left: 11%;
+  right: 11%;
   width: 89%;
   background: var(--civitas-bg-surface);
 }
@@ -87,7 +85,7 @@
 .ambient-background-shapes {
   position: absolute;
   bottom: -70px;
-  left: -70px;
+  right: -70px;
   width: 340px;
   height: 340px;
   z-index: 1;
@@ -118,7 +116,7 @@
   flex-direction: column;
   gap: 16px;
   padding: 20px 40px;
-  padding-left: 60px;
+  padding-right: 60px;
   overflow-y: auto;
   color: var(--civitas-text-primary);
 }

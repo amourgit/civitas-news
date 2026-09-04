@@ -1,25 +1,36 @@
 // ============================================================
 // src/components/backoffice/BackofficeSidebar.tsx
 // Menu "kinetic" (GSAP + CustomEase, panneaux en éventail, formes
-// ambiantes au survol, révélation animée des liens), miroir pour
-// s'ouvrir à GAUCHE. Contenu de navigation réel : registre de
-// modèles, permissions, routes /admin/:modelKey, utilisateur connecté.
+// ambiantes au survol, révélation animée des liens), fidèle au
+// composant de référence : ouverture à DROITE. Contenu de navigation
+// réel : registre de modèles, permissions, routes /admin/:modelKey,
+// utilisateur connecté.
 //
-// Volontairement simple : DEUX effets seulement.
+// Montage : global, une seule fois dans Header.tsx (topbar, visible
+// sur TOUTES les pages) — plus seulement dans BackofficeLayout.tsx,
+// qui ne couvrait que les routes /admin. Le déclencheur reste le
+// bouton de la topbar, réservé aux administrateurs (voir Header.tsx :
+// `isAdmin &&`), inchangé.
+//
+// Volontairement simple : TROIS effets seulement.
 //   1. Mise en place unique (easing + survol des formes, par
 //      délégation d'événements -> aucun re-câblage nécessaire quand
 //      la recherche filtre la liste).
 //   2. Ouverture/fermeture (+ verrou de scroll + touche Échap),
 //      piloté uniquement par isMobileOpen.
+//   3. Fermeture automatique à chaque changement de route (utile
+//      maintenant que le panneau est global : couvre aussi bien un
+//      clic sur un lien interne qu'une navigation déclenchée
+//      ailleurs, ex. bouton retour du navigateur).
 // Rendu directement dans document.body via un portail : le panneau
 // est en position fixed, donc ne doit dépendre d'AUCUN ancêtre
 // (un `transform`/`overflow` posé un jour plus haut dans l'arbre ne
 // pourra plus jamais le casser).
 // ============================================================
 
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import gsap from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
 import { LayoutDashboard, Search, ChevronDown, ShieldCheck, User as UserIcon } from 'lucide-react';
@@ -60,6 +71,24 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
   const [search, setSearch] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const groups = useMenuGroups(search);
+  const location = useLocation();
+  const isFirstRender = useRef(true);
+
+  // Panneau global (voir Header.tsx) : se referme sur tout changement de
+  // route, qu'il vienne d'un lien interne (déjà couvert par
+  // handleNavigate) ou d'une navigation externe au panneau (ex. retour
+  // navigateur, redirection). Le premier passage de l'effet (montage)
+  // est ignoré : un useEffect s'exécute toujours une fois au montage
+  // même si la dépendance n'a "pas changé", ce qui déclencherait un
+  // onCloseMobile() superflu au tout premier rendu de l'app.
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    onCloseMobile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   const toggleGroup = (appLabel: string) =>
     setExpandedGroups((prev) => ({ ...prev, [appLabel]: prev[appLabel] === false ? true : false }));
@@ -156,8 +185,7 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
           .fromTo(menuButtonTexts, { yPercent: 0 }, { yPercent: -100, stagger: 0.2 })
           .fromTo(menuButtonIcon, { rotate: 0 }, { rotate: 315 }, '<')
           .fromTo(overlay, { autoAlpha: 0 }, { autoAlpha: 1 }, '<')
-          // Miroir : entrée par la GAUCHE (xPercent -101 -> 0, au lieu de 101 -> 0 à droite)
-          .fromTo(bgPanels, { xPercent: -101 }, { xPercent: 0, stagger: 0.12, duration: 0.575 }, '<')
+          .fromTo(bgPanels, { xPercent: 101 }, { xPercent: 0, stagger: 0.12, duration: 0.575 }, '<')
           .fromTo(menuLinks, { yPercent: 140, rotate: 10 }, { yPercent: 0, rotate: 0, stagger: 0.05 }, '<+=0.35');
 
         if (fadeTargets.length) {
@@ -168,8 +196,7 @@ export const BackofficeSidebar: React.FC<BackofficeSidebarProps> = ({ isMobileOp
         if (navWrap) navWrap.setAttribute('data-nav', 'closed');
 
         tl.to(overlay, { autoAlpha: 0 })
-          // Miroir : sortie par la GAUCHE (-120 au lieu de 120)
-          .to(menu, { xPercent: -120 }, '<')
+          .to(menu, { xPercent: 120 }, '<')
           .to(menuButtonTexts, { yPercent: 0 }, '<')
           .to(menuButtonIcon, { rotate: 0 }, '<')
           .set(navWrap, { display: 'none' });
