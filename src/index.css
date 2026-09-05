@@ -33,7 +33,21 @@
     --civitas-text-secondary: #9CA3AF;
   }
 
+  /* overflow-x: clip (pas "hidden") : contient tout débordement
+     horizontal accidentel d'un composant sans créer de scroll en x
+     visible sur la page. "clip" plutôt que "hidden" : hidden sur un
+     seul axe force l'autre axe (overflow-y) à "auto" au niveau des
+     valeurs calculées (comportement CSS standard, cf. spec Overflow),
+     ce qui aurait changé le conteneur de scroll pour les éléments
+     `position: sticky` qui s'appuient ailleurs dans l'app sur le
+     scroll normal de la fenêtre. "clip" est explicitement exclu de
+     cette règle : contient le débordement sans effet de bord. */
+  html {
+    overflow-x: clip;
+  }
+
   body {
+    overflow-x: clip;
     background-color: var(--civitas-bg-base);
     color: var(--civitas-text-primary);
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
