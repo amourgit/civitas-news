@@ -49,14 +49,18 @@
 //
 // Le bloc "action" à droite est désormais scindé en DEUX pièces
 // détachées au lieu d'une seule : `rightContent` (groupe encadré --
-// aide, backoffice, profil/connexion) flotte sans toucher le coin, et
-// `rightAction` (bascule sidebar) est la pièce qui occupe réellement
-// le coin haut-droit (wing d'angle). Toutes les tailles ci-dessus
-// (xl:) sont devenues sm: : desktop ET tablette gardent logo + menu
-// central + actions ; en dessous de sm (vrai mobile), seul le menu
-// central disparaît (remplacé par MobileDock, voir Header.tsx/
-// MobileDock.tsx) -- logo et actions restent visibles, dans le même
-// habillage détaché.
+// aide, backoffice, profil/connexion) est une pilule `rounded-full`,
+// et `rightAction` (bascule sidebar) est un cercle `rounded-full`
+// strict -- toutes deux légèrement décollées du bord réel (right-3 /
+// top-3), sans wing ni raccord de coin : le fond transparent derrière
+// la topbar suffit à lui seul à donner des ronds parfaits. Seul le
+// logo (à gauche) garde le traitement d'origine (coin découpé, wings).
+//
+// Toutes les tailles ci-dessus (xl:) sont devenues sm: : desktop ET
+// tablette gardent logo + menu central + actions ; en dessous de sm
+// (vrai mobile), seul le menu central disparaît (remplacé par
+// MobileDock, voir Header.tsx/MobileDock.tsx) -- logo et actions
+// restent visibles, dans le même habillage détaché.
 // ============================================================
 
 import { forwardRef, useCallback, useId, useState } from "react";
@@ -452,68 +456,44 @@ export function NotchNav({
           </LayoutGroup>
         </header>
 
-        {/* 3. Right side -- deux pièces DÉTACHÉES, visibles à TOUTES
-            les tailles :
-              - `rightContent` (groupe encadré : aide, backoffice,
-                profil/connexion) flotte SANS toucher le coin dès que
-                `rightAction` existe à côté (wings + arrondi
-                symétriques, comme le menu central).
-              - `rightAction` (bascule sidebar) est TOUJOURS la pièce
-                qui occupe le coin réel (wing d'angle + arrondi
-                coupé), pour qu'un bord droit ne reste jamais "carré"
-                contre l'écran.
-            Si une seule des deux existe, elle hérite seule du
-            traitement "coin". w-fit partout : la largeur suit le
-            contenu (icônes variables selon le rôle), jamais figée. */}
+        {/* 3. Right side -- deux pièces rondes et détachées, visibles
+            à TOUTES les tailles. Contrairement au logo (coin découpé,
+            wings pour se raccorder au calque plein écran d'origine),
+            ces deux-là sont de simples pastilles `rounded-full`
+            flottantes, légèrement décollées du bord réel (right-3 /
+            top-3 au lieu de right-0 / top-0). Depuis la suppression
+            du calque plein écran, le fond derrière la topbar est
+            transparent : plus besoin de wings ni de couleur de fond à
+            raccorder pour "fondre" dans un contexte -- le rounded-full
+            suffit à lui seul à donner des ronds parfaits.
+              - `rightContent` (aide, backoffice, profil/connexion) :
+                une pilule (plusieurs icônes, hauteur fixe h-10).
+              - `rightAction` (bascule sidebar) : un cercle strict
+                (h-10 w-10), une seule icône. */}
         {(hasRightContent || hasRightAction) && (
           <div
             className={cn(
-              "pointer-events-none absolute right-0 flex items-start gap-2 sm:gap-2.5",
-              isBottom ? "bottom-0" : "top-0"
+              "pointer-events-none absolute right-3 flex items-center gap-2.5 sm:gap-3",
+              isBottom ? "bottom-3" : "top-3"
             )}
           >
             {hasRightContent && (
               <aside
                 aria-label="User actions notch"
-                className={cn(
-                  "pointer-events-auto flex h-10 w-fit items-center bg-[#3B3DD9] text-white transition-colors duration-200",
-                  hasRightAction ? "px-4 sm:px-5" : "pl-3.5 pr-4 sm:pl-5 sm:pr-6",
-                  isBottom
-                    ? hasRightAction
-                      ? "rounded-t-[24px]"
-                      : "rounded-tl-[24px]"
-                    : hasRightAction
-                      ? "rounded-b-[24px]"
-                      : "rounded-bl-[24px]"
-                )}
+                className="pointer-events-auto flex h-10 w-fit items-center rounded-full bg-[#3B3DD9] px-4 sm:px-5 text-white transition-colors duration-200"
               >
-                <NotchLeftWing position={position} />
-
-                {hasRightAction ? (
-                  <NotchRightWing position={position} />
-                ) : (
-                  <NotchCornerRightWing position={position} />
-                )}
-
-                <div className="flex w-fit shrink-0 items-center">{rightContent}</div>
+                {rightContent}
               </aside>
             )}
 
             {/* 4. Sidebar Action Notch -- toujours seule dans son
-                cadre, toujours au coin réel. */}
+                propre cercle. */}
             {hasRightAction && (
               <aside
                 aria-label="Sidebar action notch"
-                className={cn(
-                  "pointer-events-auto flex h-10 w-fit items-center pl-3.5 pr-4 sm:pl-4 sm:pr-5 bg-[#3B3DD9] text-white transition-colors duration-200",
-                  isBottom ? "bottom-0 rounded-tl-[24px]" : "top-0 rounded-bl-[24px]"
-                )}
+                className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#3B3DD9] text-white transition-colors duration-200"
               >
-                <NotchLeftWing position={position} />
-
-                <NotchCornerRightWing position={position} />
-
-                <div className="flex w-fit shrink-0 items-center">{rightAction}</div>
+                {rightAction}
               </aside>
             )}
           </div>
