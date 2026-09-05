@@ -9,13 +9,20 @@ import { getModel } from './registry';
 import { usePermissions } from '../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
 import { useAuthStore } from '../../store/auth.store';
+import { AppLoadingOverlay } from '../ui/AppLoadingOverlay';
 
 export const BackofficeLayout: React.FC = () => {
   const { can } = usePermissions();
   const { isHydrating } = useAuthStore();
   const { modelKey } = useParams<{ modelKey?: string }>();
 
-  if (isHydrating) return null;
+  // Avant : `return null` pendant l'hydratation -- un trou vide dans la
+  // mise en page le temps de savoir si l'utilisateur a accès au
+  // backoffice, avant de basculer brutalement vers "Accès réservé" ou
+  // le vrai contenu. On affiche désormais le chargement de marque le
+  // temps que la permission soit connue, sans quoi la fine gestion des
+  // droits d'accès de cette page se traduirait par un flash visible.
+  if (isHydrating) return <AppLoadingOverlay visible label="Vérification de vos accès…" />;
 
   if (!can(PERMISSIONS.BACKOFFICE_ACCESS) && !can(PERMISSIONS.ADMIN_ACCESS)) {
     return (

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Header } from './components/layout/Header';
 import { MobileDock } from './components/layout/MobileDock';
@@ -8,27 +8,39 @@ import { PageBackgroundProvider } from './context/PageBackgroundContext';
 import { PageBackgroundLayer } from './components/layout/PageBackgroundLayer';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { ScrollToTop } from './components/utils/ScrollToTop';
+import { RouteTransitionLoader } from './components/utils/RouteTransitionLoader';
 import LoginModal from './components/auth/LoginModal';
 import { ToastContainer } from './components/ui/Toast';
-
-import HomePage from './pages/HomePage';
-import NewsListPage from './pages/NewsListPage';
-import NewsDetailPage from './pages/NewsDetailPage';
-import SondageFocusPage from './pages/SondageFocusPage';
-import SondagesListPage from './pages/SondagesListPage';
-import CreerNewsPage from './pages/CreerNewsPage';
-import CreerSondagePage from './pages/CreerSondagePage';
-import RecherchePage from './pages/RecherchePage';
-import ReelsDirectsPage from './pages/ReelsDirectsPage';
-import StatistiquesPage from './pages/StatistiquesPage';
-import NotificationsPage from './pages/NotificationsPage';
-import ProfilPage from './pages/ProfilPage';
-import ParametresPage from './pages/ParametresPage';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import BackofficeListPage from './pages/admin/BackofficeListPage';
-import BackofficeRecordPage from './pages/admin/BackofficeRecordPage';
+import { AppLoadingOverlay } from './components/ui/AppLoadingOverlay';
+import { GlobalLoadingOverlay } from './components/ui/GlobalLoadingOverlay';
 import { BackofficeLayout } from './components/backoffice/BackofficeLayout';
-import NotFoundPage from './pages/NotFoundPage';
+
+// Découpage par route en chunks séparés : chaque page n'est
+// téléchargée qu'au moment où l'on y navigue, et le <Suspense>
+// ci-dessous affiche systématiquement AppLoadingOverlay pendant ce
+// téléchargement (voir components/ui/LoadingBottle.tsx et
+// store/loading.store.ts pour le reste du dispositif de chargement).
+const HomePage = lazy(() => import('./pages/HomePage'));
+const NewsListPage = lazy(() => import('./pages/NewsListPage'));
+const NewsDetailPage = lazy(() => import('./pages/NewsDetailPage'));
+const SondageFocusPage = lazy(() => import('./pages/SondageFocusPage'));
+const SondagesListPage = lazy(() => import('./pages/SondagesListPage'));
+const CreerNewsPage = lazy(() => import('./pages/CreerNewsPage'));
+const CreerSondagePage = lazy(() => import('./pages/CreerSondagePage'));
+const RecherchePage = lazy(() => import('./pages/RecherchePage'));
+const ReelsDirectsPage = lazy(() => import('./pages/ReelsDirectsPage'));
+const StatistiquesPage = lazy(() => import('./pages/StatistiquesPage'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const ProfilPage = lazy(() => import('./pages/ProfilPage'));
+const ParametresPage = lazy(() => import('./pages/ParametresPage'));
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const BackofficeListPage = lazy(() => import('./pages/admin/BackofficeListPage'));
+const BackofficeRecordPage = lazy(() => import('./pages/admin/BackofficeRecordPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+// BackofficeLayout reste en import statique : export nommé (pas
+// compatible React.lazy sans enrobage supplémentaire) et composant
+// léger (garde de permission + <Outlet/>), le découper en chunk séparé
+// n'aurait apporté aucun bénéfice perceptible.
 
 export function App() {
   return (
@@ -37,6 +49,7 @@ export function App() {
         <SideContentProvider>
           <BrowserRouter>
             <ScrollToTop />
+            <RouteTransitionLoader />
             {/* Plus de /auth/login, /auth/register ni /connexion dédiées : la
                 connexion (strictement optionnelle, voir Header.tsx) se fait
                 désormais via LoginModal, un popup global déclenchable depuis
@@ -53,6 +66,7 @@ export function App() {
                 <div className="w-full flex flex-col">
                 <div className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 pt-2 sm:pt-4 pb-12 md:pb-6 flex items-start gap-6">
                   <main className="flex-1 min-w-0 w-full">
+                    <Suspense fallback={<AppLoadingOverlay visible label="Chargement de la page…" />}>
                     <Routes>
                       <Route path="/" element={<HomePage />} />
                       <Route path="/news" element={<NewsListPage />} />
@@ -100,6 +114,7 @@ export function App() {
                       </Route>
                       <Route path="*" element={<NotFoundPage />} />
                     </Routes>
+                    </Suspense>
                   </main>
                   <SideContent />
                 </div>
@@ -109,6 +124,7 @@ export function App() {
             </div>
             <LoginModal />
             <ToastContainer />
+            <GlobalLoadingOverlay />
           </BrowserRouter>
         </SideContentProvider>
       </PageBackgroundProvider>

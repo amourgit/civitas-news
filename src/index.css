@@ -122,3 +122,50 @@
   animation: pulse-subtle 3s infinite ease-in-out;
 }
 
+/* --------------------------------------------------------------
+   LoadingBottle -- voir components/ui/LoadingBottle.tsx.
+   Porté depuis un snippet Next.js (`<style jsx>` de styled-jsx,
+   absent de cette stack Vite/CRA-like -- sans transform Babel dédiée,
+   il se serait contenté de rendre un <style> global non scoppé et un
+   attribut DOM `jsx` invalide, avec un warning React à la clé) vers
+   une feuille de style globale classique, seule option correcte ici.
+   Le tracé se dessine en boucle (0 -> 90% du tracé complet), tient la
+   pose dessinée un court instant (90%-100%), puis recommence.
+   -------------------------------------------------------------- */
+@keyframes civitas-loading-bottle-draw {
+  90%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: var(--civitas-bottle-pathlength) 0;
+  }
+}
+
+.civitas-loading-bottle__path {
+  --civitas-bottle-pathlength: 1384;
+  stroke-dashoffset: var(--civitas-bottle-pathlength);
+  stroke-dasharray: 0 var(--civitas-bottle-pathlength);
+  animation: civitas-loading-bottle-draw 2.4s cubic-bezier(0.5, 0.1, 0.5, 1) infinite both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .civitas-loading-bottle__path {
+    animation: none;
+    stroke-dashoffset: 0;
+    stroke-dasharray: var(--civitas-bottle-pathlength) 0;
+  }
+}
+
+/* Overlay plein écran -- voir components/ui/AppLoadingOverlay.tsx.
+   color-mix() plutôt qu'un modificateur d'opacité Tailwind sur une
+   couleur arbitraire (`bg-[var(--x)]/90`, non garanti selon la version
+   de Tailwind) : ici le résultat est explicite et indépendant du
+   moteur de classes utilitaires. */
+.civitas-loading-overlay {
+  background-color: color-mix(in srgb, var(--civitas-bg-base) 92%, transparent);
+  transition: opacity 200ms ease-in-out;
+}
+
+.civitas-loading-overlay--hidden {
+  opacity: 0;
+}
+
