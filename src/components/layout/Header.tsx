@@ -20,12 +20,15 @@ import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
 import { usePermissions } from '../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
 
-// Topbar = NotchNav (voir src/components/ui/notch-nav.tsx, copié tel
-// quel — seul le noir de marque y a été remplacé par notre violet).
-// Ce fichier ne fait QUE le câblage réel : logo, pages principales
-// (items) et TOUTES les icônes d'option qui vivaient dans l'ancienne
-// topbar (aide, thème, backoffice, notifications, connexion/profil) —
-// reprises telles quelles, juste déplacées dans le nouveau cadre.
+// Topbar = NotchNav (voir src/components/ui/notch-nav.tsx). Ce fichier
+// ne fait QUE le câblage réel : logo, pages principales (items), et
+// les icônes d'option (aide, backoffice, connexion/profil), reprises
+// telles quelles. Depuis la refonte structurelle de NotchNav, le bloc
+// droit est scindé en deux pièces détachées : `rightContent` (aide +
+// lien backoffice + connexion/profil, groupées dans un même cadre) et
+// `rightAction` (bascule sidebar backoffice, toujours seule dans son
+// propre cadre, au coin réel de l'écran) — visibles à toutes les
+// tailles (desktop, tablette, mobile).
 const NAV_ITEMS: (NotchItemData & { path: string })[] = [
   { id: 'accueil', label: 'Accueil', icon: Home },
   { id: 'news', label: 'News', icon: Layers },
@@ -129,23 +132,24 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
           <LogIn className="w-4 h-4" />
         </button>
       )}
-
-      {/* Ouverture/fermeture du panneau BackofficeSidebar monté
-          ci-dessous (visible sur toutes les pages) — visible
-          uniquement pour les admins. */}
-      {isAdmin && (
-        <button
-          type="button"
-          onClick={toggleBackofficeNav}
-          aria-label={isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice'}
-          title="Navigation du backoffice"
-          className="flex p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
-        >
-          {isBackofficeNavExpanded ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-        </button>
-      )}
     </div>
   );
+
+  // Pièce détachée, seule dans son propre cadre (voir notch-nav.tsx :
+  // `rightAction` occupe toujours le coin réel de l'écran) — bascule
+  // le panneau BackofficeSidebar monté ci-dessous, réservée aux
+  // admins.
+  const rightAction = isAdmin ? (
+    <button
+      type="button"
+      onClick={toggleBackofficeNav}
+      aria-label={isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice'}
+      title="Navigation du backoffice"
+      className="flex p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+    >
+      {isBackofficeNavExpanded ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+    </button>
+  ) : undefined;
 
   return (
     <>
@@ -155,6 +159,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
         onActiveChange={handleActiveChange}
         logo={logo}
         rightContent={rightContent}
+        rightAction={rightAction}
       >
         {children}
       </NotchNav>

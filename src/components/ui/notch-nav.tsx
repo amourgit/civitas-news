@@ -26,21 +26,42 @@
 // restent en blanc (mêmes rapports de contraste, juste sur violet
 // plutôt que sur noir). Aucune classe de layout, espacement, taille,
 // arrondi ou animation n'a été touchée.
+//
+// ------------------------------------------------------------
+// Refonte structurelle (topbar détachée, autonome et fixed) :
+// ------------------------------------------------------------
+// Avant : NotchNav enveloppait TOUTE l'app dans un calque plein écran
+// (`fixed inset-0 ... p-0 md:p-2`) + une boîte interne arrondie
+// (`rounded-2xl bg-[#F7F8FC] dark:bg-[#0E1338]`) contenant elle-même
+// le seul conteneur scrollable de l'app (`#notch-nav-scroll-viewport`,
+// voir aussi ScrollToTop.tsx). Ce calque créait un "contour" violet
+// visible autour du contenu (le padding `md:p-2`), dupliquait le fond
+// déjà posé par App.tsx, et empêchait les pages de définir leur propre
+// arrière-plan (tout passait forcément par cette boîte).
+//
+// Maintenant : NotchNav ne rend QUE la topbar (les notches), en
+// `fixed` sur les vrais bords du viewport (aucun calque, aucun
+// padding, aucun "vide" visible). `children` est rendu dans un simple
+// conteneur en flux normal juste après, sans fond ni arrondi imposés
+// -- le défilement redevient celui du document (voir ScrollToTop.tsx),
+// et chaque page/l'app (voir App.tsx) reste seule responsable de son
+// arrière-plan.
+//
+// Le bloc "action" à droite est désormais scindé en DEUX pièces
+// détachées au lieu d'une seule : `rightContent` (groupe encadré --
+// aide, backoffice, profil/connexion) flotte sans toucher le coin, et
+// `rightAction` (bascule sidebar) est la pièce qui occupe réellement
+// le coin haut-droit (wing d'angle). Toutes les tailles ci-dessus
+// (xl:) sont devenues sm: : desktop ET tablette gardent logo + menu
+// central + actions ; en dessous de sm (vrai mobile), seul le menu
+// central disparaît (remplacé par MobileDock, voir Header.tsx/
+// MobileDock.tsx) -- logo et actions restent visibles, dans le même
+// habillage détaché.
 // ============================================================
 
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { forwardRef, useCallback, useId, useState } from "react";
 
 import { LayoutGroup, motion } from "motion/react";
-
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import type {
   ButtonHTMLAttributes,
@@ -303,66 +324,22 @@ export const NotchItem = forwardRef<HTMLButtonElement, NotchItemProps>(
 
 NotchItem.displayName = "NotchItem";
 
-interface NotchDropdownItemProps {
-  item: NotchItemData;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
-}
-
-function NotchDropdownItem({
-  item,
-  isSelected,
-  onSelect,
-}: NotchDropdownItemProps) {
-  const Icon = item.icon;
-
-  const handleClick = () => {
-    onSelect(item.id);
-  };
-
-  return (
-    <button
-      type="button"
-      role="option"
-      aria-selected={isSelected}
-      disabled={item.disabled}
-      onClick={handleClick}
-      className={cn(
-        "flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-sm outline-none transition-colors select-none",
-        "focus-visible:ring-2 focus-visible:ring-white/50",
-        isSelected
-          ? "bg-white/20 font-semibold text-white"
-          : "text-white/60 hover:bg-white/10 hover:text-white/90 active:bg-white/15",
-        item.disabled && "cursor-not-allowed pointer-events-none opacity-40"
-      )}
-    >
-      <div className="flex items-center gap-2.5">
-        {Icon && (
-          <Icon
-            className={cn(
-              "size-4 shrink-0",
-              isSelected ? "text-white" : "text-white/50"
-            )}
-          />
-        )}
-
-        <span>{item.label}</span>
-      </div>
-
-      {isSelected && <Check className="size-3.5 text-white" />}
-    </button>
-  );
-}
-
 export interface NotchNavProps extends HTMLAttributes<HTMLDivElement> {
   items: NotchItemData[];
   activeId?: string;
   defaultActiveId?: string;
   position?: NotchPosition;
   logo?: ReactNode;
+  /** Groupe encadré (ex : aide, backoffice, profil/connexion). Flotte
+   *  sans toucher le coin de l'écran dès que `rightAction` existe. */
   rightContent?: ReactNode;
+  /** Pièce unique détachée (ex : bascule sidebar). C'est TOUJOURS
+   *  elle qui occupe le coin réel haut-droit (ou bas-droit) du
+   *  viewport quand elle est fournie. */
+  rightAction?: ReactNode;
   showLogo?: boolean;
   showRightContent?: boolean;
+  showRightAction?: boolean;
   children?: ReactNode;
   onActiveChange?: (id: string) => void;
 }
@@ -374,22 +351,20 @@ export function NotchNav({
   position = "top",
   logo,
   rightContent,
+  rightAction,
   showLogo = true,
   showRightContent = true,
+  showRightAction = true,
   children,
   onActiveChange,
   className,
   ...props
 }: NotchNavProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const layoutGroupId = useId();
 
   const [internalActiveId, setInternalActiveId] = useState<string>(
     defaultActiveId || items[0]?.id || ""
   );
-
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const isBottom = position === "bottom";
 
@@ -398,85 +373,44 @@ export function NotchNav({
       ? controlledActiveId
       : internalActiveId;
 
-  const activeIndex = useMemo(() => {
-    const index = items.findIndex((item) => item.id === activeId);
-    return index >= 0 ? index : 0;
-  }, [items, activeId]);
-
-  const activeItem = items[activeIndex] || items[0];
-
   const handleSelect = useCallback(
     (id: string) => {
       if (controlledActiveId === undefined) {
         setInternalActiveId(id);
       }
-      setIsDropdownOpen(false);
       onActiveChange?.(id);
     },
     [controlledActiveId, onActiveChange]
   );
 
-  const handleToggleDropdown = useCallback(() => {
-    setIsDropdownOpen((prev) => !prev);
-  }, []);
-
-  const handleCloseDropdown = useCallback(() => {
-    setIsDropdownOpen(false);
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event: globalThis.MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsDropdownOpen(false);
-      }
-    };
-
-    if (isDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isDropdownOpen]);
+  const hasRightContent = showRightContent && !!rightContent;
+  const hasRightAction = showRightAction && !!rightAction;
 
   return (
-    <div
-      className={cn(
-        "fixed inset-0 h-screen w-screen overflow-hidden bg-[#3B3DD9] p-0 md:p-2 transition-colors duration-200",
-        className
-      )}
-      {...props}
-    >
-      <div className="relative flex h-full w-full flex-col rounded-none md:rounded-2xl bg-[#F7F8FC] dark:bg-[#0E1338] text-gray-900 dark:text-gray-100 antialiased transition-colors duration-200">
-        <div
-          aria-hidden="true"
-          onClick={handleCloseDropdown}
-          className={cn(
-            "absolute inset-0 z-40 rounded-none md:rounded-2xl transition-opacity duration-200 ease-out xl:hidden",
-            isDropdownOpen
-              ? "pointer-events-auto bg-black/20 backdrop-blur-[2px] opacity-100 dark:bg-black/40"
-              : "pointer-events-none opacity-0"
-          )}
-        />
-
-        {/* 1. Desktop Left Logo Notch */}
+    <>
+      {/* Topbar -- fixed, collée aux vrais bords du viewport. Ce
+          conteneur n'a lui-même AUCUNE hauteur (les notches sont en
+          `absolute` dedans) et n'intercepte aucun clic : seuls les
+          notches individuels sont cliquables (pointer-events-auto). */}
+      <div
+        className={cn(
+          "pointer-events-none fixed inset-x-0 z-50 select-none transition-colors duration-200",
+          isBottom ? "bottom-0" : "top-0",
+          className
+        )}
+        {...props}
+      >
+        {/* 1. Logo Notch -- visible à TOUTES les tailles (desktop,
+            tablette, mobile), toujours collée au coin gauche réel. */}
         {showLogo && logo && (
           <aside
             aria-label="Brand logo notch"
             className={cn(
-              "hidden xl:flex absolute left-0 z-50 h-10 px-5 select-none transition-colors duration-200 bg-[#3B3DD9]",
-              isBottom
-                ? "bottom-0 rounded-tr-[24px] md:items-end"
-                : "top-0 rounded-br-[24px] md:items-baseline"
+              "pointer-events-auto absolute left-0 flex items-center h-10 px-3.5 sm:px-5 bg-[#3B3DD9] transition-colors duration-200",
+              isBottom ? "bottom-0 rounded-tr-[24px]" : "top-0 rounded-br-[24px]"
             )}
           >
-            <div className="flex items-center text-white">
-              {logo}
-            </div>
+            <div className="flex items-center text-white">{logo}</div>
 
             <NotchRightWing position={position} />
 
@@ -484,15 +418,16 @@ export function NotchNav({
           </aside>
         )}
 
-        {/* 2. Desktop Center Menu Notch */}
+        {/* 2. Center Menu Notch -- desktop ET tablette (sm et plus).
+            En dessous de sm (vrai mobile), disparaît : MobileDock
+            prend le relais pour la navigation principale (voir
+            Header.tsx / MobileDock.tsx). */}
         <header
           role="tablist"
           aria-orientation="horizontal"
           className={cn(
-            "hidden xl:flex absolute left-1/2 -translate-x-1/2 z-50 h-11 px-4 bg-[#3B3DD9] text-white select-none transition-colors duration-200",
-            isBottom
-              ? "bottom-0 rounded-t-[24px] md:items-end"
-              : "top-0 rounded-b-[24px] md:items-start"
+            "pointer-events-auto hidden sm:flex absolute left-1/2 -translate-x-1/2 items-center h-11 px-4 bg-[#3B3DD9] text-white transition-colors duration-200",
+            isBottom ? "bottom-0 rounded-t-[24px]" : "top-0 rounded-b-[24px]"
           )}
         >
           <NotchLeftWing position={position} />
@@ -517,108 +452,84 @@ export function NotchNav({
           </LayoutGroup>
         </header>
 
-        {/* 3. Desktop Right Action Notch
-            w-fit : la largeur reste pilotée par le contenu (nombre
-            d'icônes variable selon le rôle : invité, connecté, admin)
-            — jamais figée. pr-6 (> pl-5) : léger supplément de
-            padding À DROITE UNIQUEMENT pour compenser l'arrondi
-            rounded-bl-[24px] du bord opposé, qui donne visuellement
-            l'impression que la dernière icône touche/dépasse le
-            cadre si le padding est symétrique. */}
-        {showRightContent && rightContent && (
-          <aside
-            aria-label="User actions notch"
-            className={cn(
-              "hidden xl:flex absolute right-0 z-50 h-10 w-fit pl-5 pr-6 select-none transition-colors duration-200 bg-[#3B3DD9]",
-              isBottom
-                ? "bottom-0 rounded-tl-[24px] md:items-end"
-                : "top-0 rounded-bl-[24px] md:items-start"
-            )}
-          >
-            <NotchLeftWing position={position} />
-
-            <NotchCornerRightWing position={position} />
-
-            <div className="flex w-fit shrink-0 items-center text-white">
-              {rightContent}
-            </div>
-          </aside>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TABLET & MOBILE VIEW (< 1280px): SINGLE COMPACT NOTCH ISLAND              */}
-        {/* ========================================================================= */}
-        <div
-          ref={containerRef}
-          className={cn(
-            "xl:hidden absolute z-50 flex flex-col bg-[#3B3DD9] text-white select-none transition-colors duration-200",
-            "w-auto left-1/2 -translate-x-1/2 px-4",
-            isBottom
-              ? "bottom-0 rounded-t-[24px]"
-              : "top-0 rounded-b-[24px]"
-          )}
-        >
-          <NotchLeftWing position={position} />
-
-          <NotchRightWing position={position} />
-
-          {/* Unified Horizontal Bar
-              Logo et slot droit sont shrink-0 (taille fixe, jamais
-              compressés) ; SEUL le déclencheur central doit absorber
-              la pression de largeur. flex-1 min-w-0 (au lieu de
-              w-full) : un enfant flex avec juste w-full garde un
-              min-width implicite = son contenu (le label ne peut pas
-              rétrécir sous son propre texte), donc sur les largeurs
-              serrées (surtout lg:w-full, ~1024-1279px) la ligne
-              entière peut dépasser du cadre et pousser le slot droit
-              hors de la pilule — c'était la cause des icônes visibles
-              hors du cadre. min-w-0 autorise ce bouton à rétrécir
-              réellement (le label se tronque via `truncate`) afin que
-              logo + options à droite restent TOUJOURS entièrement
-              visibles, quel que soit le nombre d'options. */}
+        {/* 3. Right side -- deux pièces DÉTACHÉES, visibles à TOUTES
+            les tailles :
+              - `rightContent` (groupe encadré : aide, backoffice,
+                profil/connexion) flotte SANS toucher le coin dès que
+                `rightAction` existe à côté (wings + arrondi
+                symétriques, comme le menu central).
+              - `rightAction` (bascule sidebar) est TOUJOURS la pièce
+                qui occupe le coin réel (wing d'angle + arrondi
+                coupé), pour qu'un bord droit ne reste jamais "carré"
+                contre l'écran.
+            Si une seule des deux existe, elle hérite seule du
+            traitement "coin". w-fit partout : la largeur suit le
+            contenu (icônes variables selon le rôle), jamais figée. */}
+        {(hasRightContent || hasRightAction) && (
           <div
             className={cn(
-              "w-auto xl:w-max lg:w-full flex h-10 sm:h-10 items-center justify-between gap-3 sm:gap-5",
-              isBottom ? "sm:items-baseline md:items-end" : "sm:items-baseline md:items-start"
+              "pointer-events-none absolute right-0 flex items-start gap-2 sm:gap-2.5",
+              isBottom ? "bottom-0" : "top-0"
             )}
           >
-            {/* Left Logo Slot */}
-            {showLogo && logo && (
-              <div className="flex shrink-0 items-center text-white">
-                {logo}
-              </div>
+            {hasRightContent && (
+              <aside
+                aria-label="User actions notch"
+                className={cn(
+                  "pointer-events-auto flex h-10 w-fit items-center bg-[#3B3DD9] text-white transition-colors duration-200",
+                  hasRightAction ? "px-4 sm:px-5" : "pl-3.5 pr-4 sm:pl-5 sm:pr-6",
+                  isBottom
+                    ? hasRightAction
+                      ? "rounded-t-[24px]"
+                      : "rounded-tl-[24px]"
+                    : hasRightAction
+                      ? "rounded-b-[24px]"
+                      : "rounded-bl-[24px]"
+                )}
+              >
+                <NotchLeftWing position={position} />
+
+                {hasRightAction ? (
+                  <NotchRightWing position={position} />
+                ) : (
+                  <NotchCornerRightWing position={position} />
+                )}
+
+                <div className="flex w-fit shrink-0 items-center">{rightContent}</div>
+              </aside>
             )}
 
-            {/* Right Action Slot */}
-            {showRightContent && rightContent && (
-              <div className="flex w-fit shrink-0 items-center justify-end pr-5 text-white">
-                {rightContent}
-              </div>
+            {/* 4. Sidebar Action Notch -- toujours seule dans son
+                cadre, toujours au coin réel. */}
+            {hasRightAction && (
+              <aside
+                aria-label="Sidebar action notch"
+                className={cn(
+                  "pointer-events-auto flex h-10 w-fit items-center pl-3.5 pr-4 sm:pl-4 sm:pr-5 bg-[#3B3DD9] text-white transition-colors duration-200",
+                  isBottom ? "bottom-0 rounded-tl-[24px]" : "top-0 rounded-bl-[24px]"
+                )}
+              >
+                <NotchLeftWing position={position} />
+
+                <NotchCornerRightWing position={position} />
+
+                <div className="flex w-fit shrink-0 items-center">{rightAction}</div>
+              </aside>
             )}
           </div>
-        </div>
-
-        {/* Scrollable Content Viewport
-            items-start (PAS items-center) : dans un conteneur flex-row
-            avec overflow-y-auto, un enfant centré verticalement
-            (align-items: center) qui dépasse la hauteur du conteneur
-            voit sa moitié "haute" clippée et inaccessible au scroll —
-            seule la moitié "basse" reste atteignable (bug CSS connu
-            "centered flex item + overflow"). Nos pages étant presque
-            toujours plus hautes que le viewport, ça coupait
-            systématiquement le haut de chaque page. items-start
-            restaure un flux document normal (contenu ancré en haut,
-            scroll classique de haut en bas). */}
-        <div
-          id="notch-nav-scroll-viewport"
-          className={cn(
-            "relative flex w-full items-start h-full justify-center overflow-y-auto overflow-x-hidden",
-            isBottom ? "pt-3 pb-17.5" : "pt-17.5 pb-3"
-          )}
-        >
-          {children}
-        </div>
+        )}
       </div>
-    </div>
+
+      {/* Contenu de page -- flux normal du document (le défilement
+          redevient celui de la fenêtre, voir ScrollToTop.tsx), sans
+          fond ni arrondi imposés : App.tsx reste seul responsable du
+          fond par défaut, et chaque page peut poser le sien par-dessus
+          sans rien avoir à contourner. Le padding compense uniquement
+          la hauteur de la topbar fixed pour qu'elle ne recouvre jamais
+          le contenu. */}
+      <div className={cn("w-full", isBottom ? "pt-3 pb-17.5" : "pt-17.5 pb-3")}>
+        {children}
+      </div>
+    </>
   );
 }
