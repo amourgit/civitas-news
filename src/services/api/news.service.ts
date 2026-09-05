@@ -276,6 +276,28 @@ export const newsService = {
   createSujet: async (input: CreerNewsInput): Promise<News> => {
     return newsService.createNews(input);
   },
+
+  /**
+   * Mise à jour partielle (PATCH). Ajoutée pour le flux de l'éditeur
+   * riche : après création d'une News, ses médias `contenu` en attente
+   * sont uploadés (voir RichTextEditor.publishPendingMedia), puis le
+   * contenu final (avec les vraies URLs) est enregistré via cet appel.
+   */
+  updateNews: async (id: string, payload: Partial<{ contenu: string; description: string }>): Promise<News> => {
+    if (env.useMockData) {
+      let updated: News | undefined;
+      newsMemory = newsMemory.map((n) => {
+        if (n.id !== id) return n;
+        updated = { ...n, ...payload, updatedAt: new Date().toISOString() };
+        return updated;
+      });
+      if (!updated) throw new Error(`News ${id} introuvable (mock)`);
+      return updated;
+    }
+    const updated = await newsRepository.update(id, payload);
+    newsMemory = newsMemory.map((n) => (n.id === updated.id ? updated : n));
+    return updated;
+  },
 };
 
 export const sujetsService = newsService;
