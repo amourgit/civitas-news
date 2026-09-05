@@ -22,7 +22,7 @@
   list-style: none;
   display: flex;
   width: 100%;
-  font-size: 9px; /* base d'échelle — tout le reste est en em, proportions du design d'origine conservées */
+  font-size: 10.5px; /* base d'échelle (était 9px) — un peu plus de hauteur, tout le reste (en em) suit proportionnellement sans distordre le design d'origine */
   padding: 0 2.85em;
   position: relative;
   align-items: center;

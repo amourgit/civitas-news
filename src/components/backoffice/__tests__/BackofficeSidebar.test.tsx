@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import { BackofficeSidebar } from '../BackofficeSidebar';
 
-describe('BackofficeSidebar — tiroir mobile', () => {
+describe('BackofficeSidebar — panneau curved navbar', () => {
   it("n'affiche aucun dialogue quand isMobileOpen=false", () => {
     render(
       <MemoryRouter>
@@ -14,44 +14,40 @@ describe('BackofficeSidebar — tiroir mobile', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('affiche le tiroir en dialogue quand isMobileOpen=true', () => {
+  it('affiche le panneau en dialogue quand isMobileOpen=true, avec le Tableau de bord en tête de liste', () => {
     render(
       <MemoryRouter>
         <BackofficeSidebar isMobileOpen onCloseMobile={() => {}} />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('dialog', { name: /navigation du backoffice/i })).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: /navigation du backoffice/i });
+    expect(dialog).toBeInTheDocument();
+    // Le libellé est éclaté en spans par lettre (animation au survol) :
+    // on cible le lien par son nom accessible (concaténation du texte),
+    // pas par getByText qui ne matche qu'un nœud de texte unique.
+    expect(within(dialog).getByRole('link', { name: /tableau/i })).toBeInTheDocument();
   });
 
-  it('appelle onCloseMobile au clic sur le bouton fermer', () => {
+  it('appelle onCloseMobile au clic sur une entrée de navigation', () => {
     const onClose = vi.fn();
     render(
       <MemoryRouter>
         <BackofficeSidebar isMobileOpen onCloseMobile={onClose} />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByRole('button', { name: /fermer la navigation/i }));
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('appelle onCloseMobile au clic sur un lien de navigation (referme après navigation)', () => {
-    const onClose = vi.fn();
-    render(
-      <MemoryRouter>
-        <BackofficeSidebar isMobileOpen onCloseMobile={onClose} />
-      </MemoryRouter>,
-    );
-    // "Tableau de bord" apparaît deux fois dans le DOM (nav desktop
-    // masquée en CSS pure `hidden sm:flex`, toujours présente pour
-    // jsdom qui n'applique pas les media queries + tiroir mobile) : on
-    // cible explicitement le lien À L'INTÉRIEUR du dialogue.
     const dialog = screen.getByRole('dialog');
-    fireEvent.click(within(dialog).getByText('Tableau de bord'));
-    // Le panneau étant désormais global (voir Header.tsx), la fermeture
-    // est déclenchée à la fois par le clic (handleNavigate) et par
-    // l'effet de changement de route — un double appel inoffensif
-    // (idempotent), donc on vérifie "au moins une fois" plutôt qu'un
-    // compte exact.
+    fireEvent.click(within(dialog).getByRole('link', { name: /tableau/i }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('appelle onCloseMobile à la touche Échap', () => {
+    const onClose = vi.fn();
+    render(
+      <MemoryRouter>
+        <BackofficeSidebar isMobileOpen onCloseMobile={onClose} />
+      </MemoryRouter>,
+    );
+    fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
   });
 });

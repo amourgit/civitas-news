@@ -8,8 +8,6 @@ import {
   HelpCircle,
   LogIn,
   ShieldCheck,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from 'lucide-react';
 import { NotchNav, type NotchItemData } from '../ui/notch-nav';
 import { ProfileDropdown } from './ProfileDropdown';
@@ -138,16 +136,32 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   // Pièce détachée, seule dans son propre cadre (voir notch-nav.tsx :
   // `rightAction` occupe toujours le coin réel de l'écran) — bascule
   // le panneau BackofficeSidebar monté ci-dessous, réservée aux
-  // admins.
+  // admins. Le déclencheur reprend le hamburger de la référence
+  // (BackofficeSidebar.tsx : trois barres qui pivotent en croix) avec
+  // exactement sa logique et son animation (mêmes classes de
+  // transform/opacity, même durée 300ms) — seule la mise en boîte
+  // change : `bg-current` + réduction d'échelle (scale-50) pour
+  // s'intégrer dans le même cadre violet que les autres icônes de la
+  // topbar, au lieu du bouton blanc plein écran de la démo d'origine.
   const rightAction = isAdmin ? (
     <button
       type="button"
       onClick={toggleBackofficeNav}
       aria-label={isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice'}
       title="Navigation du backoffice"
-      className="flex p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+      className="flex items-center justify-center p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
     >
-      {isBackofficeNavExpanded ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+      <div className="relative w-8 h-6 flex flex-col justify-between items-center scale-50">
+        <span
+          className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? 'rotate-45 translate-y-2' : ''}`}
+        />
+        <span
+          className={`block h-1 w-7 bg-current transition-opacity duration-300 ${isBackofficeNavExpanded ? 'opacity-0' : ''}`}
+        />
+        <span
+          className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? '-rotate-45 -translate-y-3' : ''}`}
+        />
+      </div>
     </button>
   ) : undefined;
 
