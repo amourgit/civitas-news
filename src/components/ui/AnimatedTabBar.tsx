@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useRef, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import "./AnimatedTabBar.css";
 
 export interface TabItem {
@@ -24,6 +24,20 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
   const menuRef = useRef<HTMLMenuElement>(null);
   const menuBorderRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Resynchronise l'onglet actif quand `defaultIndex` change pour une
+  // raison EXTERNE (lien ailleurs dans l'app, bouton retour du
+  // navigateur) — SANS jamais démonter ce composant (voir MobileDock.tsx,
+  // qui ne force plus de remount via `key`). Le curseur glisse donc
+  // toujours depuis sa position réelle actuelle vers la nouvelle cible :
+  // un démontage/remontage aurait recréé le bandeau depuis son état CSS
+  // par défaut (celui du tout premier onglet), d'où le bug où le
+  // déplacement semblait toujours repartir de "Home" au lieu du dernier
+  // onglet réellement actif.
+  useEffect(() => {
+    setActiveIndex(defaultIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultIndex]);
 
   const offsetMenuBorder = useCallback(() => {
     const activeItem = itemRefs.current[activeIndex];

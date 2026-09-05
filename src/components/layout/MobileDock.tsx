@@ -76,14 +76,17 @@ export const MobileDock: React.FC = () => {
       className="sm:hidden fixed bottom-0 left-0 right-0 z-40"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* `key` force un remontage (donc une resynchro de defaultIndex)
-          uniquement quand l'onglet actif change pour une raison
-          EXTÉRIEURE au dock lui-même (lien ailleurs dans l'app, retour
-          navigateur) : un tap direct sur le dock ne provoque jamais ce
-          remontage, puisque l'index recalculé depuis la route est déjà
-          celui que le dock vient d'afficher — AnimatedTabBar.tsx garde
-          donc sa propre logique d'état interne strictement inchangée. */}
-      <AnimatedTabBar key={activeIndexFromRoute} items={items} defaultIndex={activeIndexFromRoute} onTabChange={handleTabChange} />
+      {/* Pas de `key` ici : AnimatedTabBar reste monté en permanence et
+          se resynchronise lui-même via `defaultIndex` (voir
+          AnimatedTabBar.tsx) à chaque changement de route, qu'il vienne
+          d'un tap sur le dock ou d'une navigation extérieure (lien
+          ailleurs dans l'app, retour navigateur). Un `key` changeant à
+          chaque navigation forçait un démontage/remontage complet sur
+          CHAQUE tap (et pas seulement les cas "externes" comme prévu),
+          ce qui repartait toujours de la position par défaut du tout
+          premier onglet au lieu de glisser depuis l'onglet réellement
+          actif juste avant. */}
+      <AnimatedTabBar items={items} defaultIndex={activeIndexFromRoute} onTabChange={handleTabChange} />
     </div>
   );
 };
