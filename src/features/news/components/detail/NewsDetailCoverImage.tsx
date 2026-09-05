@@ -12,11 +12,19 @@ export const NewsDetailCoverImage: React.FC<NewsDetailCoverImageProps> = ({ news
   const isVideo = heroMedia.endsWith('.mp4') || heroMedia.endsWith('.webm') || heroMedia.includes('video');
 
   return (
-    <div className="w-full rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-900 shadow-sm">
+    // aspect-video : réserve la hauteur AVANT le chargement du média
+    // (même pattern déjà utilisé dans NewsMediaGallery.tsx). Sans ça,
+    // le conteneur n'a aucune hauteur tant que l'image/vidéo n'est pas
+    // chargée, puis "saute" d'un coup à sa hauteur réelle une fois
+    // chargée -- décalage de tout le contenu en dessous, perçu comme
+    // un zoom/saut de la page. max-h-[520px] reste une limite haute
+    // supplémentaire sur les très grands écrans (aspect-video seul y
+    // donnerait une hauteur plus grande que le rendu d'origine).
+    <div className="w-full aspect-video max-h-[520px] rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-900 shadow-sm">
       {isVideo ? (
         <video
           src={heroMedia}
-          className="w-full max-h-[520px] object-cover"
+          className="w-full h-full object-cover"
           muted
           loop
           playsInline
@@ -24,7 +32,7 @@ export const NewsDetailCoverImage: React.FC<NewsDetailCoverImageProps> = ({ news
           aria-label={news.titre}
         />
       ) : (
-        <img src={heroMedia} alt={news.titre} className="w-full max-h-[520px] object-cover" />
+        <img src={heroMedia} alt={news.titre} className="w-full h-full object-cover" />
       )}
     </div>
   );

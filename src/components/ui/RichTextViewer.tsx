@@ -112,6 +112,22 @@ export const RichTextViewer: React.FC<RichTextViewerProps> = ({
               {children}
             </h4>
           ),
+          // Dimensions inconnues à l'avance (images uploadées librement
+          // dans l'article) : impossible de réserver un aspect-ratio
+          // fixe sans risquer de déformer/rogner des images qui n'y
+          // correspondent pas (contrairement à NewsDetailCoverImage.tsx
+          // où le ratio cible est connu et voulu). loading="lazy" limite
+          // au moins le décalage aux images encore hors champ au moment
+          // du chargement, plutôt que de tout décaler dès le montage.
+          img: ({ src, alt }) => (
+            <img
+              src={src}
+              alt={alt || ''}
+              loading="lazy"
+              decoding="async"
+              className="max-w-full h-auto rounded-xl my-3 mx-auto block"
+            />
+          ),
           p: ({ children }) => (
             <p
               className={`${
