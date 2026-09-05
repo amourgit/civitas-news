@@ -11,7 +11,7 @@
 // ============================================================
 
 import React from 'react';
-import { BarChart2, Sparkles } from 'lucide-react';
+import { BarChart2, Sparkles, AlertTriangle } from 'lucide-react';
 import { useSetSideContent } from '../context/SideContentContext';
 import { GooglePartnerWidget } from '../components/widgets/GooglePartnerWidget';
 import { AirtelGabonWidget } from '../components/widgets/AirtelGabonWidget';
@@ -23,7 +23,7 @@ import { HourlyActivityPanel } from '../features/dashboards/statistiques/HourlyA
 import { StatutsDonutPanel } from '../features/dashboards/statistiques/StatutsDonutPanel';
 
 export default function StatistiquesPage() {
-  const { stats, isLoading } = useStatistiquesGlobales();
+  const { stats, isLoading, error } = useStatistiquesGlobales();
 
   // Set custom side content for Statistiques Page
   useSetSideContent(
@@ -47,7 +47,7 @@ export default function StatistiquesPage() {
     []
   );
 
-  if (isLoading || !stats) {
+  if (isLoading) {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="h-16 bg-gray-200/70 dark:bg-white/10 rounded-3xl" />
@@ -57,6 +57,20 @@ export default function StatistiquesPage() {
           ))}
         </div>
         <div className="h-64 bg-gray-200/70 dark:bg-white/10 rounded-3xl" />
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="flex flex-col items-center text-center gap-3 py-20 px-4">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h1 className="text-lg font-bold text-gray-900 dark:text-white">Statistiques indisponibles</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+          Impossible de charger les statistiques pour le moment. Réessayez dans un instant.
+        </p>
       </div>
     );
   }

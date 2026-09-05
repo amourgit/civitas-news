@@ -32,24 +32,36 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      try {
-        const [g, s, u, n] = await Promise.all([
-          statistiquesService.getStatistiquesGlobales(),
-          adminService.getSignalements(),
-          adminService.getUtilisateurs(),
-          newsService.getNews(),
-        ]);
-        if (cancelled) return;
-        setGlobales(g);
-        setSignalements(s);
-        setUtilisateurs(u);
-        setNewsList(n);
-      } catch (error) {
-        console.error('Échec du chargement du tableau de bord administrateur:', error);
-        if (!cancelled) toast('error', 'Tableau de bord indisponible', 'Impossible de charger les statistiques. Réessayez dans un instant.');
-      } finally {
-        if (!cancelled) setIsLoading(false);
+      // Promise.allSettled plutôt que Promise.all : un seul appel en échec
+      // (ex: validation des statistiques) ne doit pas effacer les données
+      // des trois autres qui ont réussi -- chaque widget dégrade
+      // indépendamment (voir les `?? 0` / `?? []` plus bas) selon ce qui a
+      // effectivement pu être chargé.
+      const [g, s, u, n] = await Promise.allSettled([
+        statistiquesService.getStatistiquesGlobales(),
+        adminService.getSignalements(),
+        adminService.getUtilisateurs(),
+        newsService.getNews(),
+      ]);
+      if (cancelled) return;
+
+      if (g.status === 'fulfilled') setGlobales(g.value);
+      else console.error('Échec du chargement des statistiques globales:', g.reason);
+
+      if (s.status === 'fulfilled') setSignalements(s.value);
+      else console.error('Échec du chargement des signalements:', s.reason);
+
+      if (u.status === 'fulfilled') setUtilisateurs(u.value);
+      else console.error('Échec du chargement des utilisateurs:', u.reason);
+
+      if (n.status === 'fulfilled') setNewsList(n.value);
+      else console.error('Échec du chargement des publications:', n.reason);
+
+      if ([g, s, u, n].some((r) => r.status === 'rejected')) {
+        toast('error', 'Chargement partiel', "Certaines données du tableau de bord n'ont pas pu être chargées.");
       }
+
+      setIsLoading(false);
     }
     load();
     return () => {
