@@ -11,7 +11,6 @@ import { NewsType } from '../types/global.types';
 import { BarChart2, ShieldCheck, CheckSquare, MessageSquare, TrendingUp } from 'lucide-react';
 import { NetflixHeroCarousel } from '../components/home/NetflixHeroCarousel';
 import { HomeStatsPreviewSection } from '../components/home/HomeStatsPreviewSection';
-import { CivitasAmbitionsSection } from '../components/home/CivitasAmbitionsSection';
 import { MeteoLiquidGlassSection } from '../components/home/MeteoLiquidGlassSection';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -139,9 +138,6 @@ export default function HomePage() {
           onOpenDetail={handleOpenDetail}
         />
       </section>
-
-      {/* Section Autonome CIVITAS & Ambitions */}
-      <CivitasAmbitionsSection />
 
       {/* Bottom Sheet for News Details */}
       <BottomSheet

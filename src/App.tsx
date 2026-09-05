@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Header } from './components/layout/Header';
-import { Footer } from './components/layout/Footer';
 import { MobileDock } from './components/layout/MobileDock';
 import { SideContent } from './components/layout/SideContent';
 import { SideContentProvider } from './context/SideContentContext';
@@ -89,7 +88,6 @@ export function App() {
                 </main>
                 <SideContent />
               </div>
-              <Footer />
               </div>
             </Header>
             <MobileDock />
