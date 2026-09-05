@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -144,40 +144,89 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   // bouton restait invisible/inaccessible sous elle, impossible à
   // refermer.
   //
-  // Fix : sortir CE bouton, et lui seul, de la pile d'empilement de la
-  // topbar via un portail vers document.body (comme la sidebar), avec un
-  // z-index supérieur au sien (110 > 100). Il est repositionné en
-  // `fixed top-0 right-3` pour occuper EXACTEMENT la même place visuelle
-  // que l'ancien "Sidebar action notch" (voir notch-nav.tsx : le groupe
-  // droit est `absolute right-3 top-0` à l'intérieur d'un wrapper
-  // `fixed inset-x-0 top-0`, donc strictement équivalent en coordonnées
-  // écran) -- aucun changement visuel topbar fermée, et surtout AUCUN
-  // changement du reste de la topbar (logo, menu central, pilule
-  // rightContent) qui, lui, reste bien sous la sidebar comme prévu.
-  const sidebarToggleButton = isAdmin
-    ? createPortal(
-        <button
-          type="button"
-          onClick={toggleBackofficeNav}
-          aria-label={isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice'}
-          title="Navigation du backoffice"
-          className="fixed top-0 right-3 z-[110] flex h-10 w-10 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 hover:text-white hover:bg-[#4749e0] transition-colors duration-200"
-        >
-          <div className="relative w-8 h-6 flex flex-col justify-between items-center scale-50">
-            <span
-              className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? 'rotate-45 translate-y-2' : ''}`}
-            />
-            <span
-              className={`block h-1 w-7 bg-current transition-opacity duration-300 ${isBackofficeNavExpanded ? 'opacity-0' : ''}`}
-            />
-            <span
-              className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? '-rotate-45 -translate-y-3' : ''}`}
-            />
-          </div>
-        </button>,
-        document.body,
-      )
-    : null;
+  // Fix : le VRAI bouton reste bien à sa place normale dans la topbar
+  // (via `rightAction`, groupé et aligné avec rightContent exactement
+  // comme avant -- donc plus jamais de décalage entre les deux, quel
+  // que soit l'écran ou le contenu de rightContent). Seul un CLONE de
+  // ce bouton est portalé vers document.body, en `position: fixed` sur
+  // des coordonnées MESURÉES en direct sur le vrai bouton
+  // (getBoundingClientRect, jamais une valeur devinée en dur) -- donc
+  // toujours pixel-parfait avec sa position réelle, quels que soient
+  // la taille d'écran, le contenu de rightContent ou de futurs
+  // ajustements de layout. Ce clone n'existe QUE pendant que la sidebar
+  // est ouverte (z-[110], au-dessus de son z-[100]) ; le reste de la
+  // topbar (logo, menu central, pilule rightContent), lui, reste bien
+  // recouvert par la sidebar comme prévu.
+  const sidebarToggleRef = useRef<HTMLButtonElement>(null);
+  const [toggleClonePos, setToggleClonePos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!isAdmin || !isBackofficeNavExpanded) {
+      setToggleClonePos(null);
+      return;
+    }
+    const measure = () => {
+      const rect = sidebarToggleRef.current?.getBoundingClientRect();
+      if (rect) setToggleClonePos({ top: rect.top, left: rect.left });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [isAdmin, isBackofficeNavExpanded]);
+
+  const sidebarToggleIcon = (
+    <div className="relative w-8 h-6 flex flex-col justify-between items-center scale-50">
+      <span
+        className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? 'rotate-45 translate-y-2' : ''}`}
+      />
+      <span
+        className={`block h-1 w-7 bg-current transition-opacity duration-300 ${isBackofficeNavExpanded ? 'opacity-0' : ''}`}
+      />
+      <span
+        className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? '-rotate-45 -translate-y-3' : ''}`}
+      />
+    </div>
+  );
+
+  const sidebarToggleLabel = isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice';
+
+  // Classes partagées entre le vrai bouton et son clone portalé : même
+  // taille (h-10 w-10, identique au cercle de l'aside qui l'entoure
+  // dans la topbar) pour que la mesure getBoundingClientRect() du vrai
+  // bouton corresponde pile au cercle visible, sans saut de taille au
+  // moment où le clone prend le relais.
+  const sidebarToggleButtonClassName =
+    'flex h-10 w-10 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 hover:text-white hover:bg-[#4749e0] transition-colors duration-200';
+
+  const rightAction = isAdmin ? (
+    <button
+      ref={sidebarToggleRef}
+      type="button"
+      onClick={toggleBackofficeNav}
+      aria-label={sidebarToggleLabel}
+      title="Navigation du backoffice"
+      className={sidebarToggleButtonClassName}
+    >
+      {sidebarToggleIcon}
+    </button>
+  ) : undefined;
+
+  const sidebarToggleClone =
+    isAdmin && toggleClonePos
+      ? createPortal(
+          <button
+            type="button"
+            onClick={toggleBackofficeNav}
+            aria-label={sidebarToggleLabel}
+            title="Navigation du backoffice"
+            style={{ top: toggleClonePos.top, left: toggleClonePos.left }}
+            className={`fixed z-[110] ${sidebarToggleButtonClassName}`}
+          >
+            {sidebarToggleIcon}
+          </button>,
+          document.body,
+        )
+      : null;
 
   return (
     <>
@@ -187,11 +236,12 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
         onActiveChange={handleActiveChange}
         logo={logo}
         rightContent={rightContent}
+        rightAction={rightAction}
       >
         {children}
       </NotchNav>
 
-      {sidebarToggleButton}
+      {sidebarToggleClone}
 
       {/* Panneau de navigation backoffice — monté ici une seule fois,
           donc disponible sur TOUTES les pages (pas seulement /admin/*),
