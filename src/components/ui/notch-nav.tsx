@@ -51,8 +51,9 @@
 // détachées au lieu d'une seule : `rightContent` (groupe encadré --
 // aide, backoffice, profil/connexion) est une pilule `rounded-full`,
 // et `rightAction` (bascule sidebar) est un cercle `rounded-full`
-// strict -- toutes deux légèrement décollées du bord réel (right-3 /
-// top-3), sans wing ni raccord de coin : le fond transparent derrière
+// strict -- toutes deux légèrement décollées du bord droit (right-3),
+// mais au même niveau vertical que le logo (top-0) : sans wing ni
+// raccord de coin, le fond transparent derrière
 // la topbar suffit à lui seul à donner des ronds parfaits. Seul le
 // logo (à gauche) garde le traitement d'origine (coin découpé, wings).
 //
@@ -460,8 +461,9 @@ export function NotchNav({
             à TOUTES les tailles. Contrairement au logo (coin découpé,
             wings pour se raccorder au calque plein écran d'origine),
             ces deux-là sont de simples pastilles `rounded-full`
-            flottantes, légèrement décollées du bord réel (right-3 /
-            top-3 au lieu de right-0 / top-0). Depuis la suppression
+            flottantes, légèrement décollées du bord droit (right-3),
+            mais au MÊME niveau vertical que le logo (top-0, pas de
+            décalage). Depuis la suppression
             du calque plein écran, le fond derrière la topbar est
             transparent : plus besoin de wings ni de couleur de fond à
             raccorder pour "fondre" dans un contexte -- le rounded-full
@@ -474,7 +476,7 @@ export function NotchNav({
           <div
             className={cn(
               "pointer-events-none absolute right-3 flex items-center gap-2.5 sm:gap-3",
-              isBottom ? "bottom-3" : "top-3"
+              isBottom ? "bottom-0" : "top-0"
             )}
           >
             {hasRightContent && (
