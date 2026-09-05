@@ -30,6 +30,84 @@ import BackofficeRecordPage from './pages/admin/BackofficeRecordPage';
 import { BackofficeLayout } from './components/backoffice/BackofficeLayout';
 import NotFoundPage from './pages/NotFoundPage';
 
+// Shell PUBLIC : topbar NotchNav + colonne latérale + dock mobile,
+// inchangé -- désormais scindé du shell admin (voir AdminApp
+// ci-dessous), qui a son propre habillage (sidebar + topbar, voir
+// BackofficeLayout.tsx) et ne doit plus hériter de ce shell-ci.
+function PublicApp() {
+  return (
+    <div className="min-h-screen flex flex-col text-gray-900 dark:text-gray-100 font-sans">
+      {/* Fond de page unique pour tout le site (voir
+          components/layout/PageBackgroundLayer.tsx et
+          DefaultBackground.tsx). Toute page peut le remplacer par son
+          propre composant React (image, vidéo en boucle, canvas...)
+          via usePageBackground (voir context/PageBackgroundContext.tsx) —
+          même contrat que useSetSideContent pour la colonne latérale. */}
+      <PageBackgroundLayer />
+      <Header>
+        <div className="w-full flex flex-col">
+          <div className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 pt-2 sm:pt-4 pb-12 md:pb-6 flex items-start gap-6">
+            <main className="flex-1 min-w-0 w-full">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/news" element={<NewsListPage />} />
+                <Route path="/news/creer" element={<CreerNewsPage />} />
+                {/* Page dédiée aux sondages existants (voir SondagesListPage.tsx) --
+                    remplace l'ancien renvoi vers /news?type=sondage, qui affichait
+                    les sondages comme de simples News génériques. */}
+                <Route path="/sondages" element={<SondagesListPage />} />
+                <Route path="/news/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
+                <Route path="/news/:newsId/sondages/creer" element={<CreerSondagePage />} />
+                {/* Page détail dédiée (lien canonique/partageable) -- coexiste avec le
+                    BottomSheet ouvert au clic sur une card (voir useOpenNewsDetail) */}
+                <Route path="/news/:slug" element={<NewsDetailPage />} />
+
+                {/* Redirects/Aliases for legacy /sujets URLs */}
+                <Route path="/sujets" element={<NewsListPage />} />
+                <Route path="/sujets/creer" element={<CreerNewsPage />} />
+                <Route path="/sujets/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
+                <Route path="/sujets/:sujetId/sondages/creer" element={<CreerSondagePage />} />
+                <Route path="/sujets/:slug" element={<NewsDetailPage />} />
+
+                <Route path="/recherche" element={<RecherchePage />} />
+                <Route path="/reels" element={<ReelsDirectsPage />} />
+                <Route path="/statistiques" element={<StatistiquesPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/profil" element={<ProfilPage />} />
+                <Route path="/parametres" element={<ParametresPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </main>
+            <SideContent />
+          </div>
+        </div>
+      </Header>
+      <MobileDock />
+    </div>
+  );
+}
+
+// Shell ADMIN : plus d'habillage public (pas de NotchNav, pas de
+// max-w-7xl, pas de MobileDock) -- BackofficeLayout fournit désormais
+// sa PROPRE sidebar persistante + topbar (voir AdminSidebar.tsx /
+// AdminTopbar.tsx), pleine largeur.
+// PAS de route ":modelKey/nouveau" séparée : "nouveau" littéral capté
+// comme SEGMENT STATIQUE ne peuple jamais le paramètre ":id"
+// (useParams().id serait undefined), cassant la détection isCreate
+// côté BackofficeRecordPage. ":modelKey/:id" gère déjà correctement
+// id="nouveau" comme n'importe quel autre id.
+function AdminApp() {
+  return (
+    <Routes>
+      <Route element={<BackofficeLayout />}>
+        <Route index element={<AdminDashboardPage />} />
+        <Route path=":modelKey" element={<BackofficeListPage />} />
+        <Route path=":modelKey/:id" element={<BackofficeRecordPage />} />
+      </Route>
+    </Routes>
+  );
+}
+
 export function App() {
   return (
     <ErrorBoundary>
@@ -41,72 +119,10 @@ export function App() {
                 connexion (strictement optionnelle, voir Header.tsx) se fait
                 désormais via LoginModal, un popup global déclenchable depuis
                 n'importe quelle page (topbar, ProfilPage...) sans navigation. */}
-            <div className="min-h-screen flex flex-col text-gray-900 dark:text-gray-100 font-sans">
-              {/* Fond de page unique pour tout le site (voir
-                  components/layout/PageBackgroundLayer.tsx et
-                  DefaultBackground.tsx). Toute page peut le remplacer par son
-                  propre composant React (image, vidéo en boucle, canvas...)
-                  via usePageBackground (voir context/PageBackgroundContext.tsx) —
-                  même contrat que useSetSideContent pour la colonne latérale. */}
-              <PageBackgroundLayer />
-              <Header>
-                <div className="w-full flex flex-col">
-                <div className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 pt-2 sm:pt-4 pb-12 md:pb-6 flex items-start gap-6">
-                  <main className="flex-1 min-w-0 w-full">
-                    <Routes>
-                      <Route path="/" element={<HomePage />} />
-                      <Route path="/news" element={<NewsListPage />} />
-                      <Route path="/news/creer" element={<CreerNewsPage />} />
-                      {/* Page dédiée aux sondages existants (voir SondagesListPage.tsx) --
-                          remplace l'ancien renvoi vers /news?type=sondage, qui affichait
-                          les sondages comme de simples News génériques. */}
-                      <Route path="/sondages" element={<SondagesListPage />} />
-                      <Route path="/news/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
-                      <Route path="/news/:newsId/sondages/creer" element={<CreerSondagePage />} />
-                      {/* Page détail dédiée (lien canonique/partageable) -- coexiste avec le
-                          BottomSheet ouvert au clic sur une card (voir useOpenNewsDetail) */}
-                      <Route path="/news/:slug" element={<NewsDetailPage />} />
-  
-                      {/* Redirects/Aliases for legacy /sujets URLs */}
-                      <Route path="/sujets" element={<NewsListPage />} />
-                      <Route path="/sujets/creer" element={<CreerNewsPage />} />
-                      <Route path="/sujets/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
-                      <Route path="/sujets/:sujetId/sondages/creer" element={<CreerSondagePage />} />
-                      <Route path="/sujets/:slug" element={<NewsDetailPage />} />
-  
-                      <Route path="/recherche" element={<RecherchePage />} />
-                      <Route path="/reels" element={<ReelsDirectsPage />} />
-                      <Route path="/statistiques" element={<StatistiquesPage />} />
-                      <Route path="/notifications" element={<NotificationsPage />} />
-                      <Route path="/profil" element={<ProfilPage />} />
-                      <Route path="/parametres" element={<ParametresPage />} />
-                      {/* Backoffice « à la Django admin » — voir
-                          src/components/backoffice/. Une seule paire de
-                          pages génériques (BackofficeListPage /
-                          BackofficeRecordPage) pilotée par le registre de
-                          modèles dessert TOUTES les tables ; AdminDashboardPage
-                          reste la page d'accueil du panneau (index).
-                          PAS de route ":modelKey/nouveau" séparée : "nouveau"
-                          littéral capté comme SEGMENT STATIQUE ne peuple
-                          jamais le paramètre ":id" (useParams().id serait
-                          undefined), cassant la détection isCreate côté
-                          BackofficeRecordPage. ":modelKey/:id" gère déjà
-                          correctement id="nouveau" comme n'importe quel
-                          autre id. */}
-                      <Route path="/admin" element={<BackofficeLayout />}>
-                        <Route index element={<AdminDashboardPage />} />
-                        <Route path=":modelKey" element={<BackofficeListPage />} />
-                        <Route path=":modelKey/:id" element={<BackofficeRecordPage />} />
-                      </Route>
-                      <Route path="*" element={<NotFoundPage />} />
-                    </Routes>
-                  </main>
-                  <SideContent />
-                </div>
-                </div>
-              </Header>
-              <MobileDock />
-            </div>
+            <Routes>
+              <Route path="/admin/*" element={<AdminApp />} />
+              <Route path="/*" element={<PublicApp />} />
+            </Routes>
             <LoginModal />
             <ToastContainer />
           </BrowserRouter>
