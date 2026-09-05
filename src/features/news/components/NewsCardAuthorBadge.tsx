@@ -114,7 +114,7 @@ export const NewsCardAuthorBadge: React.FC<NewsCardAuthorBadgeProps> = ({ news }
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2 sm:gap-2.5 max-w-[62%] sm:max-w-none pl-1 pr-2.5 sm:pr-3 py-1 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/25 hover:border-white/35 hover:bg-white/15 hover:shadow-sm shadow-xl shadow-black/20 transition-all duration-200 focus:outline-none"
+              className="flex items-center gap-2 sm:gap-2.5 max-w-none pl-1 pr-2.5 sm:pr-3 py-1 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/25 hover:border-white/35 hover:bg-white/15 hover:shadow-sm shadow-xl shadow-black/20 transition-all duration-200 focus:outline-none"
             >
               <div className="relative shrink-0">
                 <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-0.5">
