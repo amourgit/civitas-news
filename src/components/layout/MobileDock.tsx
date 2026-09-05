@@ -28,16 +28,16 @@ const DESTINATIONS: DockDestination[] = [
     icon: <Layers className="icon" />,
     color: '#3B82F6', // --civitas-info
     path: '/news',
-    isActive: (pathname, search) =>
-      (pathname.startsWith('/news') || pathname.startsWith('/sujets')) && search.get('type') !== 'sondage',
+    isActive: (pathname) => pathname.startsWith('/news') || pathname.startsWith('/sujets'),
   },
   {
     label: 'Sondage',
     icon: <Vote className="icon" />,
     color: '#7B61FF', // --civitas-purple-accent
-    path: '/news?type=sondage',
-    isActive: (pathname, search) =>
-      (pathname.startsWith('/news') || pathname.startsWith('/sujets')) && search.get('type') === 'sondage',
+    // Page dédiée (voir SondagesListPage.tsx) -- ce n'est plus un
+    // renvoi vers /news avec un filtre appliqué.
+    path: '/sondages',
+    isActive: (pathname) => pathname.startsWith('/sondages'),
   },
   {
     label: 'Reels et Directs',

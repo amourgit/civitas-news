@@ -15,6 +15,7 @@ import HomePage from './pages/HomePage';
 import NewsListPage from './pages/NewsListPage';
 import NewsDetailPage from './pages/NewsDetailPage';
 import SondageFocusPage from './pages/SondageFocusPage';
+import SondagesListPage from './pages/SondagesListPage';
 import CreerNewsPage from './pages/CreerNewsPage';
 import CreerSondagePage from './pages/CreerSondagePage';
 import RecherchePage from './pages/RecherchePage';
@@ -56,6 +57,10 @@ export function App() {
                       <Route path="/" element={<HomePage />} />
                       <Route path="/news" element={<NewsListPage />} />
                       <Route path="/news/creer" element={<CreerNewsPage />} />
+                      {/* Page dédiée aux sondages existants (voir SondagesListPage.tsx) --
+                          remplace l'ancien renvoi vers /news?type=sondage, qui affichait
+                          les sondages comme de simples News génériques. */}
+                      <Route path="/sondages" element={<SondagesListPage />} />
                       <Route path="/news/:slug/sondages/:sondageId" element={<SondageFocusPage />} />
                       <Route path="/news/:newsId/sondages/creer" element={<CreerSondagePage />} />
                       {/* Page détail dédiée (lien canonique/partageable) -- coexiste avec le

@@ -14,6 +14,24 @@ import { sondagesRepository } from './repositories/sondages.repository';
 import type { SondageEcriturePayload } from './repositories/sondages.repository';
 
 export const sondagesService = {
+  /**
+   * Liste TOUS les sondages existants sur la plateforme, tous articles
+   * confondus -- utilisée par la page dédiée /sondages (voir
+   * SondagesListPage.tsx), qui affiche les sondages eux-mêmes
+   * (SondageCard) et non plus une simple liste de News filtrée.
+   * Mode réel : délégué à l'endpoint dédié `sondagesRepository.list()`.
+   * Mode mock : les sondages n'ayant pas d'existence propre (voir
+   * l'en-tête de ce fichier), on les retrouve en aplatissant le champ
+   * `sondages` de chaque News de type 'sondage'.
+   */
+  listSondages: async (): Promise<Sondage[]> => {
+    if (!env.useMockData) {
+      return sondagesRepository.list();
+    }
+    const newsList = await newsService.getNews({ type: 'sondage' });
+    return newsList.flatMap((n) => n.sondages ?? []);
+  },
+
   creerSondage: async (payload: SondageEcriturePayload): Promise<Sondage> => {
     if (!env.useMockData) {
       return sondagesRepository.create(payload);
