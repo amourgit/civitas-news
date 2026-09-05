@@ -461,9 +461,19 @@ export function NotchNav({
             à TOUTES les tailles. Contrairement au logo (coin découpé,
             wings pour se raccorder au calque plein écran d'origine),
             ces deux-là sont de simples pastilles `rounded-full`
-            flottantes, légèrement décollées du bord droit (right-3),
-            mais au MÊME niveau vertical que le logo (top-0, pas de
-            décalage). Depuis la suppression
+            flottantes, légèrement décollées du bord droit (right-3).
+            Décalées de 1px par rapport au logo/menu central (top-0)
+            pour bien les détacher visuellement du reste de la topbar :
+            un `margin-top`/`margin-bottom` de 1px posé ICI, sur ce
+            groupe uniquement -- PAS un padding sur le wrapper `fixed`
+            parent (qui n'aurait d'ailleurs aucun effet : les enfants
+            sont tous en `position: absolute`, positionnés par rapport
+            au bord de padding de ce parent, donc insensibles à SON
+            propre padding -- et qui, même si ça marchait, décalerait
+            aussi le logo et le menu central, cassant leur alignement).
+            Cette marge, posée sur un élément frère indépendant
+            (`position: absolute` séparé), ne touche donc ni le logo ni
+            le menu central. Depuis la suppression
             du calque plein écran, le fond derrière la topbar est
             transparent : plus besoin de wings ni de couleur de fond à
             raccorder pour "fondre" dans un contexte -- le rounded-full
@@ -476,7 +486,7 @@ export function NotchNav({
           <div
             className={cn(
               "pointer-events-none absolute right-3 flex items-center gap-2.5 sm:gap-3",
-              isBottom ? "bottom-0" : "top-0"
+              isBottom ? "bottom-0 mb-px" : "top-0 mt-px"
             )}
           >
             {hasRightContent && (

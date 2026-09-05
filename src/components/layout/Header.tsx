@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Home,
@@ -133,37 +134,50 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
     </div>
   );
 
-  // Pièce détachée, seule dans son propre cadre (voir notch-nav.tsx :
-  // `rightAction` occupe toujours le coin réel de l'écran) — bascule
-  // le panneau BackofficeSidebar monté ci-dessous, réservée aux
-  // admins. Le déclencheur reprend le hamburger de la référence
-  // (BackofficeSidebar.tsx : trois barres qui pivotent en croix) avec
-  // exactement sa logique et son animation (mêmes classes de
-  // transform/opacity, même durée 300ms) — seule la mise en boîte
-  // change : `bg-current` + réduction d'échelle (scale-50) pour
-  // s'intégrer dans le même cadre violet que les autres icônes de la
-  // topbar, au lieu du bouton blanc plein écran de la démo d'origine.
-  const rightAction = isAdmin ? (
-    <button
-      type="button"
-      onClick={toggleBackofficeNav}
-      aria-label={isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice'}
-      title="Navigation du backoffice"
-      className="flex items-center justify-center p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
-    >
-      <div className="relative w-8 h-6 flex flex-col justify-between items-center scale-50">
-        <span
-          className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? 'rotate-45 translate-y-2' : ''}`}
-        />
-        <span
-          className={`block h-1 w-7 bg-current transition-opacity duration-300 ${isBackofficeNavExpanded ? 'opacity-0' : ''}`}
-        />
-        <span
-          className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? '-rotate-45 -translate-y-3' : ''}`}
-        />
-      </div>
-    </button>
-  ) : undefined;
+  // BUG corrigé ici : la topbar entière (notch-nav.tsx) est UN SEUL
+  // wrapper `fixed z-50` -- un seul contexte d'empilement CSS. Peu
+  // importe le z-index donné à un élément À L'INTÉRIEUR de ce wrapper,
+  // il ne peut JAMAIS dépasser visuellement un autre contexte
+  // d'empilement extérieur comme la sidebar (portalée dans document.body
+  // en z-[100], voir BackofficeSidebar.tsx) : un enfant plafonne toujours
+  // au niveau de son parent. Résultat : une fois la sidebar ouverte, ce
+  // bouton restait invisible/inaccessible sous elle, impossible à
+  // refermer.
+  //
+  // Fix : sortir CE bouton, et lui seul, de la pile d'empilement de la
+  // topbar via un portail vers document.body (comme la sidebar), avec un
+  // z-index supérieur au sien (110 > 100). Il est repositionné en
+  // `fixed top-0 right-3` pour occuper EXACTEMENT la même place visuelle
+  // que l'ancien "Sidebar action notch" (voir notch-nav.tsx : le groupe
+  // droit est `absolute right-3 top-0` à l'intérieur d'un wrapper
+  // `fixed inset-x-0 top-0`, donc strictement équivalent en coordonnées
+  // écran) -- aucun changement visuel topbar fermée, et surtout AUCUN
+  // changement du reste de la topbar (logo, menu central, pilule
+  // rightContent) qui, lui, reste bien sous la sidebar comme prévu.
+  const sidebarToggleButton = isAdmin
+    ? createPortal(
+        <button
+          type="button"
+          onClick={toggleBackofficeNav}
+          aria-label={isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice'}
+          title="Navigation du backoffice"
+          className="fixed top-0 right-3 z-[110] flex h-10 w-10 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 hover:text-white hover:bg-[#4749e0] transition-colors duration-200"
+        >
+          <div className="relative w-8 h-6 flex flex-col justify-between items-center scale-50">
+            <span
+              className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? 'rotate-45 translate-y-2' : ''}`}
+            />
+            <span
+              className={`block h-1 w-7 bg-current transition-opacity duration-300 ${isBackofficeNavExpanded ? 'opacity-0' : ''}`}
+            />
+            <span
+              className={`block h-1 w-7 bg-current transition-transform duration-300 ${isBackofficeNavExpanded ? '-rotate-45 -translate-y-3' : ''}`}
+            />
+          </div>
+        </button>,
+        document.body,
+      )
+    : null;
 
   return (
     <>
@@ -173,10 +187,11 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
         onActiveChange={handleActiveChange}
         logo={logo}
         rightContent={rightContent}
-        rightAction={rightAction}
       >
         {children}
       </NotchNav>
+
+      {sidebarToggleButton}
 
       {/* Panneau de navigation backoffice — monté ici une seule fois,
           donc disponible sur TOUTES les pages (pas seulement /admin/*),
