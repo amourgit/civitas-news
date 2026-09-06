@@ -85,10 +85,10 @@ export const MeteoLiquidGlassSection: React.FC = () => {
           toujours entières, sans repli/bouton "voir plus". Cartes
           minimalistes (icône + ville + température) pour rester
           lisibles à cette taille réduite. */}
-      <div className="grid grid-cols-3 sm:grid-cols-9 gap-1.5 sm:gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-9 gap-0.5">
         {isLoading || !meteo ? (
           Array.from({ length: 9 }).map((_, index) => (
-            <Skeleton key={index} variant="card" height={84} className="rounded-xl" />
+            <Skeleton key={index} variant="card" height={84} className="!rounded-none" />
           ))
         ) : (
           meteo.map((item) => {
@@ -97,7 +97,7 @@ export const MeteoLiquidGlassSection: React.FC = () => {
             return (
               <div
                 key={item.province}
-                className="group relative overflow-hidden rounded-xl bg-white dark:bg-[#1A1F4D] border border-gray-200/80 dark:border-gray-800/80 p-1.5 sm:p-2 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col items-center text-center gap-0.5"
+                className="group relative overflow-hidden bg-white dark:bg-[#1A1F4D] border border-gray-200/80 dark:border-gray-800/80 p-1.5 sm:p-2 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col items-center text-center gap-0.5"
               >
                 <div className="p-1 sm:p-1.5 rounded-lg bg-gray-50 dark:bg-gray-800/80 group-hover:scale-110 transition-transform">
                   <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass}`} />
