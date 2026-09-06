@@ -335,6 +335,11 @@ export interface NotchNavProps extends HTMLAttributes<HTMLDivElement> {
   defaultActiveId?: string;
   position?: NotchPosition;
   logo?: ReactNode;
+  /** Pilule additionnelle, entièrement injectable par la page active
+   *  (voir context/TopbarSlotsContext.tsx), rendue dans le même groupe
+   *  détaché que `rightContent`/`rightAction`, juste avant eux. Absente
+   *  du DOM tant qu'aucune page n'a rien publié. */
+  upperContent?: ReactNode;
   /** Groupe encadré (ex : aide, backoffice, profil/connexion). Flotte
    *  sans toucher le coin de l'écran dès que `rightAction` existe. */
   rightContent?: ReactNode;
@@ -342,6 +347,15 @@ export interface NotchNavProps extends HTMLAttributes<HTMLDivElement> {
    *  elle qui occupe le coin réel haut-droit (ou bas-droit) du
    *  viewport quand elle est fournie. */
   rightAction?: ReactNode;
+  /** Niveau inférieur de la topbar : une seconde couche fixed, collée
+   *  juste sous (ou au-dessus, en position "bottom") le niveau
+   *  historique ci-dessus, entièrement injectable par la page active
+   *  au même titre que `upperContent` (voir context/TopbarSlotsContext.tsx
+   *  et useSetTopbarContent). N'occupe AUCUN espace tant qu'aucune page
+   *  n'y publie rien : le compensateur de padding sous `children`
+   *  s'ajuste automatiquement selon sa présence, donc les pages qui ne
+   *  l'utilisent pas ne voient rigoureusement aucun changement. */
+  lowerContent?: ReactNode;
   showLogo?: boolean;
   showRightContent?: boolean;
   showRightAction?: boolean;
@@ -355,8 +369,10 @@ export function NotchNav({
   defaultActiveId,
   position = "top",
   logo,
+  upperContent,
   rightContent,
   rightAction,
+  lowerContent,
   showLogo = true,
   showRightContent = true,
   showRightAction = true,
@@ -388,8 +404,10 @@ export function NotchNav({
     [controlledActiveId, onActiveChange]
   );
 
+  const hasUpperContent = !!upperContent;
   const hasRightContent = showRightContent && !!rightContent;
   const hasRightAction = showRightAction && !!rightAction;
+  const hasLowerContent = !!lowerContent;
 
   return (
     <>
@@ -481,14 +499,29 @@ export function NotchNav({
               - `rightContent` (aide, backoffice, profil/connexion) :
                 une pilule (plusieurs icônes, hauteur fixe h-10).
               - `rightAction` (bascule sidebar) : un cercle strict
-                (h-10 w-10), une seule icône. */}
-        {(hasRightContent || hasRightAction) && (
+                (h-10 w-10), une seule icône.
+              - `upperContent` (injecté par la page active, voir
+                TopbarSlotsContext.tsx) : une pilule de plus dans le
+                même groupe, toujours affichée EN PREMIER (la plus
+                éloignée du bord réel), pour ne jamais déplacer
+                rightContent/rightAction que d'autres écrans peuvent
+                cibler visuellement de façon stable. */}
+        {(hasUpperContent || hasRightContent || hasRightAction) && (
           <div
             className={cn(
               "pointer-events-none absolute right-3 flex items-center gap-2.5 sm:gap-3",
               isBottom ? "bottom-0 mb-px" : "top-0 mt-px"
             )}
           >
+            {hasUpperContent && (
+              <aside
+                aria-label="Contenu additionnel de la page (niveau supérieur)"
+                className="pointer-events-auto flex h-10 w-fit items-center rounded-full bg-[#3B3DD9] px-4 sm:px-5 text-white transition-colors duration-200"
+              >
+                {upperContent}
+              </aside>
+            )}
+
             {hasRightContent && (
               <aside
                 aria-label="User actions notch"
@@ -510,16 +543,75 @@ export function NotchNav({
             )}
           </div>
         )}
+
+        {/* 5. Niveau inférieur -- seconde couche de la topbar, collée
+            juste sous le niveau historique ci-dessus (top-11 = 44px,
+            hauteur exacte du menu central h-11, le plus haut des
+            éléments du niveau supérieur), toujours dans le MÊME
+            wrapper `fixed` que lui : une seule et même topbar fixed en
+            deux niveaux, jamais deux éléments fixed séparés à
+            resynchroniser. N'existe dans le DOM que si une page a
+            publié du contenu dedans (voir hasLowerContent) -- les
+            pages qui n'y touchent pas ne voient donc aucune barre
+            vide ni aucun changement de mise en page.
+            Fond transparent (comme le reste de la topbar depuis la
+            suppression du calque plein écran) : seuls deux petits
+            accents arrondis à gauche (même composant, même couleur
+            #3B3DD9 que le niveau supérieur, voir NotchCornerLeftWing
+            plus haut) ET une bordure inférieure pleine largeur assurent
+            la continuité visuelle avec le niveau du dessus, sans
+            dupliquer son remplissage plein. */}
+        {hasLowerContent && (
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-0 h-14 border-[#3B3DD9] transition-colors duration-200",
+              isBottom ? "bottom-11 border-t-2" : "top-11 border-b-2"
+            )}
+          >
+            {/* Accent proche du niveau supérieur (le coin qui touche
+                l'autre niveau) -- même composant que celui déjà utilisé
+                sous le logo, simplement rejoué ici à l'échelle de toute
+                la barre. */}
+            <div className={cn("absolute left-0 h-0 w-0", isBottom ? "bottom-0" : "top-0")}>
+              <NotchCornerLeftWing position={isBottom ? "bottom" : "top"} />
+            </div>
+
+            {/* Accent proche de la bordure (le coin opposé, là où la
+                ligne du bas se termine à gauche). */}
+            <div className={cn("absolute left-0 h-0 w-0", isBottom ? "top-0" : "bottom-0")}>
+              <NotchCornerLeftWing position={isBottom ? "top" : "bottom"} />
+            </div>
+
+            {/* Contenu injecté par la page active (voir
+                useSetTopbarContent('lower', ...)) -- aligné sur la même
+                largeur de colonne (max-w-7xl) que le contenu principal
+                de l'app (voir App.tsx) pour rester cohérent visuellement
+                avec ce qui défile juste en dessous, tout en laissant la
+                page entièrement libre de ce qu'elle y place. */}
+            <div className="pointer-events-auto mx-auto flex h-full w-full max-w-7xl items-center px-3.5 sm:px-5">
+              {lowerContent}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Contenu de page -- flux normal du document (le défilement
           redevient celui de la fenêtre, voir ScrollToTop.tsx), sans
           fond ni arrondi imposés : App.tsx reste seul responsable du
           fond par défaut, et chaque page peut poser le sien par-dessus
-          sans rien avoir à contourner. Le padding compense uniquement
-          la hauteur de la topbar fixed pour qu'elle ne recouvre jamais
-          le contenu. */}
-      <div className={cn("w-full", isBottom ? "pt-3 pb-17.5" : "pt-17.5 pb-3")}>
+          sans rien avoir à contourner. Le padding compense la hauteur
+          réelle de la topbar fixed (un ou deux niveaux selon
+          hasLowerContent) pour qu'elle ne recouvre jamais le contenu ;
+          les pages sans niveau inférieur gardent EXACTEMENT le padding
+          d'origine (17.5 = 70px), aucune régression. */}
+      <div
+        className={cn(
+          "w-full",
+          isBottom
+            ? `pt-3 ${hasLowerContent ? "pb-[126px]" : "pb-17.5"}`
+            : `${hasLowerContent ? "pt-[126px]" : "pt-17.5"} pb-3`
+        )}
+      >
         {children}
       </div>
     </>

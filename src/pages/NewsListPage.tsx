@@ -8,6 +8,7 @@ import { NewsFiltres } from '../features/news/components/NewsFiltres';
 import { NewsDetailContent } from '../features/news/components/NewsDetailContent';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { SearchBar } from '../features/recherche/components/SearchBar';
+import { useSetTopbarContent } from '../context/TopbarSlotsContext';
 import { NewsType } from '../types/global.types';
 import { SlidersHorizontal } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -89,61 +90,83 @@ export default function NewsListPage() {
     });
   };
 
+  // Recherche + filtres publiés dans le niveau inférieur de la topbar
+  // (voir context/TopbarSlotsContext.tsx) : fixe comme le reste de la
+  // topbar, donc toujours accessible même en scrollant la grille de
+  // news. `filtresRef`/`isFiltresOpen` restent des états 100% internes
+  // à cette page ; seul l'EMPLACEMENT de rendu change, pas leur
+  // fonctionnement (le popup de filtres reste positionné relativement
+  // à son propre bouton, où qu'il soit monté dans l'arbre).
+  useSetTopbarContent(
+    'lower',
+    <div className="flex w-full items-center justify-between gap-3">
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Rechercher une news par titre, mot-clé..."
+        className="flex-1 max-w-md"
+      />
+
+      <div className="relative shrink-0" ref={filtresRef}>
+        <button
+          onClick={() => setIsFiltresOpen((v) => !v)}
+          aria-label="Filtres"
+          aria-expanded={isFiltresOpen}
+          className={`relative flex items-center justify-center w-10 h-10 rounded-xl border transition-colors ${
+            isFiltresOpen || filtresActifs
+              ? 'bg-[#5B4DFF] border-[#5B4DFF] text-white'
+              : 'bg-white dark:bg-[#1A1F4D] border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-gray-300'
+          }`}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          {filtresActifs && !isFiltresOpen && (
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#5B4DFF] ring-2 ring-white dark:ring-[#0E1338]" />
+          )}
+        </button>
+
+        <AnimatePresence>
+          {isFiltresOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -8 }}
+              transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute right-0 top-full mt-2 z-30 w-[min(90vw,420px)] rounded-2xl bg-white/10 dark:bg-black/20 backdrop-blur-2xl shadow-2xl p-3"
+            >
+              <NewsFiltres
+                selectedCategorieId={selectedCategorieId}
+                onSelectCategorieId={setSelectedCategorieId}
+                selectedType={selectedType}
+                onSelectType={setSelectedType}
+                selectedProvince={selectedProvince}
+                onSelectProvince={setSelectedProvince}
+                selectedOrganisationId={selectedOrganisationId}
+                onSelectOrganisationId={setSelectedOrganisationId}
+                selectedEtablissementId={selectedEtablissementId}
+                onSelectEtablissementId={setSelectedEtablissementId}
+                allNews={allNews || allSujets}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>,
+    [
+      search,
+      selectedCategorieId,
+      selectedType,
+      selectedProvince,
+      selectedOrganisationId,
+      selectedEtablissementId,
+      isFiltresOpen,
+      filtresActifs,
+      allNews,
+      allSujets,
+    ],
+  );
+
   return (
     <div className="space-y-6 pb-16">
-      <div className="flex items-center justify-between gap-3">
-        <SearchBar
-          value={search}
-          onChange={setSearch}
-          placeholder="Rechercher une news par titre, mot-clé..."
-          className="flex-1 max-w-md"
-        />
-
-        <div className="relative shrink-0" ref={filtresRef}>
-          <button
-            onClick={() => setIsFiltresOpen((v) => !v)}
-            aria-label="Filtres"
-            aria-expanded={isFiltresOpen}
-            className={`relative flex items-center justify-center w-10 h-10 rounded-xl border transition-colors ${
-              isFiltresOpen || filtresActifs
-                ? 'bg-[#5B4DFF] border-[#5B4DFF] text-white'
-                : 'bg-white dark:bg-[#1A1F4D] border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-gray-300'
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            {filtresActifs && !isFiltresOpen && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#5B4DFF] ring-2 ring-white dark:ring-[#0E1338]" />
-            )}
-          </button>
-
-          <AnimatePresence>
-            {isFiltresOpen && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: -8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -8 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-full mt-2 z-30 w-[min(90vw,420px)] rounded-2xl bg-white/10 dark:bg-black/20 backdrop-blur-2xl shadow-2xl p-3"
-              >
-                <NewsFiltres
-                  selectedCategorieId={selectedCategorieId}
-                  onSelectCategorieId={setSelectedCategorieId}
-                  selectedType={selectedType}
-                  onSelectType={setSelectedType}
-                  selectedProvince={selectedProvince}
-                  onSelectProvince={setSelectedProvince}
-                  selectedOrganisationId={selectedOrganisationId}
-                  onSelectOrganisationId={setSelectedOrganisationId}
-                  selectedEtablissementId={selectedEtablissementId}
-                  onSelectEtablissementId={setSelectedEtablissementId}
-                  allNews={allNews || allSujets}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
       <NewsGrid
         newsList={newsList || sujets}
         isLoading={isLoading}

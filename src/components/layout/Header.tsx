@@ -15,6 +15,7 @@ import { ProfileDropdown } from './ProfileDropdown';
 import { BackofficeSidebar } from '../backoffice/BackofficeSidebar';
 import { useUiStore } from '../../store/ui.store';
 import { useAuthStore } from '../../store/auth.store';
+import { useTopbarSlots } from '../../context/TopbarSlotsContext';
 import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
 import { usePermissions } from '../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
@@ -51,6 +52,11 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   // bloquer l'accès à quoi que ce soit.
   const { isAuthenticated, isHydrating, isAdmin } = useAuthStore();
   const { can } = usePermissions();
+  // Contenu des deux niveaux de la topbar, entièrement décidé par la
+  // page active (voir context/TopbarSlotsContext.tsx et
+  // useSetTopbarContent) -- Header.tsx ne fait que relire l'état publié
+  // et le transmettre à NotchNav, sans jamais en connaître le contenu.
+  const { upperContent, lowerContent } = useTopbarSlots();
   // BackofficeSidebar est un panneau plein-écran unique (voir
   // BackofficeSidebar.tsx) : un seul état isMobileOpen piloté quel que
   // soit le viewport.
@@ -235,8 +241,10 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
         activeId={activeId}
         onActiveChange={handleActiveChange}
         logo={logo}
+        upperContent={upperContent}
         rightContent={rightContent}
         rightAction={rightAction}
+        lowerContent={lowerContent}
       >
         {children}
       </NotchNav>

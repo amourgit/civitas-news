@@ -4,6 +4,7 @@ import { Header } from './components/layout/Header';
 import { MobileDock } from './components/layout/MobileDock';
 import { SideContent } from './components/layout/SideContent';
 import { SideContentProvider } from './context/SideContentContext';
+import { TopbarSlotsProvider } from './context/TopbarSlotsContext';
 import { PageBackgroundProvider } from './context/PageBackgroundContext';
 import { PageBackgroundLayer } from './components/layout/PageBackgroundLayer';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
@@ -48,6 +49,7 @@ export function App() {
     <ErrorBoundary>
       <PageBackgroundProvider>
         <SideContentProvider>
+          <TopbarSlotsProvider>
           <BrowserRouter>
             <ScrollToTop />
             <RouteTransitionLoader />
@@ -129,6 +131,7 @@ export function App() {
             <QuickActionsFab />
             <GlobalLoadingOverlay />
           </BrowserRouter>
+          </TopbarSlotsProvider>
         </SideContentProvider>
       </PageBackgroundProvider>
     </ErrorBoundary>
