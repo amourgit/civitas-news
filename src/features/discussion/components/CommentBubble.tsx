@@ -183,17 +183,7 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
     (comment.contenu && comment.contenu.includes('🎙️ Message vocal'));
 
   return (
-    <div
-      className={`relative group flex items-start gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl transition-all ${
-        comment.estEpingle
-          ? 'bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-400 dark:border-amber-600'
-          : comment.estReponseAcceptee
-          ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-l-4 border-emerald-400 dark:border-emerald-600'
-          : comment.estAdministrateur
-          ? 'bg-purple-50/30 dark:bg-purple-950/10 border-l-4 border-[#5B4DFF]'
-          : 'bg-white dark:bg-[#1A1F4D] hover:bg-gray-50/50 dark:hover:bg-white/[0.02]'
-      }`}
-    >
+    <div className="relative group flex items-start gap-1.5 sm:gap-2 py-1 bg-transparent">
       {/* Avatar */}
       <Avatar
         src={comment.auteur.avatar}
@@ -250,14 +240,14 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
             audioUrl={comment.audioUrl}
           />
         ) : (
-          <div className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-normal mt-0.5 mb-1.5">
+          <div className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-normal mt-0.5 mb-1">
             <RichTextViewer content={comment.contenu} compact />
           </div>
         )}
 
         {/* Active Reaction Badges on Comment */}
         {activeReactions.length > 0 && (
-          <div className="flex items-center gap-1 flex-wrap mb-1.5">
+          <div className="flex items-center gap-1 flex-wrap mb-1">
             {activeReactions.map(([emoji, count]) => {
               const isUserReacted = userReactions.includes(emoji);
               return (
@@ -324,8 +314,6 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
                       </button>
                     ))}
 
-                    <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-0.5" />
-
                     <button
                       type="button"
                       onClick={(e) => {
@@ -344,8 +332,6 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
               </AnimatePresence>
             </div>
 
-            <span className="text-gray-300 dark:text-gray-700">·</span>
-
             {/* Reply Button */}
             <button
               type="button"
@@ -362,8 +348,6 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
               <MessageSquare className="w-3.5 h-3.5" />
               <span>{isReplying ? 'Annuler' : 'Répondre'}</span>
             </button>
-
-            <span className="text-gray-300 dark:text-gray-700">·</span>
 
             {/* Share Button */}
             <button

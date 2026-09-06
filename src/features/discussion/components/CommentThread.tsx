@@ -84,7 +84,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({ newsId, sujetId })
           description="Soyez la première personne à exprimer votre avis de manière constructive."
         />
       ) : (
-        <div className="space-y-3 sm:space-y-4">
+        <div className="space-y-2 sm:space-y-2.5">
           {topLevelComments.map((parent) => (
             <CommentNode
               key={parent.id}

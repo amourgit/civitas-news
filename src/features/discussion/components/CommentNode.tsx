@@ -71,7 +71,7 @@ export const CommentNode: React.FC<CommentNodeProps> = ({
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="mt-1.5 ml-2.5 sm:ml-8 pl-2 sm:pl-3 border-l-2 border-[#5B4DFF] dark:border-sky-500">
+            <div className="mt-1.5 ml-2.5 sm:ml-8 pl-2 sm:pl-3">
               <CommentComposer
                 // Doit RETOURNER la promesse (pas juste l'invoquer) --
                 // CommentComposer.handleSubmit fait `await onSubmit(...)`
@@ -128,8 +128,8 @@ export const CommentNode: React.FC<CommentNodeProps> = ({
             <div
               className={`mt-1.5 space-y-2 ${
                 depth < 4
-                  ? 'ml-2.5 sm:ml-8 pl-2 sm:pl-3 border-l-2 border-gray-200 dark:border-gray-800'
-                  : 'ml-1.5 sm:ml-4 pl-1.5 sm:pl-2.5 border-l-2 border-gray-300 dark:border-gray-700'
+                  ? 'ml-2.5 sm:ml-8 pl-2 sm:pl-3'
+                  : 'ml-1.5 sm:ml-4 pl-1.5 sm:pl-2.5'
               }`}
             >
               {children.map((child) => (
