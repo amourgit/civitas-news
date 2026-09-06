@@ -1,14 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DocumentJoint } from '../../../types/global.types';
-import { FileText, Download } from 'lucide-react';
+import { FileText, Download, Eye, Loader2 } from 'lucide-react';
 import { formatFileSize } from '../../../lib/formatNumber';
+import { downloadFile } from '../../../lib/downloadFile';
+import { DocumentPreviewModal } from '../../../components/ui/DocumentPreviewModal';
 
 export interface SujetDocumentsProps {
   documents?: DocumentJoint[];
 }
 
 export const NewsDocuments: React.FC<SujetDocumentsProps> = ({ documents }) => {
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<DocumentJoint | null>(null);
+
   if (!documents || !documents.length) return null;
+
+  const handleDownload = async (doc: DocumentJoint) => {
+    setDownloadingId(doc.id);
+    await downloadFile(doc.url, doc.nom);
+    setDownloadingId(null);
+  };
 
   return (
     <div className="bg-white dark:bg-[#1A1F4D] rounded-none p-1.5 sm:p-2 border border-gray-100 dark:border-gray-800 shadow-sm mb-3">
@@ -33,21 +44,38 @@ export const NewsDocuments: React.FC<SujetDocumentsProps> = ({ documents }) => {
                 <div className="text-[10px] text-gray-400">{formatFileSize(doc.taille)}</div>
               </div>
             </div>
-            <a
-              href={doc.url}
-              download
-              onClick={(e) => {
-                e.preventDefault();
-                alert(`Téléchargement simulé de ${doc.nom}`);
-              }}
-              className="p-1 rounded-none bg-white dark:bg-gray-700 text-[#5B4DFF] dark:text-white hover:bg-[#5B4DFF] hover:text-white transition-colors shadow-sm"
-              title="Télécharger"
-            >
-              <Download className="w-3.5 h-3.5" />
-            </a>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setPreviewDoc(doc)}
+                className="p-1 rounded-none bg-white dark:bg-gray-700 text-[#5B4DFF] dark:text-white hover:bg-[#5B4DFF] hover:text-white transition-colors shadow-sm"
+                title="Prévisualiser"
+              >
+                <Eye className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownload(doc)}
+                disabled={downloadingId === doc.id}
+                className="p-1 rounded-none bg-white dark:bg-gray-700 text-[#5B4DFF] dark:text-white hover:bg-[#5B4DFF] hover:text-white disabled:opacity-60 transition-colors shadow-sm"
+                title="Télécharger"
+              >
+                {downloadingId === doc.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      <DocumentPreviewModal
+        document={previewDoc}
+        isOpen={Boolean(previewDoc)}
+        onClose={() => setPreviewDoc(null)}
+      />
     </div>
   );
 };
