@@ -106,6 +106,10 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         {/* Assombrit le tiers inférieur pour la lisibilité du texte, même
             avant le survol/le panneau verre dépoli. */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+        {/* Assombrit légèrement le haut pour que les badges auteur (haut
+            gauche) et menu (haut droit) restent lisibles même quand le
+            haut du média est très clair/blanc. */}
+        <div className="absolute inset-x-0 top-0 h-16 sm:h-20 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
       </div>
 
       {/* Coin haut-gauche : auteur + tenant (organisation) -- verre
