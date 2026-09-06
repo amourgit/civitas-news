@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useNewsList } from '../features/news/hooks/useNewsList';
 import { useNews } from '../features/news/hooks/useNews';
@@ -8,6 +8,7 @@ import { NewsFiltres } from '../features/news/components/NewsFiltres';
 import { NewsDetailContent } from '../features/news/components/NewsDetailContent';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { NewsType } from '../types/global.types';
+import { filterNewsByFacets } from '../features/news/utils/newsFilters';
 import { BarChart2, ShieldCheck, CheckSquare, MessageSquare, TrendingUp } from 'lucide-react';
 import { NetflixHeroCarousel } from '../components/home/NetflixHeroCarousel';
 import { HomeStatsPreviewSection } from '../components/home/HomeStatsPreviewSection';
@@ -16,32 +17,37 @@ import { OrganisationsSection } from '../components/home/OrganisationsSection';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function HomePage() {
-  const [selectedCategorieId, setSelectedCategorieId] = useState('all');
-  const [selectedType, setSelectedType] = useState<NewsType | 'all'>('all');
-  const [selectedProvince, setSelectedProvince] = useState('all');
-  const [selectedOrganisationId, setSelectedOrganisationId] = useState('all');
-  const [selectedEtablissementId, setSelectedEtablissementId] = useState('all');
+  const [selectedCategorieIds, setSelectedCategorieIds] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<NewsType[]>([]);
+  const [selectedProvinces, setSelectedProvinces] = useState<string[]>([]);
+  const [selectedOrganisationIds, setSelectedOrganisationIds] = useState<string[]>([]);
+  const [selectedEtablissementIds, setSelectedEtablissementIds] = useState<string[]>([]);
   const [selectedNewsSlug, setSelectedNewsSlug] = useState<string | null>(null);
 
-  const { newsList, sujets, isLoading } = useNewsList({
-    categorieId: selectedCategorieId,
-    type: selectedType === 'all' ? undefined : selectedType,
-    province: selectedProvince,
-    organisationId: selectedOrganisationId,
-    etablissementId: selectedEtablissementId,
-  });
+  // Un seul chargement non filtré : sert à la fois de référence pour
+  // l'opacité des options de NewsFiltres/la navigation BottomSheet
+  // (`allNews`) et de base pour le filtrage multi-sélection ci-dessous
+  // -- les 5 champs à choix ne sont plus envoyés au backend, voir
+  // NewsListPage et features/news/utils/newsFilters.ts pour le détail.
+  const { newsList: allNews, sujets: allSujets, isLoading } = useNewsList();
 
   const { newsItem, setNewsItem, sujet, setSujet, isLoading: isDetailLoading } = useNews(selectedNewsSlug);
   const currentItem = newsItem || sujet;
-  // Jeu NON filtré, déjà nécessaire pour la navigation "précédent/suivant"
-  // du BottomSheet — réutilisé tel quel comme référence pour l'opacité
-  // des options de NewsFiltres (voir NewsFiltres.tsx : `allNews`).
-  const { newsList: allNews, sujets: allSujets } = useNewsList();
 
   const { stats, isLoading: isStatsLoading } = useStatistiquesGlobales();
   const formatNombre = (n: number) => n.toLocaleString('fr-FR');
 
-  const list = newsList || sujets;
+  const list = useMemo(
+    () =>
+      filterNewsByFacets(allNews || allSujets, {
+        categorieIds: selectedCategorieIds,
+        types: selectedTypes,
+        provinces: selectedProvinces,
+        organisationIds: selectedOrganisationIds,
+        etablissementIds: selectedEtablissementIds,
+      }),
+    [allNews, allSujets, selectedCategorieIds, selectedTypes, selectedProvinces, selectedOrganisationIds, selectedEtablissementIds],
+  );
 
   const handleOpenDetail = (slug: string) => {
     setSelectedNewsSlug(slug);
@@ -116,16 +122,16 @@ export default function HomePage() {
         </div>
 
         <NewsFiltres
-          selectedCategorieId={selectedCategorieId}
-          onSelectCategorieId={setSelectedCategorieId}
-          selectedType={selectedType}
-          onSelectType={setSelectedType}
-          selectedProvince={selectedProvince}
-          onSelectProvince={setSelectedProvince}
-          selectedOrganisationId={selectedOrganisationId}
-          onSelectOrganisationId={setSelectedOrganisationId}
-          selectedEtablissementId={selectedEtablissementId}
-          onSelectEtablissementId={setSelectedEtablissementId}
+          selectedCategorieIds={selectedCategorieIds}
+          onChangeCategorieIds={setSelectedCategorieIds}
+          selectedTypes={selectedTypes}
+          onChangeTypes={setSelectedTypes}
+          selectedProvinces={selectedProvinces}
+          onChangeProvinces={setSelectedProvinces}
+          selectedOrganisationIds={selectedOrganisationIds}
+          onChangeOrganisationIds={setSelectedOrganisationIds}
+          selectedEtablissementIds={selectedEtablissementIds}
+          onChangeEtablissementIds={setSelectedEtablissementIds}
           allNews={allNews || allSujets}
         />
 
@@ -133,11 +139,11 @@ export default function HomePage() {
           newsList={list}
           isLoading={isLoading}
           onResetFilters={() => {
-            setSelectedCategorieId('all');
-            setSelectedType('all');
-            setSelectedProvince('all');
-            setSelectedOrganisationId('all');
-            setSelectedEtablissementId('all');
+            setSelectedCategorieIds([]);
+            setSelectedTypes([]);
+            setSelectedProvinces([]);
+            setSelectedOrganisationIds([]);
+            setSelectedEtablissementIds([]);
           }}
           onOpenDetail={handleOpenDetail}
         />

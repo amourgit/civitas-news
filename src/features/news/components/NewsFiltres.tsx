@@ -1,7 +1,7 @@
 // ============================================================
 // src/features/news/components/NewsFiltres.tsx
-// Panneau de filtres News — une ligne de puces par champ à sélection
-// du modèle News (Backend-Core-Base news/models.py) :
+// Panneau de filtres News — une ligne MULTI-SÉLECTION par champ
+// filtrable du modèle News (Backend-Core-Base news/models.py) :
 //   - Thèmes (categorie)      -> FK, options chargées via
 //                                useReferentiels() (referentiels.service)
 //   - Format (type)            -> choices fixes, voir
@@ -10,15 +10,25 @@
 //   - Organisation              -> FK, via useReferentiels()
 //   - Établissement            -> FK, via useReferentiels()
 //
+// Chaque champ prend désormais un TABLEAU d'ids sélectionnés (0..n)
+// au lieu d'un id unique + sentinelle "all" : sélection vide = aucune
+// restriction sur ce champ (voir features/news/utils/newsFilters.ts
+// pour l'application réelle du filtre, forcément côté frontend --
+// DjangoFilterBackend ne sait filtrer qu'une seule valeur par champ).
+//
 // `statut`/`visibilite` sont volontairement absents de ce panneau :
 // voir le commentaire sur NewsQueryParams dans
 // services/api/repositories/news.repository.ts (la liste publique ne
 // renvoie déjà qu'une seule valeur possible pour ces deux champs).
 //
-// Chaque option non "Tous/Toutes" est affichée à pleine opacité
-// seulement si elle concerne AU MOINS une News dans `allNews` (sinon
-// la sélectionner ne changerait rien à l'affichage) — voir
-// FilterPillRow ci-dessous.
+// Chaque option est affichée à pleine opacité dans le pool
+// "disponible" seulement si elle concerne AU MOINS une News dans
+// `allNews` (sinon la sélectionner ne changerait rien à l'affichage)
+// -- voir `isAvailable` sur MultiSelectOption. Le widget de sélection
+// (bandeau "sélectionnés" + pool "disponible", animations de layout
+// partagé) est le composant générique `MultiSelectChips`
+// (src/components/ui/MultiSelectChips.tsx) : ce fichier ne fait que
+// lui fournir les options/état par champ.
 //
 // Couleurs : ce composant est rendu tantôt à même le fond de page
 // (HomePage, aucun conteneur) tantôt dans un popup translucide
@@ -34,18 +44,19 @@ import { Filter } from 'lucide-react';
 import type { News, NewsType } from '../../../types/global.types';
 import { NEWS_TYPE_OPTIONS, PROVINCES_GABON } from '../constants/newsFieldOptions';
 import { useReferentiels } from '../hooks/useReferentiels';
+import { MultiSelectChips, type MultiSelectOption } from '../../../components/ui/MultiSelectChips';
 
 export interface NewsFiltresProps {
-  selectedCategorieId: string;
-  onSelectCategorieId: (id: string) => void;
-  selectedType: NewsType | 'all';
-  onSelectType: (t: NewsType | 'all') => void;
-  selectedProvince: string;
-  onSelectProvince: (prov: string) => void;
-  selectedOrganisationId: string;
-  onSelectOrganisationId: (id: string) => void;
-  selectedEtablissementId: string;
-  onSelectEtablissementId: (id: string) => void;
+  selectedCategorieIds: string[];
+  onChangeCategorieIds: (ids: string[]) => void;
+  selectedTypes: NewsType[];
+  onChangeTypes: (types: NewsType[]) => void;
+  selectedProvinces: string[];
+  onChangeProvinces: (provinces: string[]) => void;
+  selectedOrganisationIds: string[];
+  onChangeOrganisationIds: (ids: string[]) => void;
+  selectedEtablissementIds: string[];
+  onChangeEtablissementIds: (ids: string[]) => void;
   /**
    * Jeu de News de référence pour calculer, par option, si elle
    * concerne au moins une News existante. À passer NON filtré (voir
@@ -58,105 +69,62 @@ export interface NewsFiltresProps {
   allNews: News[];
 }
 
-const ALL_SENTINEL = 'all';
-
-interface PillOption {
-  id: string;
-  label: string;
-}
-
 /**
- * Une ligne de puces filtrables réutilisable : libellé + options,
- * avec opacité réduite pour toute option inactive et sans résultat
- * dans `availableIds`. `variant="primary"` reprend le traitement fort
+ * Une ligne de champ filtrable réutilisable : libellé + widget de
+ * sélection multiple. `variant="primary"` reprend le traitement fort
  * (accent violet de marque) de la ligne Thèmes ; `variant="secondary"`
- * le traitement plus neutre des autres lignes.
+ * le traitement plus neutre des autres lignes -- appliqué ici au
+ * libellé du champ (le design des puces lui-même vient de
+ * MultiSelectChips et ne change pas d'une ligne à l'autre).
  */
-function FilterPillRow({
+function FilterFieldRow({
   label,
   icon,
   options,
-  selectedId,
-  onSelect,
-  availableIds,
+  selectedIds,
+  onChange,
   variant = 'secondary',
 }: {
   label: string;
   icon?: React.ReactNode;
-  options: PillOption[];
-  selectedId: string;
-  onSelect: (id: string) => void;
-  availableIds: Set<string>;
+  options: MultiSelectOption[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
   variant?: 'primary' | 'secondary';
 }) {
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-      <span className="text-[10px] sm:text-xs font-extrabold text-gray-500 dark:text-white/60 uppercase shrink-0 flex items-center gap-1 mr-0.5">
+    <div className="flex flex-col gap-1">
+      <span
+        className={`text-[10px] sm:text-xs font-extrabold uppercase shrink-0 flex items-center gap-1 ${
+          variant === 'primary' ? 'text-[#5B4DFF]' : 'text-gray-500 dark:text-white/60'
+        }`}
+      >
         {icon}
-        {label} :
+        {label}
       </span>
-      {options.map((opt) => {
-        const isActive = selectedId === opt.id;
-        const isAvailable = opt.id === ALL_SENTINEL || availableIds.has(opt.id);
-        // Une option active reste toujours pleinement visible même si
-        // elle n'a plus de résultat (ex: référentiel changé entre-temps) :
-        // seule une option INACTIVE et sans résultat est atténuée.
-        const dimmed = !isActive && !isAvailable;
-        const dimClass = dimmed ? 'opacity-40' : 'opacity-100';
-
-        if (variant === 'primary') {
-          return (
-            <button
-              key={opt.id}
-              onClick={() => onSelect(opt.id)}
-              title={dimmed ? 'Aucune news ne correspond actuellement à cette option' : undefined}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${dimClass} ${
-                isActive
-                  ? 'bg-[#5B4DFF] text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white/80 hover:bg-gray-200 dark:hover:bg-white/20 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              {opt.label}
-            </button>
-          );
-        }
-
-        return (
-          <button
-            key={opt.id}
-            onClick={() => onSelect(opt.id)}
-            title={dimmed ? 'Aucune news ne correspond actuellement à cette option' : undefined}
-            className={`px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded text-[10px] sm:text-xs font-medium transition-all whitespace-nowrap shrink-0 ${dimClass} ${
-              isActive
-                ? 'bg-gray-900 dark:bg-white text-white dark:text-slate-900 font-bold'
-                : 'text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
+      <MultiSelectChips options={options} selectedIds={selectedIds} onChange={onChange} />
     </div>
   );
 }
 
 export const NewsFiltres: React.FC<NewsFiltresProps> = ({
-  selectedCategorieId,
-  onSelectCategorieId,
-  selectedType,
-  onSelectType,
-  selectedProvince,
-  onSelectProvince,
-  selectedOrganisationId,
-  onSelectOrganisationId,
-  selectedEtablissementId,
-  onSelectEtablissementId,
+  selectedCategorieIds,
+  onChangeCategorieIds,
+  selectedTypes,
+  onChangeTypes,
+  selectedProvinces,
+  onChangeProvinces,
+  selectedOrganisationIds,
+  onChangeOrganisationIds,
+  selectedEtablissementIds,
+  onChangeEtablissementIds,
   allNews,
 }) => {
   const { categories, organisations, etablissements, isLoading: isLoadingReferentiels } = useReferentiels();
 
   // Valeurs effectivement présentes dans `allNews`, par dimension --
-  // détermine l'opacité de chaque option (voir FilterPillRow).
+  // détermine l'opacité de chaque option dans le pool "disponible"
+  // (voir MultiSelectOption.isAvailable).
   const availability = useMemo(() => {
     const types = new Set<string>();
     const categorieIds = new Set<string>();
@@ -173,84 +141,67 @@ export const NewsFiltres: React.FC<NewsFiltresProps> = ({
     return { types, categorieIds, organisationIds, etablissementIds, provinces };
   }, [allNews]);
 
-  const categorieOptions: PillOption[] = useMemo(
-    () => [{ id: ALL_SENTINEL, label: 'Tous les Sujets' }, ...categories.map((c) => ({ id: c.id, label: c.nom }))],
-    [categories]
+  const categorieOptions: MultiSelectOption[] = useMemo(
+    () => categories.map((c) => ({ id: c.id, label: c.nom, isAvailable: availability.categorieIds.has(c.id) })),
+    [categories, availability.categorieIds],
   );
-  const typeOptions: PillOption[] = useMemo(
-    () => [{ id: ALL_SENTINEL, label: 'Tous les formats' }, ...NEWS_TYPE_OPTIONS.map((t) => ({ id: t.value, label: t.label }))],
-    []
+  const typeOptions: MultiSelectOption[] = useMemo(
+    () => NEWS_TYPE_OPTIONS.map((t) => ({ id: t.value, label: t.label, isAvailable: availability.types.has(t.value) })),
+    [availability.types],
   );
-  const provinceOptions: PillOption[] = useMemo(
-    () => [{ id: ALL_SENTINEL, label: 'Toutes les provinces' }, ...PROVINCES_GABON.map((p) => ({ id: p, label: p }))],
-    []
+  const provinceOptions: MultiSelectOption[] = useMemo(
+    () => PROVINCES_GABON.map((p) => ({ id: p, label: p, isAvailable: availability.provinces.has(p) })),
+    [availability.provinces],
   );
-  const organisationOptions: PillOption[] = useMemo(
-    () => [{ id: ALL_SENTINEL, label: 'Toutes les organisations' }, ...organisations.map((o) => ({ id: o.id, label: o.nom }))],
-    [organisations]
+  const organisationOptions: MultiSelectOption[] = useMemo(
+    () => organisations.map((o) => ({ id: o.id, label: o.nom, isAvailable: availability.organisationIds.has(o.id) })),
+    [organisations, availability.organisationIds],
   );
-  const etablissementOptions: PillOption[] = useMemo(
-    () => [{ id: ALL_SENTINEL, label: 'Tous les établissements' }, ...etablissements.map((e) => ({ id: e.id, label: e.nom }))],
-    [etablissements]
+  const etablissementOptions: MultiSelectOption[] = useMemo(
+    () => etablissements.map((e) => ({ id: e.id, label: e.nom, isAvailable: availability.etablissementIds.has(e.id) })),
+    [etablissements, availability.etablissementIds],
   );
 
   return (
-    <div className="flex flex-col gap-2 py-1.5">
-      <FilterPillRow
+    <div className="flex flex-col gap-2.5 py-1.5">
+      <FilterFieldRow
         label="Thèmes"
         icon={<Filter className="w-3 h-3" />}
         variant="primary"
         options={categorieOptions}
-        selectedId={selectedCategorieId}
-        onSelect={onSelectCategorieId}
-        availableIds={availability.categorieIds}
+        selectedIds={selectedCategorieIds}
+        onChange={onChangeCategorieIds}
       />
 
-      <div className="border-t border-gray-200 dark:border-white/15 pt-1">
-        <FilterPillRow
-          label="Format"
-          options={typeOptions}
-          selectedId={selectedType}
-          onSelect={(id) => onSelectType(id as NewsType | 'all')}
-          availableIds={availability.types}
-        />
+      <div className="border-t border-gray-200 dark:border-white/15 pt-1.5">
+        <FilterFieldRow label="Format" options={typeOptions} selectedIds={selectedTypes} onChange={(ids) => onChangeTypes(ids as NewsType[])} />
       </div>
 
-      <div className="border-t border-gray-200 dark:border-white/15 pt-1">
-        <FilterPillRow
-          label="Province"
-          options={provinceOptions}
-          selectedId={selectedProvince}
-          onSelect={onSelectProvince}
-          availableIds={availability.provinces}
-        />
+      <div className="border-t border-gray-200 dark:border-white/15 pt-1.5">
+        <FilterFieldRow label="Province" options={provinceOptions} selectedIds={selectedProvinces} onChange={onChangeProvinces} />
       </div>
 
       {!isLoadingReferentiels && organisations.length > 0 && (
-        <div className="border-t border-gray-200 dark:border-white/15 pt-1">
-          <FilterPillRow
+        <div className="border-t border-gray-200 dark:border-white/15 pt-1.5">
+          <FilterFieldRow
             label="Organisation"
             options={organisationOptions}
-            selectedId={selectedOrganisationId}
-            onSelect={onSelectOrganisationId}
-            availableIds={availability.organisationIds}
+            selectedIds={selectedOrganisationIds}
+            onChange={onChangeOrganisationIds}
           />
         </div>
       )}
 
       {!isLoadingReferentiels && etablissements.length > 0 && (
-        <div className="border-t border-gray-200 dark:border-white/15 pt-1">
-          <FilterPillRow
+        <div className="border-t border-gray-200 dark:border-white/15 pt-1.5">
+          <FilterFieldRow
             label="Établissement"
             options={etablissementOptions}
-            selectedId={selectedEtablissementId}
-            onSelect={onSelectEtablissementId}
-            availableIds={availability.etablissementIds}
+            selectedIds={selectedEtablissementIds}
+            onChange={onChangeEtablissementIds}
           />
         </div>
       )}
     </div>
   );
 };
-
-export const SujetFiltres = NewsFiltres;

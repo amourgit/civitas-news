@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNewsList } from '../features/news/hooks/useNewsList';
@@ -10,19 +10,21 @@ import { BottomSheet } from '../components/ui/BottomSheet';
 import { SearchBar } from '../features/recherche/components/SearchBar';
 import { useSetTopbarContent } from '../context/TopbarSlotsContext';
 import { NewsType } from '../types/global.types';
+import { filterNewsByFacets, hasActiveNewsFacetFilters } from '../features/news/utils/newsFilters';
 import { SlidersHorizontal } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function NewsListPage() {
   const [search, setSearch] = useState('');
-  const [selectedCategorieId, setSelectedCategorieId] = useState('all');
+  const [selectedCategorieIds, setSelectedCategorieIds] = useState<string[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedType, setSelectedType] = useState<NewsType | 'all'>(
-    () => (searchParams.get('type') as NewsType | null) ?? 'all',
-  );
-  const [selectedProvince, setSelectedProvince] = useState('all');
-  const [selectedOrganisationId, setSelectedOrganisationId] = useState('all');
-  const [selectedEtablissementId, setSelectedEtablissementId] = useState('all');
+  const [selectedTypes, setSelectedTypes] = useState<NewsType[]>(() => {
+    const fromUrl = searchParams.get('type') as NewsType | null;
+    return fromUrl ? [fromUrl] : [];
+  });
+  const [selectedProvinces, setSelectedProvinces] = useState<string[]>([]);
+  const [selectedOrganisationIds, setSelectedOrganisationIds] = useState<string[]>([]);
+  const [selectedEtablissementIds, setSelectedEtablissementIds] = useState<string[]>([]);
   const [isFiltresOpen, setIsFiltresOpen] = useState(false);
   const filtresRef = useRef<HTMLDivElement>(null);
   const [selectedNewsSlug, setSelectedNewsSlug] = useState<string | null>(() => searchParams.get('news'));
@@ -46,27 +48,34 @@ export default function NewsListPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isFiltresOpen]);
 
-  const filtresActifs =
-    selectedCategorieId !== 'all' ||
-    selectedType !== 'all' ||
-    selectedProvince !== 'all' ||
-    selectedOrganisationId !== 'all' ||
-    selectedEtablissementId !== 'all';
+  const facetFilters = useMemo(
+    () => ({
+      categorieIds: selectedCategorieIds,
+      types: selectedTypes,
+      provinces: selectedProvinces,
+      organisationIds: selectedOrganisationIds,
+      etablissementIds: selectedEtablissementIds,
+    }),
+    [selectedCategorieIds, selectedTypes, selectedProvinces, selectedOrganisationIds, selectedEtablissementIds],
+  );
+  const filtresActifs = hasActiveNewsFacetFilters(facetFilters);
 
-  const { newsList, sujets, isLoading } = useNewsList({
-    search,
-    categorieId: selectedCategorieId,
-    type: selectedType === 'all' ? undefined : selectedType,
-    province: selectedProvince,
-    organisationId: selectedOrganisationId,
-    etablissementId: selectedEtablissementId,
-  });
+  // Seule la recherche texte part encore vers le backend : les 5 champs
+  // à choix (Thèmes/Format/Province/Organisation/Établissement) sont
+  // désormais multi-sélection (voir NewsFiltres) et DjangoFilterBackend
+  // ne sait filtrer qu'UNE valeur à la fois par champ -- ils sont donc
+  // appliqués ici, côté frontend, sur le résultat de la recherche (voir
+  // features/news/utils/newsFilters.ts).
+  const { newsList, sujets, isLoading } = useNewsList({ search });
+  const searchScopedList = newsList || sujets;
+  const filteredList = useMemo(() => filterNewsByFacets(searchScopedList, facetFilters), [searchScopedList, facetFilters]);
 
   const { newsItem, setNewsItem, sujet, setSujet, isLoading: isDetailLoading } = useNews(selectedNewsSlug);
   const currentItem = newsItem || sujet;
-  // Jeu NON filtré, déjà nécessaire pour la navigation "précédent/suivant"
-  // du BottomSheet — réutilisé tel quel comme référence pour l'opacité
-  // des options de NewsFiltres (voir NewsFiltres.tsx : `allNews`).
+  // Jeu NON filtré (ni recherche, ni champs), déjà nécessaire pour la
+  // navigation "précédent/suivant" du BottomSheet — réutilisé tel quel
+  // comme référence pour l'opacité des options de NewsFiltres (voir
+  // NewsFiltres.tsx : `allNews`).
   const { newsList: allNews, sujets: allSujets } = useNewsList();
 
   const handleOpenDetail = (slug: string) => {
@@ -96,7 +105,9 @@ export default function NewsListPage() {
   // news. `filtresRef`/`isFiltresOpen` restent des états 100% internes
   // à cette page ; seul l'EMPLACEMENT de rendu change, pas leur
   // fonctionnement (le popup de filtres reste positionné relativement
-  // à son propre bouton, où qu'il soit monté dans l'arbre).
+  // à son propre bouton, où qu'il soit monté dans l'arbre). Le contenu
+  // publié utilise désormais les filtres multi-sélection (voir
+  // NewsFiltres.tsx / features/news/utils/newsFilters.ts).
   useSetTopbarContent(
     'lower',
     <div className="flex w-full items-center justify-between gap-3">
@@ -134,16 +145,16 @@ export default function NewsListPage() {
               className="absolute right-0 top-full mt-2 z-30 w-[min(90vw,420px)] rounded-2xl bg-white/10 dark:bg-black/20 backdrop-blur-2xl shadow-2xl p-3"
             >
               <NewsFiltres
-                selectedCategorieId={selectedCategorieId}
-                onSelectCategorieId={setSelectedCategorieId}
-                selectedType={selectedType}
-                onSelectType={setSelectedType}
-                selectedProvince={selectedProvince}
-                onSelectProvince={setSelectedProvince}
-                selectedOrganisationId={selectedOrganisationId}
-                onSelectOrganisationId={setSelectedOrganisationId}
-                selectedEtablissementId={selectedEtablissementId}
-                onSelectEtablissementId={setSelectedEtablissementId}
+                selectedCategorieIds={selectedCategorieIds}
+                onChangeCategorieIds={setSelectedCategorieIds}
+                selectedTypes={selectedTypes}
+                onChangeTypes={setSelectedTypes}
+                selectedProvinces={selectedProvinces}
+                onChangeProvinces={setSelectedProvinces}
+                selectedOrganisationIds={selectedOrganisationIds}
+                onChangeOrganisationIds={setSelectedOrganisationIds}
+                selectedEtablissementIds={selectedEtablissementIds}
+                onChangeEtablissementIds={setSelectedEtablissementIds}
                 allNews={allNews || allSujets}
               />
             </motion.div>
@@ -153,11 +164,11 @@ export default function NewsListPage() {
     </div>,
     [
       search,
-      selectedCategorieId,
-      selectedType,
-      selectedProvince,
-      selectedOrganisationId,
-      selectedEtablissementId,
+      selectedCategorieIds,
+      selectedTypes,
+      selectedProvinces,
+      selectedOrganisationIds,
+      selectedEtablissementIds,
       isFiltresOpen,
       filtresActifs,
       allNews,
@@ -168,15 +179,15 @@ export default function NewsListPage() {
   return (
     <div className="space-y-6 pb-16">
       <NewsGrid
-        newsList={newsList || sujets}
+        newsList={filteredList}
         isLoading={isLoading}
         onResetFilters={() => {
           setSearch('');
-          setSelectedCategorieId('all');
-          setSelectedType('all');
-          setSelectedProvince('all');
-          setSelectedOrganisationId('all');
-          setSelectedEtablissementId('all');
+          setSelectedCategorieIds([]);
+          setSelectedTypes([]);
+          setSelectedProvinces([]);
+          setSelectedOrganisationIds([]);
+          setSelectedEtablissementIds([]);
         }}
         onOpenDetail={handleOpenDetail}
       />
