@@ -13,6 +13,7 @@ import LoginModal from './components/auth/LoginModal';
 import { ToastContainer } from './components/ui/Toast';
 import { AppLoadingOverlay } from './components/ui/AppLoadingOverlay';
 import { GlobalLoadingOverlay } from './components/ui/GlobalLoadingOverlay';
+import { QuickActionsFab } from './components/layout/fab/QuickActionsFab';
 import { BackofficeLayout } from './components/backoffice/BackofficeLayout';
 
 // Découpage par route en chunks séparés : chaque page n'est
@@ -124,6 +125,7 @@ export function App() {
             </div>
             <LoginModal />
             <ToastContainer />
+            <QuickActionsFab />
             <GlobalLoadingOverlay />
           </BrowserRouter>
         </SideContentProvider>
