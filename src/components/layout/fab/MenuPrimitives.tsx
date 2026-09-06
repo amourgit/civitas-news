@@ -8,9 +8,14 @@ const MOBILE_BREAKPOINT = 640;
  * Verre dépoli partagé par le déclencheur ET les options du menu --
  * volontairement IDENTIQUE entre les deux (même fond translucide, même
  * flou, même bordure, même ombre), comme demandé.
+ * AUCUNE variante `dark:` ici à dessein : le bouton flottant ne doit
+ * pas réagir au thème clair/sombre du site (contrairement au reste de
+ * l'UI) -- teinte volontairement sombre pour garantir un contraste
+ * correct avec les icônes blanches, quel que soit le contenu affiché
+ * en dessous (page claire ou sombre).
  */
 const GLASS_SURFACE =
-  'bg-white/25 dark:bg-white/10 backdrop-blur-xl backdrop-saturate-150 border border-white/40 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.16)]';
+  'bg-black/25 backdrop-blur-xl backdrop-saturate-150 border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.35)]';
 
 /** Reclampe au resize/à la rotation d'écran, pas seulement au montage. */
 function useIsMobile(): boolean {
@@ -48,6 +53,12 @@ function useIsMobile(): boolean {
 //  5. Fond passé en verre dépoli (GLASS_SURFACE), strictement identique
 //     entre le déclencheur et les options -- remplace l'ancien fond
 //     plat `bg-gray-100 dark:bg-gray-800`.
+//  6. Bouton volontairement INDÉPENDANT du thème clair/sombre : plus
+//     aucune classe `dark:` sur GLASS_SURFACE ni sur la couleur du
+//     texte/icône (fixée en blanc). Centrage de l'icône corrigé --
+//     l'ancien `mt-[5%]` (hérité du composant fourni, pensé pour un
+//     item avec libellé sous l'icône) décalait le contenu vers le bas
+//     dans ce contexte icône-seule.
 // ============================================================
 
 interface MenuProps {
@@ -103,17 +114,17 @@ export function MenuItem({ children, onClick, disabled = false, icon, isActive =
   return (
     <button
       className={`relative block w-full h-full text-center group
-        ${disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-600 dark:text-gray-300"}
-        ${isActive ? "bg-white/10" : ""}
+        ${disabled ? "text-white/40 cursor-not-allowed" : "text-white"}
+        ${isActive ? "bg-white/15" : ""}
       `}
       role="menuitem"
       onClick={onClick}
       disabled={disabled}
       title={title}
     >
-      <span className="flex items-center justify-center h-full mt-[5%]">
+      <span className="flex items-center justify-center h-full w-full">
         {icon && (
-          <span className="h-5 w-5 sm:h-6 sm:w-6 transition-all duration-200 group-hover:[&_svg]:stroke-[2.5]">
+          <span className="h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center transition-all duration-200 group-hover:[&_svg]:stroke-[2.5]">
             {icon}
           </span>
         )}
