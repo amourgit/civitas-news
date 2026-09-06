@@ -142,7 +142,7 @@ export default function NewsListPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -8 }}
               transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute right-0 top-full mt-2 z-30 w-[min(90vw,420px)] rounded-2xl bg-white/10 dark:bg-black/20 backdrop-blur-2xl shadow-2xl p-3"
+              className="absolute right-0 top-full mt-2 z-30 w-[min(90vw,420px)] max-h-[min(70vh,32rem)] overflow-y-auto no-scrollbar rounded-2xl bg-white/10 dark:bg-black/20 backdrop-blur-2xl shadow-2xl p-2 sm:p-2.5 md:p-3"
             >
               <NewsFiltres
                 selectedCategorieIds={selectedCategorieIds}

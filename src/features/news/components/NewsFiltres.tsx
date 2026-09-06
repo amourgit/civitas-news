@@ -163,26 +163,26 @@ export const NewsFiltres: React.FC<NewsFiltresProps> = ({
   );
 
   return (
-    <div className="flex flex-col gap-2.5 py-1.5">
+    <div className="flex flex-col gap-1.5 sm:gap-2 md:gap-2.5 py-1 sm:py-1.5">
       <FilterFieldRow
         label="Thèmes"
-        icon={<Filter className="w-3 h-3" />}
+        icon={<Filter className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
         variant="primary"
         options={categorieOptions}
         selectedIds={selectedCategorieIds}
         onChange={onChangeCategorieIds}
       />
 
-      <div className="border-t border-gray-200 dark:border-white/15 pt-1.5">
+      <div className="border-t border-gray-200 dark:border-white/15 pt-1 sm:pt-1.5">
         <FilterFieldRow label="Format" options={typeOptions} selectedIds={selectedTypes} onChange={(ids) => onChangeTypes(ids as NewsType[])} />
       </div>
 
-      <div className="border-t border-gray-200 dark:border-white/15 pt-1.5">
+      <div className="border-t border-gray-200 dark:border-white/15 pt-1 sm:pt-1.5">
         <FilterFieldRow label="Province" options={provinceOptions} selectedIds={selectedProvinces} onChange={onChangeProvinces} />
       </div>
 
       {!isLoadingReferentiels && organisations.length > 0 && (
-        <div className="border-t border-gray-200 dark:border-white/15 pt-1.5">
+        <div className="border-t border-gray-200 dark:border-white/15 pt-1 sm:pt-1.5">
           <FilterFieldRow
             label="Organisation"
             options={organisationOptions}
@@ -193,7 +193,7 @@ export const NewsFiltres: React.FC<NewsFiltresProps> = ({
       )}
 
       {!isLoadingReferentiels && etablissements.length > 0 && (
-        <div className="border-t border-gray-200 dark:border-white/15 pt-1.5">
+        <div className="border-t border-gray-200 dark:border-white/15 pt-1 sm:pt-1.5">
           <FilterFieldRow
             label="Établissement"
             options={etablissementOptions}

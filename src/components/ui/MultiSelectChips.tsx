@@ -102,30 +102,28 @@ export function MultiSelectChips({
 
       {(alwaysShowSelectedTray || selectedOptions.length > 0) && (
         <motion.div
-          className="w-full flex items-center justify-start gap-1.5 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/15 h-14 mt-2 mb-3 overflow-x-auto p-1.5 no-scrollbar"
-          style={{ borderRadius: 16 }}
+          className="w-full flex items-center justify-start gap-1 sm:gap-1.5 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/15 h-10 sm:h-12 md:h-14 mt-1.5 sm:mt-2 mb-2 sm:mb-3 overflow-x-auto p-1 sm:p-1.5 rounded-xl sm:rounded-2xl no-scrollbar"
           ref={selectedsContainerRef}
           layout
         >
           {selectedOptions.map((opt) => (
             <motion.div
               key={opt.id}
-              className="flex items-center gap-1 pl-3 pr-1 py-1 bg-white dark:bg-[#1A1F4D] shadow-md border border-gray-200 dark:border-white/15 h-full shrink-0"
-              style={{ borderRadius: 14 }}
+              className="flex items-center gap-0.5 sm:gap-1 pl-2 sm:pl-2.5 md:pl-3 pr-0.5 sm:pr-1 py-0.5 sm:py-1 bg-white dark:bg-[#1A1F4D] shadow-md border border-gray-200 dark:border-white/15 h-full shrink-0 rounded-[10px] sm:rounded-xl md:rounded-[14px]"
               layoutId={`${instanceId}-${opt.id}`}
             >
               <motion.span
                 layoutId={`${instanceId}-${opt.id}-label`}
-                className="text-gray-700 dark:text-white/90 font-medium whitespace-nowrap"
+                className="text-xs sm:text-sm md:text-base text-gray-700 dark:text-white/90 font-medium whitespace-nowrap"
               >
                 {opt.label}
               </motion.span>
               <button
                 onClick={() => removeSelectedTag(opt.id)}
                 aria-label={`Retirer ${opt.label}`}
-                className="p-1 rounded-full"
+                className="p-0.5 sm:p-1 rounded-full"
               >
-                <X className="size-5 text-gray-500 dark:text-white/60" />
+                <X className="size-3.5 sm:size-4 md:size-5 text-gray-500 dark:text-white/60" />
               </button>
             </motion.div>
           ))}
@@ -134,11 +132,10 @@ export function MultiSelectChips({
 
       {availableOptions.length > 0 ? (
         <motion.div
-          className="bg-white dark:bg-white/5 shadow-sm p-2 border border-gray-200 dark:border-white/15 w-full"
-          style={{ borderRadius: 16 }}
+          className="bg-white dark:bg-white/5 shadow-sm p-1.5 sm:p-2 border border-gray-200 dark:border-white/15 w-full rounded-xl sm:rounded-2xl"
           layout
         >
-          <motion.div className="flex flex-wrap gap-2">
+          <motion.div className="flex flex-wrap gap-1.5 sm:gap-2">
             {availableOptions.map((opt) => {
               const dimmed = opt.isAvailable === false;
               return (
@@ -147,14 +144,13 @@ export function MultiSelectChips({
                   layoutId={`${instanceId}-${opt.id}`}
                   onClick={() => addSelectedTag(opt.id)}
                   title={dimmed ? 'Aucun résultat ne correspond actuellement à cette option' : undefined}
-                  className={`flex items-center gap-1 px-4 py-2.5 bg-gray-100/60 dark:bg-white/10 shrink-0 transition-opacity ${
+                  className={`flex items-center gap-0.5 sm:gap-1 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 bg-gray-100/60 dark:bg-white/10 shrink-0 transition-opacity rounded-[10px] sm:rounded-xl md:rounded-[14px] ${
                     dimmed ? 'opacity-40' : 'opacity-100'
                   }`}
-                  style={{ borderRadius: 14 }}
                 >
                   <motion.span
                     layoutId={`${instanceId}-${opt.id}-label`}
-                    className="text-gray-700 dark:text-white/80 font-medium whitespace-nowrap"
+                    className="text-xs sm:text-sm md:text-base text-gray-700 dark:text-white/80 font-medium whitespace-nowrap"
                   >
                     {opt.label}
                   </motion.span>
