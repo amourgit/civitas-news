@@ -205,9 +205,9 @@ export const OrganisationCard: React.FC<{ organisation: Organisation }> = ({ org
               <div className="song-modal-info">
                 <div className="song-credits">
                   <EditIcon />
-                  <p className="light">{featuredNews.auteur.nomAffiche}</p>
+                  <p className="light">{featuredNews.auteur?.nomAffiche ?? 'Auteur inconnu'}</p>
                   <MusicIcon />
-                  <p className="light">{featuredNews.categorie.nom}</p>
+                  <p className="light">{featuredNews.categorie?.nom ?? 'Non classé'}</p>
                 </div>
                 <br />
                 <p className="bold">{featuredNews.description}</p>

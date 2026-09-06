@@ -13,9 +13,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { OrganisationCard } from './organisations/OrganisationCard';
 
 export const OrganisationsSection: React.FC = () => {
-  const { organisations, isLoading } = useReferentiels();
-
-  if (!isLoading && organisations.length === 0) return null;
+  const { organisations, isLoading, error } = useReferentiels();
 
   return (
     <div className="w-full my-4 space-y-3">
@@ -39,18 +37,26 @@ export const OrganisationsSection: React.FC = () => {
 
       {/* Contenu : cartes organisations, défilement horizontal (cartes
           riches en hauteur -- panneaux dépliants -- un carrousel se
-          prête mieux qu'une grille) */}
-      <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
-        {isLoading ? (
-          <>
-            <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
-            <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
-            <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
-          </>
-        ) : (
-          organisations.map((organisation) => <OrganisationCard key={organisation.id} organisation={organisation} />)
-        )}
-      </div>
+          prête mieux qu'une grille). Le titre ci-dessus reste TOUJOURS
+          affiché, même sans donnée/en erreur -- la section ne doit
+          jamais disparaître entièrement en silence. */}
+      {isLoading ? (
+        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
+          <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
+          <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
+          <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
+        </div>
+      ) : organisations.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-200 dark:border-white/10 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+          {error ? "Impossible de charger les organisations pour l'instant." : 'Aucune organisation pour le moment.'}
+        </div>
+      ) : (
+        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
+          {organisations.map((organisation) => (
+            <OrganisationCard key={organisation.id} organisation={organisation} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
