@@ -47,6 +47,10 @@ export const newsModel: ModelDef<News> = {
   capabilities: { create: true, edit: true, delete: true },
   searchFields: ['titre', 'description', 'slug'],
   DetailExtras: NewsDetailExtras,
+  // L'assistant multi-étapes (CreerNewsPage) remplace le formulaire
+  // Django-style générique pour la création et l'édition des News.
+  createRoute: '/news/creer',
+  editRoute: (record) => `/news/modifier/${record.id}`,
   fields: [
     { name: 'titre', label: 'Titre', type: 'text', required: true },
     { name: 'slug', label: 'Slug', type: 'text', helpText: 'Généré automatiquement si laissé vide.' },

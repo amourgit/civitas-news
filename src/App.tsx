@@ -13,6 +13,7 @@ import LoginModal from './components/auth/LoginModal';
 import { ToastContainer } from './components/ui/Toast';
 import { AppLoadingOverlay } from './components/ui/AppLoadingOverlay';
 import { GlobalLoadingOverlay } from './components/ui/GlobalLoadingOverlay';
+import { QuickActionsFab } from './components/layout/fab/QuickActionsFab';
 import { BackofficeLayout } from './components/backoffice/BackofficeLayout';
 
 // Découpage par route en chunks séparés : chaque page n'est
@@ -71,6 +72,7 @@ export function App() {
                       <Route path="/" element={<HomePage />} />
                       <Route path="/news" element={<NewsListPage />} />
                       <Route path="/news/creer" element={<CreerNewsPage />} />
+                      <Route path="/news/modifier/:id" element={<CreerNewsPage />} />
                       {/* Page dédiée aux sondages existants (voir SondagesListPage.tsx) --
                           remplace l'ancien renvoi vers /news?type=sondage, qui affichait
                           les sondages comme de simples News génériques. */}
@@ -124,6 +126,7 @@ export function App() {
             </div>
             <LoginModal />
             <ToastContainer />
+            <QuickActionsFab />
             <GlobalLoadingOverlay />
           </BrowserRouter>
         </SideContentProvider>

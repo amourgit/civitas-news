@@ -83,8 +83,11 @@ export default function BackofficeListPage() {
         records={records}
         isLoading={isLoading}
         canManage={canManage}
-        onCreate={() => navigate(`/admin/${model.key}/nouveau`)}
-        onOpen={(record) => navigate(`/admin/${model.key}/${(record as Record<string, unknown>).id}`)}
+        onCreate={() => navigate(model.createRoute ?? `/admin/${model.key}/nouveau`)}
+        onOpen={(record) => {
+          const r = record as Record<string, unknown>;
+          navigate(model.editRoute ? model.editRoute(r as never) : `/admin/${model.key}/${r.id}`);
+        }}
         onDelete={(record) => setPendingDelete(record as Record<string, unknown>)}
         onRecordUpdated={handleRecordUpdated}
       />

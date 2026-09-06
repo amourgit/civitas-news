@@ -278,23 +278,48 @@ export const newsService = {
   },
 
   /**
-   * Mise à jour partielle (PATCH). Ajoutée pour le flux de l'éditeur
-   * riche : après création d'une News, ses médias `contenu` en attente
-   * sont uploadés (voir RichTextEditor.publishPendingMedia), puis le
-   * contenu final (avec les vraies URLs) est enregistré via cet appel.
+   * Mise à jour partielle (PATCH), en forme de LECTURE en entrée
+   * (`categorie`/`organisation`/`etablissement` en objets complets, comme
+   * `CreerNewsInput`) pour que l'appelant (CreerNewsPage en mode édition)
+   * n'ait pas à connaître le contrat d'écriture par IDs du repository.
+   * Reste compatible avec l'appel historique restreint à
+   * `{ contenu, description }` (flux de finalisation des médias de
+   * l'éditeur riche après création, voir CreerNewsPage.handlePublish).
    */
-  updateNews: async (id: string, payload: Partial<{ contenu: string; description: string }>): Promise<News> => {
+  updateNews: async (id: string, payload: Partial<{
+    titre: string;
+    type: NewsType;
+    description: string;
+    contenu: string;
+    province: string;
+    lieu: string;
+    image: File;
+    categorie: Categorie;
+    organisation: Organisation;
+    etablissement: Etablissement;
+    tags: string[];
+    visibilite: 'public' | 'prive' | 'limite';
+  }>): Promise<News> => {
     if (env.useMockData) {
+      // `image` (File) n'a pas d'équivalent en mode mock (pas d'upload réel) --
+      // exclu du spread pour ne pas écraser l'URL `News.image` existante.
+      const { image: _mockImageIgnored, ...mockPayload } = payload;
       let updated: News | undefined;
       newsMemory = newsMemory.map((n) => {
         if (n.id !== id) return n;
-        updated = { ...n, ...payload, updatedAt: new Date().toISOString() };
+        updated = { ...n, ...mockPayload, updatedAt: new Date().toISOString() };
         return updated;
       });
       if (!updated) throw new Error(`News ${id} introuvable (mock)`);
       return updated;
     }
-    const updated = await newsRepository.update(id, payload);
+    const { categorie, organisation, etablissement, ...rest } = payload;
+    const updated = await newsRepository.update(id, {
+      ...rest,
+      categorieId: categorie?.id,
+      organisationId: organisation?.id,
+      etablissementId: etablissement?.id,
+    });
     newsMemory = newsMemory.map((n) => (n.id === updated.id ? updated : n));
     return updated;
   },
