@@ -1,18 +1,30 @@
+// ============================================================
+// src/pages/StatistiquesPage.tsx
+// Refonte complète (voir maquette "Corelytics" fournie par
+// l'utilisateur) : rangée de KPI compacts + graphiques barres/courbes/
+// donut en verre dépoli, entièrement branchés sur
+// statistiquesService.getStatistiquesGlobales() (même service que
+// l'ancienne mouture en Bento, voir features/statistiques/). Les
+// anciens composants Bento* ne sont pas supprimés (BentoAreaEvolution
+// et BentoDonutCategories restent utilisés par HomeStatsPreviewSection
+// sur la page d'accueil) -- seule cette page cesse de les utiliser.
+// ============================================================
+
 import React from 'react';
-import { BarChart2, Sparkles } from 'lucide-react';
+import { BarChart2, Sparkles, AlertTriangle } from 'lucide-react';
 import { useSetSideContent } from '../context/SideContentContext';
 import { GooglePartnerWidget } from '../components/widgets/GooglePartnerWidget';
 import { AirtelGabonWidget } from '../components/widgets/AirtelGabonWidget';
-
-import { BentoMetricsRow } from '../features/statistiques/components/BentoMetricsRow';
-import { BentoDonutCategories } from '../features/statistiques/components/BentoDonutCategories';
-import { BentoBarProvinces } from '../features/statistiques/components/BentoBarProvinces';
-import { BentoAreaEvolution } from '../features/statistiques/components/BentoAreaEvolution';
-import { BentoGaugeParity } from '../features/statistiques/components/BentoGaugeParity';
-import { BentoRadialKPIs } from '../features/statistiques/components/BentoRadialKPIs';
-import { BentoTopNewsCard } from '../features/statistiques/components/BentoTopNewsCard';
+import { useStatistiquesGlobales } from '../features/statistiques/hooks/useStatistiquesGlobales';
+import { GLASS_CARD } from '../features/dashboards/glassStyles';
+import { KpiMiniCard } from '../features/dashboards/statistiques/KpiMiniCard';
+import { ProvinceBarPanel } from '../features/dashboards/statistiques/ProvinceBarPanel';
+import { HourlyActivityPanel } from '../features/dashboards/statistiques/HourlyActivityPanel';
+import { StatutsDonutPanel } from '../features/dashboards/statistiques/StatutsDonutPanel';
 
 export default function StatistiquesPage() {
+  const { stats, isLoading, error } = useStatistiquesGlobales();
+
   // Set custom side content for Statistiques Page
   useSetSideContent(
     <div className="space-y-4">
@@ -35,10 +47,38 @@ export default function StatistiquesPage() {
     []
   );
 
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-16 bg-gray-200/70 dark:bg-white/10 rounded-3xl" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-24 bg-gray-200/70 dark:bg-white/10 rounded-3xl" />
+          ))}
+        </div>
+        <div className="h-64 bg-gray-200/70 dark:bg-white/10 rounded-3xl" />
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="flex flex-col items-center text-center gap-3 py-20 px-4">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h1 className="text-lg font-bold text-gray-900 dark:text-white">Statistiques indisponibles</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+          Impossible de charger les statistiques pour le moment. Réessayez dans un instant.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-5 pb-10">
+    <div className="space-y-4 pb-10">
       {/* Top Banner */}
-      <div className="bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-800 p-4 rounded-2xl shadow-sm">
+      <div className={`${GLASS_CARD} p-4`}>
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-[#5B4DFF]">
             <BarChart2 className="w-5 h-5" />
@@ -54,38 +94,26 @@ export default function StatistiquesPage() {
         </div>
       </div>
 
-      {/* Row 1: KPI Summary Row */}
-      <BentoMetricsRow />
+      {/* Rangée de KPI compacts */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiMiniCard title="Votes exprimés" value={stats.totalVotes} variation={stats.croissanceMensuelle} />
+        <KpiMiniCard title="Commentaires" value={stats.totalCommentaires} subtitle="cumulés" />
+        <KpiMiniCard title="Taux de transparence" value={Math.round(stats.tauxTransparence ?? 0)} format="percent" subtitle="publications avec lien officiel" />
+        <KpiMiniCard title="Organisations partenaires" value={stats.totalOrganisations} />
+      </div>
 
-      {/* Row 2: Donut Categories + Bar Provinces (Bento 2 Columns) */}
+      {/* Barres (participation par province) + Donut (statuts) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-7">
-          <BentoDonutCategories />
+          <ProvinceBarPanel data={stats.participationParProvince} />
         </div>
         <div className="lg:col-span-5">
-          <BentoBarProvinces />
+          <StatutsDonutPanel data={stats.statutsConsultations ?? []} />
         </div>
       </div>
 
-      {/* Row 3: Area Line Evolution + Gauge Parity */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-8">
-          <BentoAreaEvolution />
-        </div>
-        <div className="lg:col-span-4">
-          <BentoGaugeParity />
-        </div>
-      </div>
-
-      {/* Row 4: Radial KPIs + Top News */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-5">
-          <BentoRadialKPIs />
-        </div>
-        <div className="lg:col-span-7">
-          <BentoTopNewsCard />
-        </div>
-      </div>
+      {/* Courbes multiples (activité par heure) */}
+      <HourlyActivityPanel data={stats.activiteParHeure} />
     </div>
   );
 }

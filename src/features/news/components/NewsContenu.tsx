@@ -1,6 +1,7 @@
 import React from 'react';
 import { News, Sujet } from '../../../types/global.types';
 import { RichTextViewer } from '../../../components/ui/RichTextViewer';
+import { RichContentRenderer } from '../../../components/ui/RichContentRenderer';
 import { Sparkles, FileText } from 'lucide-react';
 
 export interface NewsContenuProps {
@@ -37,7 +38,7 @@ export const NewsContenu: React.FC<NewsContenuProps> = ({ news, sujet }) => {
 
       {/* Main Rich Text Content & Objectives Render */}
       <div className="my-2">
-        <RichTextViewer content={currentItem.contenu || currentItem.description} />
+        <RichContentRenderer content={currentItem.contenu || currentItem.description} />
       </div>
 
       {/* Tags */}

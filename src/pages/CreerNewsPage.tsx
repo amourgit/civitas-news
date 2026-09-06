@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stepper } from '../components/ui/Stepper';
 import { Button } from '../components/ui/Button';
@@ -11,7 +11,9 @@ import { useAuthStore } from '../store/auth.store';
 import { toast } from '../hooks/useToast';
 import { FilePlus, ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, X } from 'lucide-react';
 import { RichTextViewer } from '../components/ui/RichTextViewer';
+import { RichContentRenderer } from '../components/ui/RichContentRenderer';
 import { MarkdownToolbar } from '../components/ui/MarkdownToolbar';
+import { RichTextEditor, type RichTextEditorHandle } from '../components/editor/RichTextEditor';
 import { useOpenNewsDetail } from '../features/news/hooks/useOpenNewsDetail';
 import { PROVINCES_GABON } from '../features/news/constants/newsFieldOptions';
 
@@ -39,7 +41,7 @@ export default function CreerNewsPage() {
   const [description, setDescription] = useState('');
   const [contenu, setContenu] = useState('');
   const [showPreviewDesc, setShowPreviewDesc] = useState(false);
-  const [showPreviewContenu, setShowPreviewContenu] = useState(false);
+  const richTextEditorRef = useRef<RichTextEditorHandle>(null);
   const [province, setProvince] = useState('Estuaire');
 
   // Référentiels (catégories, organisations, établissements) — peuplés
@@ -153,6 +155,30 @@ export default function CreerNewsPage() {
         etablissement: etablissements.find((e) => e.id === etablissementId),
         auteur: user || undefined,
       });
+
+      // Le contenu envoyé ci-dessus peut encore référencer des médias
+      // locaux (aperçus blob:) si l'auteur en a inséré dans l'éditeur
+      // avant que la News n'existe. Maintenant que son id réel est
+      // connu, on les persiste réellement et on réenregistre le
+      // contenu final (URLs définitives) par-dessus.
+      if (richTextEditorRef.current) {
+        try {
+          const { content: finalContenu, failedCount } = await richTextEditorRef.current.publishPendingMedia(created.id);
+          if (finalContenu !== contenu) {
+            await newsService.updateNews(created.id, { contenu: finalContenu });
+          }
+          if (failedCount > 0) {
+            toast(
+              'warning',
+              'Certains médias non importés',
+              `${failedCount} média(s) du contenu détaillé n'ont pas pu être importés. Vous pourrez réessayer en modifiant l'article.`,
+            );
+          }
+        } catch (mediaError) {
+          console.error('Échec de la persistance des médias du contenu :', mediaError);
+          toast('warning', 'News publiée, médias non finalisés', 'La publication a réussi mais certains médias du contenu n’ont pas pu être finalisés.');
+        }
+      }
 
       // Le sondage n'est PAS un champ de News côté backend : c'est une
       // ressource à part (sondages/api/v1/), créée séparément une fois
@@ -350,29 +376,13 @@ export default function CreerNewsPage() {
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                 Texte détaillé & Objectifs (Propositions, contexte, chapitres...)
               </label>
-              <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
-                <MarkdownToolbar
-                  value={contenu}
-                  onChange={setContenu}
-                  showPreview={showPreviewContenu}
-                  onTogglePreview={() => setShowPreviewContenu(!showPreviewContenu)}
-                />
-                {showPreviewContenu ? (
-                  <div className="p-4 bg-white dark:bg-gray-900 min-h-[180px]">
-                    <RichTextViewer
-                      content={contenu || '*Aucun contenu détaillé à prévisualiser*'}
-                    />
-                  </div>
-                ) : (
-                  <textarea
-                    value={contenu}
-                    onChange={(e) => setContenu(e.target.value)}
-                    rows={8}
-                    placeholder="Collez ici votre texte depuis ChatGPT, Claude.ai, ou Google Docs : mise en forme (gras, italique, listes, tableaux, citations) reconnue automatiquement !"
-                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#5B4DFF]"
-                  />
-                )}
-              </div>
+              <RichTextEditor
+                ref={richTextEditorRef}
+                value={contenu}
+                onChange={setContenu}
+                placeholder="Rédigez le corps de votre article : titres, listes, images, vidéos, tableaux, galeries, documents joints..."
+                minHeight="280px"
+              />
             </div>
 
             {/* Image de couverture */}
@@ -511,7 +521,7 @@ export default function CreerNewsPage() {
                     Texte Détaillé & Objectifs (Rendu Riche)
                   </span>
                   <div className="p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                    <RichTextViewer content={contenu} />
+                    <RichContentRenderer content={contenu} />
                   </div>
                 </div>
               )}

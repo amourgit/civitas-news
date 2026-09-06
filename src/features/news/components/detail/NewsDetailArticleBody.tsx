@@ -1,6 +1,6 @@
 import React from 'react';
 import { News } from '../../../../types/global.types';
-import { RichTextViewer } from '../../../../components/ui/RichTextViewer';
+import { RichContentRenderer } from '../../../../components/ui/RichContentRenderer';
 
 export interface NewsDetailArticleBodyProps {
   news: News;
@@ -12,10 +12,12 @@ export interface NewsDetailArticleBodyProps {
  * que le contenu complet (news.contenu), sans dupliquer le résumé. Les
  * mots-clés vivent dans le widget "Catégorie & mots-clés" de la
  * sidebar (voir sidebar/CategoryTagsWidget.tsx), comme dans les
- * maquettes de référence -- pas dupliqués ici. Repose entièrement sur
- * RichTextViewer (rendu markdown déjà utilisé partout ailleurs dans
- * l'app) en échelle typographique élargie (articleSize) pour une
- * lecture confortable en pleine page.
+ * maquettes de référence -- pas dupliqués ici. Repose sur
+ * RichContentRenderer, qui détecte automatiquement l'ancien format
+ * (Markdown, rendu par RichTextViewer) et le nouveau (JSON produit par
+ * l'éditeur riche, avec médias/tableaux/galeries), en échelle
+ * typographique élargie (articleSize) pour une lecture confortable en
+ * pleine page.
  */
 export const NewsDetailArticleBody: React.FC<NewsDetailArticleBodyProps> = ({ news }) => {
   const hasFullContent = !!news.contenu && news.contenu.trim() !== '' && news.contenu.trim() !== news.description?.trim();
@@ -24,7 +26,7 @@ export const NewsDetailArticleBody: React.FC<NewsDetailArticleBodyProps> = ({ ne
 
   return (
     <div className="w-full">
-      <RichTextViewer content={news.contenu!} articleSize />
+      <RichContentRenderer content={news.contenu!} articleSize />
     </div>
   );
 };

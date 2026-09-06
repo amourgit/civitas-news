@@ -1,156 +1,168 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { StatCard } from '../../features/statistiques/components/StatCard';
-import { AdminDataTable, type Column } from '../../features/administration/components/AdminDataTable';
-import { FileText, CheckSquare, MessageSquare, ShieldAlert, Users, ArrowRight } from 'lucide-react';
+// ============================================================
+// src/pages/admin/AdminDashboardPage.tsx
+// Refonte complète (voir maquette e-commerce fournie par l'utilisateur) --
+// même esprit (cartes stats + grands graphiques + table "publications
+// récentes"), mais entièrement branchée sur des données réelles du
+// backend CIVITAS (statistiquesService/adminService/newsService), pas
+// sur un jeu de données e-commerce. Le raccourci "Accès rapide" par
+// modèle disparaît : la sidebar persistante (AdminSidebar.tsx) couvre
+// désormais ce rôle.
+// ============================================================
+
+import React, { useEffect, useMemo, useState } from 'react';
 import { statistiquesService } from '../../services/api/statistiques.service';
 import { adminService } from '../../services/api/admin.service';
 import { newsService } from '../../services/api/news.service';
-import { formatDateRelative } from '../../lib/formatDate';
-import type { AuditLog } from '../../types/global.types';
 import { toast } from '../../hooks/useToast';
-import { groupModelsByApp } from '../../components/backoffice/registry';
-import { usePermissions } from '../../lib/permissions/usePermissions';
-import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
-
-interface DashboardCounts {
-  newsValidees: number;
-  sondagesActifs: number;
-  signalementsEnAttente: number;
-  citoyensInscrits: number;
-}
+import type { StatistiquesGlobales, Signalement, Utilisateur, News } from '../../types/global.types';
+import { DonutStatCard } from '../../features/dashboards/admin/DonutStatCard';
+import { BarMiniStatCard } from '../../features/dashboards/admin/BarMiniStatCard';
+import { ProgressStatCard } from '../../features/dashboards/admin/ProgressStatCard';
+import { HeroesStatCard } from '../../features/dashboards/admin/HeroesStatCard';
+import { AreaMetricPanel } from '../../features/dashboards/admin/AreaMetricPanel';
+import { RecentContentPanel } from '../../features/dashboards/admin/RecentContentPanel';
 
 export default function AdminDashboardPage() {
-  const { can } = usePermissions();
-  const [counts, setCounts] = useState<DashboardCounts | null>(null);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [globales, setGlobales] = useState<StatistiquesGlobales | null>(null);
+  const [signalements, setSignalements] = useState<Signalement[]>([]);
+  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([]);
+  const [newsList, setNewsList] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-
     async function load() {
-      try {
-        const [globales, signalements, logs, news] = await Promise.all([
-          statistiquesService.getStatistiquesGlobales(),
-          adminService.getSignalements(),
-          adminService.getAuditLogs(),
-          newsService.getNews(),
-        ]);
+      // Promise.allSettled plutôt que Promise.all : un seul appel en échec
+      // (ex: validation des statistiques) ne doit pas effacer les données
+      // des trois autres qui ont réussi -- chaque widget dégrade
+      // indépendamment (voir les `?? 0` / `?? []` plus bas) selon ce qui a
+      // effectivement pu être chargé.
+      const [g, s, u, n] = await Promise.allSettled([
+        statistiquesService.getStatistiquesGlobales(),
+        adminService.getSignalements(),
+        adminService.getUtilisateurs(),
+        newsService.getNews(),
+      ]);
+      if (cancelled) return;
 
-        if (cancelled) return;
+      if (g.status === 'fulfilled') setGlobales(g.value);
+      else console.error('Échec du chargement des statistiques globales:', g.reason);
 
-        setCounts({
-          newsValidees: globales.totalNewsActives,
-          sondagesActifs: news.reduce((total, item) => total + (item.sondages?.length || 0), 0),
-          signalementsEnAttente: signalements.filter((s) => s.statut === 'en_attente').length,
-          citoyensInscrits: globales.totalCitoyensInscrits ?? globales.totalVisiteurs,
-        });
-        setAuditLogs(logs);
-      } catch (error) {
-        console.error('Échec du chargement du tableau de bord administrateur:', error);
-        if (!cancelled) toast('error', 'Tableau de bord indisponible', 'Impossible de charger les statistiques. Réessayez dans un instant.');
-      } finally {
-        if (!cancelled) setIsLoading(false);
+      if (s.status === 'fulfilled') setSignalements(s.value);
+      else console.error('Échec du chargement des signalements:', s.reason);
+
+      if (u.status === 'fulfilled') setUtilisateurs(u.value);
+      else console.error('Échec du chargement des utilisateurs:', u.reason);
+
+      if (n.status === 'fulfilled') setNewsList(n.value);
+      else console.error('Échec du chargement des publications:', n.reason);
+
+      if ([g, s, u, n].some((r) => r.status === 'rejected')) {
+        toast('error', 'Chargement partiel', "Certaines données du tableau de bord n'ont pas pu être chargées.");
       }
-    }
 
+      setIsLoading(false);
+    }
     load();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const auditColumns: Column<AuditLog>[] = [
-    { key: 'action', header: 'Action' },
-    { key: 'utilisateur', header: 'Utilisateur' },
-    { key: 'cible', header: 'Cible' },
-    {
-      key: 'horodatage',
-      header: 'Quand',
-      render: (item) => formatDateRelative(item.horodatage),
-    },
-    { key: 'adresseIp', header: 'Adresse IP' },
-  ];
+  const donutSegments = useMemo(
+    () => (globales?.repartitionParCategorie ?? []).map((c) => ({ label: c.category, value: c.count })),
+    [globales]
+  );
 
-  const groups = groupModelsByApp()
-    .map((group) => ({
-      ...group,
-      models: group.models.filter((m) => can(m.viewPermission ?? PERMISSIONS.BACKOFFICE_ACCESS)),
-    }))
-    .filter((group) => group.models.length > 0);
+  const barData = useMemo(
+    () => (globales?.activiteParHeure ?? []).slice(-7).map((h) => ({ label: h.heure, value: h.votes })),
+    [globales]
+  );
+
+  const signalementsTraites = useMemo(() => signalements.filter((s) => s.statut === 'traite').length, [signalements]);
+  const signalementsEnAttente = useMemo(() => signalements.filter((s) => s.statut === 'en_attente').length, [signalements]);
+
+  const topContributeurs = useMemo(
+    () => [...utilisateurs].sort((a, b) => (b.stats?.contributions ?? 0) - (a.stats?.contributions ?? 0)),
+    [utilisateurs]
+  );
+
+  const evolutionData = useMemo(
+    () => (globales?.evolutionMensuelle ?? []).map((m) => ({ label: m.mois, value: m.participation })),
+    [globales]
+  );
+  const derniereParticipation = evolutionData.length > 0 ? evolutionData[evolutionData.length - 1].value : 0;
+
+  const activiteHoraireData = useMemo(
+    () => (globales?.activiteParHeure ?? []).map((h) => ({ label: h.heure, value: h.votes + h.commentaires })),
+    [globales]
+  );
+  const totalActiviteHoraire = activiteHoraireData.reduce((sum, d) => sum + d.value, 0);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-7 w-64 bg-gray-200/70 dark:bg-white/10 rounded-xl" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-8 grid grid-cols-2 gap-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-gray-200/70 dark:bg-white/10 rounded-3xl" />
+            ))}
+          </div>
+          <div className="lg:col-span-4 h-full min-h-[280px] bg-gray-200/70 dark:bg-white/10 rounded-3xl" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white font-display">
-        Tableau de Bord Administrateur
-      </h1>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="News Validées" value={counts?.newsValidees ?? 0} icon={<FileText className="w-5 h-5" />} />
-        <StatCard title="Sondages Actifs" value={counts?.sondagesActifs ?? 0} icon={<CheckSquare className="w-5 h-5" />} />
-        <StatCard
-          title="Signalements En Attente"
-          value={counts?.signalementsEnAttente ?? 0}
-          icon={<ShieldAlert className="w-5 h-5 text-red-500" />}
-        />
-        <StatCard title="Citoyens & Inscrits" value={counts?.citoyensInscrits ?? 0} icon={<Users className="w-5 h-5" />} />
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white font-display">Tableau de Bord</h1>
+        <p className="text-sm text-gray-400">Vue d'ensemble en temps réel de l'activité de la plateforme CIVITAS.</p>
       </div>
 
-      {/* Accès rapide — toutes les tables du backoffice, groupées par
-          app, générées depuis le même registre que la navbar (voir
-          src/components/backoffice/registry/). */}
-      <div className="space-y-4">
-        {groups.map((group) => (
-          <div key={group.appLabel}>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
-              {group.appLabel}
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {group.models.map((model) => {
-                const Icon = model.icon;
-                return (
-                  <Link
-                    key={model.key}
-                    to={`/admin/${model.key}`}
-                    className="group flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-[#1A1F4D] border border-gray-100 dark:border-gray-800 hover:border-[#5B4DFF]/40 hover:shadow-md transition-all"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-[#5B4DFF]/10 text-[#5B4DFF] flex items-center justify-center shrink-0">
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{model.labelPlural}</p>
-                      {model.description && (
-                        <p className="text-xs text-gray-400 truncate">{model.description}</p>
-                      )}
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#5B4DFF] group-hover:translate-x-0.5 transition-all shrink-0" />
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {!isLoading && auditLogs.length === 0 ? (
-        <div className="bg-white dark:bg-[#1A1F4D] rounded-3xl p-6 border border-gray-100 dark:border-gray-800 space-y-1">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white font-display">
-            Journal des dernières activités de modération
-          </h3>
-          <p className="text-xs text-gray-400 flex items-center gap-1.5 pt-1">
-            <MessageSquare className="w-3.5 h-3.5" /> Aucune activité récente à afficher.
-          </p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <DonutStatCard title="Publications actives" value={globales?.totalNewsActives ?? 0} variation={globales?.croissanceMensuelle} segments={donutSegments} />
+          <BarMiniStatCard title="Votes exprimés" value={globales?.totalVotes ?? 0} bars={barData} />
+          <ProgressStatCard title="Signalements en attente" value={signalementsEnAttente} total={signalements.length} progressLabel={`${signalementsTraites} traités sur ${signalements.length}`} />
+          <HeroesStatCard
+            title="Citoyens inscrits"
+            value={globales?.totalCitoyensInscrits ?? globales?.totalVisiteurs ?? 0}
+            heroesLabel="Contributeurs les plus actifs"
+            topContributeurs={topContributeurs}
+            totalCount={utilisateurs.length}
+          />
         </div>
-      ) : (
-        <AdminDataTable<AuditLog>
-          title="Journal des dernières activités de modération"
-          description="Supervision en direct de la modération et de l'intégrité des votes."
-          columns={auditColumns}
-          data={auditLogs}
-          searchPlaceholder="Rechercher une activité..."
-        />
-      )}
+        <div className="lg:col-span-4">
+          <AreaMetricPanel
+            title="Évolution de la participation"
+            subtitle="Publications par mois"
+            value={derniereParticipation}
+            variation={globales?.croissanceMensuelle}
+            data={evolutionData}
+            gradientId="admin-evolution"
+            height={260}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-8">
+          <RecentContentPanel news={newsList} />
+        </div>
+        <div className="lg:col-span-4">
+          <AreaMetricPanel
+            title="Activité par heure"
+            subtitle="Votes + commentaires, sur 24h"
+            value={totalActiviteHoraire}
+            data={activiteHoraireData}
+            color="#22D3EE"
+            gradientId="admin-activite-horaire"
+          />
+        </div>
+      </div>
     </div>
   );
 }
