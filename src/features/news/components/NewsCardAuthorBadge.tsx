@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
+import './NewsCardAuthorBadge.css';
 
 interface MenuItem {
   label: string;
@@ -43,9 +44,10 @@ export interface NewsCardAuthorBadgeProps {
  * structure (trigger avatar en anneau dégradé + nom + ligne
  * secondaire, flèche "bending line" qui réagit au survol/à l'ouverture,
  * DropdownMenuContent en lignes icône+label+pastille de valeur,
- * séparateur, bouton d'action rouge en bas), mêmes classes
- * d'animation Radix (data-state in/out, zoom, slide-from-*), même
- * logique isOpen -- copiées à l'identique depuis la source.
+ * séparateur, bouton d'action rouge en bas), même logique isOpen --
+ * copiées à l'identique depuis la source. L'animation d'ouverture du
+ * panneau, elle, a depuis été remplacée (voir plus bas) par un rebond
+ * sur-mesure : ce n'est plus la classe `animate-in` d'origine.
  *
  * Adaptations strictement nécessaires (la source vient d'un projet
  * Next.js ; ce projet est Vite + react-router-dom) :
@@ -56,11 +58,18 @@ export interface NewsCardAuthorBadgeProps {
  *  - le logo "Gemini" (marque tierce, alimentait un champ "Model" sans
  *    rapport avec ce contexte) remplacé par une icône neutre.
  *
- * Adaptations demandées explicitement : fond verre dépoli partout
- * (fermé et ouvert), opacité réduite au repos et rétablie au
- * survol/focus de la card. Les données injectées sont celles de la
- * news : auteur (nom/avatar) et tenant/organisation, déjà exposées par
- * l'API (NewsListSerializer), aucun changement backend requis.
+ * Adaptations demandées explicitement : fond verre dépoli PARTOUT
+ * (fermé et ouvert) et EN PERMANENCE, quel que soit l'état (plus
+ * d'opacité réduite au repos rétablie au survol/focus -- l'ancien
+ * comportement scintillait entre "quasi transparent" et "plein verre"
+ * selon le survol de la card). Le panneau qui s'ouvre au clic
+ * (DropdownMenuContent) anime son entrée avec 3 rebonds explicites
+ * avant stabilisation (voir NewsCardAuthorBadge.css), à la place des
+ * classes `animate-in`/`zoom-in-95` par défaut du wrapper -- retirées
+ * de components/ui/dropdown-menu.tsx, dont ce composant est l'unique
+ * consommateur. Les données injectées sont celles de la news :
+ * auteur (nom/avatar) et tenant/organisation, déjà exposées par l'API
+ * (NewsListSerializer), aucun changement backend requis.
  */
 export const NewsCardAuthorBadge: React.FC<NewsCardAuthorBadgeProps> = ({ news }) => {
   const auteur = news.auteur;
@@ -102,10 +111,7 @@ export const NewsCardAuthorBadge: React.FC<NewsCardAuthorBadgeProps> = ({ news }
 
   return (
     <div
-      className={cn(
-        'absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-30',
-        'opacity-75 group-hover/card:opacity-100 group-focus-within/card:opacity-100 transition-opacity duration-300'
-      )}
+      className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-30"
       data-no-card-click
       onClick={(e) => e.stopPropagation()}
     >
@@ -179,8 +185,7 @@ export const NewsCardAuthorBadge: React.FC<NewsCardAuthorBadgeProps> = ({ news }
           <DropdownMenuContent
             align="start"
             sideOffset={4}
-            className="w-64 p-2 bg-white/10 backdrop-blur-2xl border border-white/25 rounded-2xl shadow-xl shadow-black/30
-            data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-top-left"
+            className="news-card-author-badge-panel w-64 p-2 bg-white/10 backdrop-blur-2xl border border-white/25 rounded-2xl shadow-xl shadow-black/30"
           >
             <div className="space-y-1">
               {menuItems.map((item, i) => (

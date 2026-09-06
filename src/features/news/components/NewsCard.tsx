@@ -112,8 +112,9 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         <div className="absolute inset-x-0 top-0 h-16 sm:h-20 bg-gradient-to-b from-black/65 to-transparent pointer-events-none" />
       </div>
 
-      {/* Coin haut-gauche : auteur + tenant (organisation) -- verre
-          dépoli, estompé au repos, plein au survol de la card. */}
+      {/* Coin haut-gauche : auteur + tenant (organisation) -- toujours en
+          plein verre dépoli, quel que soit l'état (plus d'estompage au
+          repos). */}
       <NewsCardAuthorBadge news={newsItem} />
 
       {/* Coin haut-droit : menu contextuel flottant -- verre dépoli,

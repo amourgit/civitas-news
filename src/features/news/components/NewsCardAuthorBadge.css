@@ -1,0 +1,72 @@
+/* ============================================================
+   src/features/news/components/NewsCardAuthorBadge.css
+   Animation d'ouverture du panneau (DropdownMenuContent) du badge
+   auteur -- coin haut-gauche de la news card. Keyframes explicites
+   plutôt qu'un spring physique : un spring (masse/raideur/amortissement)
+   ne garantit pas un NOMBRE d'oscillations précis, alors que des
+   pourcentages de keyframe donnent un résultat déterministe -- ici
+   3 rebonds nets (pics à 22%/52%/80%, d'amplitude décroissante) avant
+   stabilisation à l'échelle 1, comme demandé.
+   Remplace les classes `animate-in`/`zoom-in-95`/... de
+   components/ui/dropdown-menu.tsx (retirées : ce composant est le seul
+   consommateur du wrapper, qui n'a donc plus besoin d'imposer une
+   animation par défaut -- voir son en-tête).
+   ============================================================ */
+
+@keyframes news-card-author-badge-panel-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(-16px);
+  }
+  14% {
+    opacity: 1;
+  }
+  22% {
+    /* Rebond 1 (le plus ample) */
+    transform: scale(1.18) translateY(4px);
+  }
+  38% {
+    transform: scale(0.92) translateY(-3px);
+  }
+  52% {
+    /* Rebond 2 */
+    transform: scale(1.08) translateY(2px);
+  }
+  66% {
+    transform: scale(0.97) translateY(-1px);
+  }
+  80% {
+    /* Rebond 3 (le plus discret) */
+    transform: scale(1.03) translateY(1px);
+  }
+  92% {
+    transform: scale(0.99) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes news-card-author-badge-panel-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.92) translateY(-6px);
+  }
+}
+
+.news-card-author-badge-panel {
+  transform-origin: top left;
+}
+
+.news-card-author-badge-panel[data-state='open'] {
+  animation: news-card-author-badge-panel-in 700ms ease-out forwards;
+}
+
+.news-card-author-badge-panel[data-state='closed'] {
+  animation: news-card-author-badge-panel-out 150ms ease-in forwards;
+}

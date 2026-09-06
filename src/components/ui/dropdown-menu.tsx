@@ -10,8 +10,13 @@ import { cn } from '../../lib/utils';
  * ProfileDropdown fourni en dépend (`@/components/ui/dropdown-menu`).
  * Pas de couleurs imposées ici : chaque appelant fournit son propre
  * `className` (voir NewsCardAuthorBadge.tsx, qui y injecte le verre
- * dépoli) -- ce fichier ne gère que le comportement Radix + les
- * classes d'animation data-state.
+ * dépoli) -- ce fichier ne gère que le comportement Radix, PAS
+ * l'animation d'ouverture/fermeture : NewsCardAuthorBadge.tsx (seul
+ * consommateur) possède la sienne en propre (voir
+ * NewsCardAuthorBadge.css, rebond à l'ouverture) plutôt qu'un défaut
+ * imposé ici qui se serait juste additionné au className du composant
+ * appelant (`cn()` de ce projet est une simple concaténation, sans
+ * dédoublonnage -- voir src/lib/utils.ts).
  */
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -27,11 +32,7 @@ const DropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn(
-        'z-50 min-w-[8rem] overflow-hidden outline-none',
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-        className
-      )}
+      className={cn('z-50 min-w-[8rem] overflow-hidden outline-none', className)}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
