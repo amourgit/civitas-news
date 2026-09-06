@@ -412,12 +412,21 @@ export function NotchNav({
   return (
     <>
       {/* Topbar -- fixed, collée aux vrais bords du viewport. Ce
-          conteneur n'a lui-même AUCUNE hauteur (les notches sont en
-          `absolute` dedans) et n'intercepte aucun clic : seuls les
-          notches individuels sont cliquables (pointer-events-auto). */}
+          conteneur n'intercepte lui-même aucun clic : seuls les
+          notches individuels le font (pointer-events-auto). Il porte
+          désormais une hauteur réelle (44px niveau supérieur seul,
+          +56px si un niveau inférieur est publié -- toujours 0 gap
+          entre les deux, top-11 du niveau inférieur = h-11 exact du
+          plus haut élément du niveau supérieur) et un fond
+          glassmorphism (même traitement que le popup de filtres News :
+          bg-white/10 dark:bg-black/20 + backdrop-blur-2xl), pour que
+          les zones SANS notch/pilule (les espaces vides entre eux)
+          paraissent floutées -- chaque notch garde son propre fond
+          opaque par-dessus, inchangé. */}
       <div
         className={cn(
-          "pointer-events-none fixed inset-x-0 z-50 select-none transition-colors duration-200",
+          "pointer-events-none fixed inset-x-0 z-50 select-none bg-white/10 dark:bg-black/20 backdrop-blur-2xl transition-colors duration-200",
+          hasLowerContent ? "h-[100px]" : "h-11",
           isBottom ? "bottom-0" : "top-0",
           className
         )}
@@ -568,16 +577,13 @@ export function NotchNav({
               isBottom ? "bottom-11 border-t-2" : "top-11 border-b-2"
             )}
           >
-            {/* Accent proche du niveau supérieur (le coin qui touche
-                l'autre niveau) -- même composant que celui déjà utilisé
-                sous le logo, simplement rejoué ici à l'échelle de toute
-                la barre. */}
-            <div className={cn("absolute left-0 h-0 w-0", isBottom ? "bottom-0" : "top-0")}>
-              <NotchCornerLeftWing position={isBottom ? "bottom" : "top"} />
-            </div>
-
-            {/* Accent proche de la bordure (le coin opposé, là où la
-                ligne du bas se termine à gauche). */}
+            {/* L'accent de continuité qui se trouvait ici, côté niveau
+                supérieur, a été retiré : le logo (niveau supérieur)
+                porte déjà son propre NotchCornerLeftWing pour ce
+                raccord (voir plus haut) -- le dupliquer ici était
+                redondant avec ce que le logo gère déjà. Seul reste
+                l'accent opposé ci-dessous, là où la ligne du bas se
+                termine à gauche. */}
             <div className={cn("absolute left-0 h-0 w-0", isBottom ? "top-0" : "bottom-0")}>
               <NotchCornerLeftWing position={isBottom ? "top" : "bottom"} />
             </div>
