@@ -1,0 +1,441 @@
+/* ============================================================
+   src/components/home/organisations/OrganisationCard.css
+   Feuille de style compagnon de OrganisationCard.tsx.
+
+   Le composant fourni référençait ces classes sans feuille de style
+   jointe (aucun CSS n'accompagnait le snippet reçu). Cette feuille a
+   été écrite pour reproduire fidèlement le comportement DÉCRIT par le
+   JS et les noms de classes eux-mêmes : glow flouté derrière la
+   pochette, panneau "morceau" qui glisse en place à la position
+   mesurée par le composant, panneau bio plein écran de la carte qui
+   se déploie via le bouton "+", flou progressif en bas des zones de
+   texte (technique classique du dégradé de flou par calques
+   superposés, façon Apple Music).
+   ============================================================ */
+
+.organisation-card {
+  width: 320px;
+  max-width: 85vw;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+}
+
+.content-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.content {
+  position: relative;
+  isolation: isolate;
+  border-radius: 24px;
+  background: #12132b;
+  color: #fff;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px -12px rgba(0, 0, 0, 0.45);
+}
+
+.content .main-content {
+  position: relative;
+  z-index: 1;
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+
+.content.active .main-content {
+  opacity: 0.35;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+/* ---- Pochette / logo + glow flouté ---- */
+.photo-wrapper {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  background: #1a1c3e;
+}
+
+.photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo:first-child {
+  z-index: 2;
+}
+
+/* Deuxième <img>, floutée inline via style -- ici on l'agrandit et on
+   la fait déborder pour créer le glow diffus derrière la pochette
+   nette, dans les tons de la pochette elle-même. */
+.photo:not(:first-child):not(.photo-fallback) {
+  z-index: 1;
+  transform: scale(1.35);
+  opacity: 0.85;
+}
+
+.photo-fallback {
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 64px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, #5b4dff 0%, #3b3dd9 55%, #1a1c3e 100%);
+}
+
+/* ---- Titre + infos ---- */
+.main-info {
+  position: relative;
+  z-index: 1;
+}
+
+.title-container h1 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.title-info .light,
+.songs .light,
+.info .light {
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.divider {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+/* ---- Liste des actualités ---- */
+.songs {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.song {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.songs .song:first-child {
+  cursor: pointer;
+}
+
+.songs .song:last-child {
+  border-bottom: none;
+}
+
+.song .bold {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song .end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.song .end svg {
+  opacity: 0.7;
+}
+
+/* ---- Panneau "actualité" (song-modal) ---- */
+.song-modal {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  z-index: 10;
+  background: rgba(24, 25, 54, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 14px 16px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0px);
+  transition: opacity 0.35s cubic-bezier(0.76, 0, 0.24, 1), top 0.35s cubic-bezier(0.76, 0, 0.24, 1);
+  box-shadow: 0 20px 48px -16px rgba(0, 0, 0, 0.6);
+}
+
+.song-modal.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.song-modal .song {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.song-modal .end > div {
+  display: flex;
+  cursor: pointer;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.song-modal .end > div:hover {
+  opacity: 0.8;
+}
+
+.song-modal-info {
+  position: relative;
+  margin-top: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-bottom: 24px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.8);
+  scrollbar-width: none;
+}
+
+.song-modal-info::-webkit-scrollbar {
+  display: none;
+}
+
+.song-credits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.song-credits svg {
+  flex-shrink: 0;
+}
+
+.song-modal-info .bold {
+  margin: 0;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ---- Panneau "organisation" plein cadre (bio) ---- */
+.modal {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  pointer-events: none;
+}
+
+.modal .toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(18, 19, 43, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.3s cubic-bezier(0.76, 0, 0.24, 1), background 0.2s ease;
+}
+
+.modal .toggle:hover {
+  background: rgba(18, 19, 43, 0.8);
+}
+
+.modal.active .toggle {
+  transform: rotate(45deg);
+}
+
+.modal-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.35s cubic-bezier(0.76, 0, 0.24, 1), transform 0.35s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.modal.active .modal-content {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.modal-content .photo-wrapper {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  margin-bottom: 0;
+  border-radius: 24px;
+}
+
+.modal-content .photo-wrapper h1 {
+  position: absolute;
+  left: 20px;
+  bottom: 128px;
+  z-index: 3;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.modal-content .info {
+  position: relative;
+  z-index: 3;
+}
+
+.info-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.info-top-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.genre {
+  text-transform: capitalize;
+}
+
+.modal-content .info > .bold {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.85);
+  max-height: 96px;
+  overflow-y: auto;
+  padding-bottom: 20px;
+  scrollbar-width: none;
+}
+
+.modal-content .info > .bold::-webkit-scrollbar {
+  display: none;
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.modal.active .shade {
+  opacity: 1;
+}
+
+/* ---- Flou progressif (fondu en bas des zones de texte défilantes) ----
+   Technique par calques superposés : chaque calque applique un
+   backdrop-filter d'intensité croissante, masqué (mask-image) sur une
+   bande horizontale décalée vers le bas -- la superposition des 8
+   calques crée un flou qui augmente progressivement plutôt qu'une
+   coupure nette. */
+.gradient-blur {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.gradient-blur > div {
+  position: absolute;
+  inset: 0;
+}
+
+.gradient-blur > div:nth-child(1) {
+  backdrop-filter: blur(0.5px);
+  -webkit-backdrop-filter: blur(0.5px);
+  mask-image: linear-gradient(to top, black 0%, black 12.5%, transparent 25%);
+}
+.gradient-blur > div:nth-child(2) {
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  mask-image: linear-gradient(to top, black 12.5%, black 25%, transparent 37.5%);
+}
+.gradient-blur > div:nth-child(3) {
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  mask-image: linear-gradient(to top, black 25%, black 37.5%, transparent 50%);
+}
+.gradient-blur > div:nth-child(4) {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  mask-image: linear-gradient(to top, black 37.5%, black 50%, transparent 62.5%);
+}
+.gradient-blur > div:nth-child(5) {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  mask-image: linear-gradient(to top, black 50%, black 62.5%, transparent 75%);
+}
+.gradient-blur > div:nth-child(6) {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  mask-image: linear-gradient(to top, black 62.5%, black 75%, transparent 87.5%);
+}
+.gradient-blur > div:nth-child(7) {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  mask-image: linear-gradient(to top, black 75%, black 87.5%, transparent 100%);
+}
+.gradient-blur > div:nth-child(8) {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  mask-image: linear-gradient(to top, black 87.5%, black 100%);
+}
