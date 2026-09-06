@@ -1,10 +1,34 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+
+/** Seuil sous lequel le bouton flottant et ses options passent au petit format (breakpoint `sm` de Tailwind). */
+const MOBILE_BREAKPOINT = 640;
+
+/**
+ * Verre dépoli partagé par le déclencheur ET les options du menu --
+ * volontairement IDENTIQUE entre les deux (même fond translucide, même
+ * flou, même bordure, même ombre), comme demandé.
+ */
+const GLASS_SURFACE =
+  'bg-white/25 dark:bg-white/10 backdrop-blur-xl backdrop-saturate-150 border border-white/40 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.16)]';
+
+/** Reclampe au resize/à la rotation d'écran, pas seulement au montage. */
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
+  );
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return isMobile;
+}
 
 // ============================================================
 // src/components/layout/fab/MenuPrimitives.tsx
-// Port du composant fourni tel quel -- design et animations
-// inchangés. Deux changements strictement délimités :
+// Port du composant fourni -- animation d'expansion (clipPath, easing,
+// zIndex, translateY) inchangée. Changements par rapport à l'original :
 //  1. Retrait de "use client" (directive Next.js, sans effet et sans
 //     équivalent dans cette stack Vite).
 //  2. MenuContainer.isExpanded/onToggle sont désormais optionnellement
@@ -13,11 +37,17 @@ import { ChevronDown } from 'lucide-react';
 //     refermer le menu au début d'un drag et piloter l'ouverture
 //     depuis le wrapper de positionnement, sans toucher au rendu ni à
 //     l'animation ci-dessous.
-// Le sens d'ouverture (vers le HAUT et non vers le bas, puisque le
-// bouton est ancré en bas de l'écran -- voir QuickActionsFab.tsx) est
-// le seul changement visuel demandé : translateY passe en négatif,
-// tout le reste (durées, easing, clipPath, opacity, zIndex...) reste à
-// l'identique.
+//  3. Sens d'ouverture vers le HAUT (bouton ancré en bas de l'écran) :
+//     translateY passe en négatif.
+//  4. Format réduit en mobile (< MOBILE_BREAKPOINT) pour le déclencheur
+//     ET les options -- taille ET pas d'empilement (stackGap) réduits
+//     dans la même proportion, sinon les cercles se chevaucheraient mal
+//     à l'ouverture. Voir aussi BUTTON_SIZE dynamique dans
+//     QuickActionsFab.tsx, qui doit suivre la même taille pour que le
+//     drag/ancrage aux bords reste pixel-perfect.
+//  5. Fond passé en verre dépoli (GLASS_SURFACE), strictement identique
+//     entre le déclencheur et les options -- remplace l'ancien fond
+//     plat `bg-gray-100 dark:bg-gray-800`.
 // ============================================================
 
 interface MenuProps {
@@ -72,7 +102,7 @@ interface MenuItemProps {
 export function MenuItem({ children, onClick, disabled = false, icon, isActive = false, title }: MenuItemProps) {
   return (
     <button
-      className={`relative block w-full h-16 text-center group
+      className={`relative block w-full h-full text-center group
         ${disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-600 dark:text-gray-300"}
         ${isActive ? "bg-white/10" : ""}
       `}
@@ -83,7 +113,7 @@ export function MenuItem({ children, onClick, disabled = false, icon, isActive =
     >
       <span className="flex items-center justify-center h-full mt-[5%]">
         {icon && (
-          <span className="h-6 w-6 transition-all duration-200 group-hover:[&_svg]:stroke-[2.5]">
+          <span className="h-5 w-5 sm:h-6 sm:w-6 transition-all duration-200 group-hover:[&_svg]:stroke-[2.5]">
             {icon}
           </span>
         )}
@@ -104,6 +134,11 @@ export function MenuContainer({ children, isExpanded: controlledExpanded, onTogg
   const isExpanded = controlledExpanded ?? internalExpanded
   const childrenArray = React.Children.toArray(children)
   const totalItems = childrenArray.length
+  const isMobile = useIsMobile()
+  // Pas d'empilement proportionnel à la taille du bouton (même ratio
+  // 48/64 = 0.75 qu'en desktop) pour que le chevauchement des cercles à
+  // l'ouverture reste identique visuellement aux deux formats.
+  const stackGap = isMobile ? 36 : 48
   const handleToggle = () => {
     if (onToggle) {
       onToggle()
@@ -114,26 +149,26 @@ export function MenuContainer({ children, isExpanded: controlledExpanded, onTogg
     }
   }
   return (
-    <div className="relative w-[64px]" data-expanded={isExpanded}>
+    <div className="relative w-12 sm:w-16" data-expanded={isExpanded}>
       {/* Container for all items */}
       <div className="relative">
         {/* First item - always visible */}
-        <div 
-          className="relative w-16 h-16 bg-gray-100 dark:bg-gray-800 cursor-pointer rounded-full group will-change-transform z-50"
+        <div
+          className={`relative w-12 h-12 sm:w-16 sm:h-16 cursor-pointer rounded-full group will-change-transform z-50 ${GLASS_SURFACE}`}
           onClick={handleToggle}
         >
           {childrenArray[0]}
         </div>
         {/* Other items */}
         {childrenArray.slice(1).map((child, index) => (
-          <div 
-            key={index} 
-            className="absolute top-0 left-0 w-16 h-16 bg-gray-100 dark:bg-gray-800 will-change-transform"
+          <div
+            key={index}
+            className={`absolute top-0 left-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full will-change-transform ${GLASS_SURFACE}`}
             style={{
               // Ouverture vers le HAUT (bouton ancré en bas de l'écran) --
               // seul changement par rapport au composant fourni, qui
               // ouvrait vers le bas (translateY positif).
-              transform: `translateY(${isExpanded ? -(index + 1) * 48 : 0}px)`,
+              transform: `translateY(${isExpanded ? -(index + 1) * stackGap : 0}px)`,
               opacity: isExpanded ? 1 : 0,
               zIndex: 40 - index,
               clipPath: index === childrenArray.length - 2 

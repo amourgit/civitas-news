@@ -52,6 +52,12 @@ export const PERMISSIONS = {
   ADMIN_SIGNALEMENT_TRAITER: 'admin:signalement:traiter',
   ADMIN_AUDIT_VIEW: 'admin:audit:view',
   ADMIN_UTILISATEUR_GERER: 'admin:utilisateur:gerer',
+  // Raccourci "Publier un article" du bouton flottant d'actions rapides
+  // (voir components/layout/fab/QuickActionsFab.tsx) : volontairement
+  // distinct de NEWS_CREATE (accordé dès le rôle 'organisation') --
+  // ce raccourci global n'a de sens que pour le rôle 'administrateur'
+  // strict, pas pour 'moderateur' ni 'organisation'.
+  ADMIN_QUICK_NEWS_CREATE: 'admin:quick-news:create',
 
   // Backoffice (src/components/backoffice/) — gestion des référentiels
   // et modération avancée. Distinct de ADMIN_ACCESS (qui n'ouvre que le

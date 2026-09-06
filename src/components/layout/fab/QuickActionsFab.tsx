@@ -19,8 +19,15 @@ import { PERMISSIONS } from '../../../lib/permissions/permissions.catalog';
 const STORAGE_KEY = 'civitas_quick_actions_fab_position';
 /** Distance gardée par rapport au bord de l'écran une fois ancré. */
 const EDGE_MARGIN = 16;
-/** w-16/h-16 du bouton -- voir MenuPrimitives.tsx (design inchangé). */
-const BUTTON_SIZE = 64;
+/** Même seuil que MOBILE_BREAKPOINT dans MenuPrimitives.tsx -- doit rester synchronisé. */
+const MOBILE_BREAKPOINT = 640;
+/** w-16/h-16 (desktop) ou w-12/h-12 (mobile) du bouton -- voir MenuPrimitives.tsx. */
+const BUTTON_SIZE_DESKTOP = 64;
+const BUTTON_SIZE_MOBILE = 48;
+/** Recalculée à chaque appel (montage, resize, fin de drag) : le footprint réel du bouton dépend du viewport courant. */
+function getButtonSize(): number {
+  return window.innerWidth < MOBILE_BREAKPOINT ? BUTTON_SIZE_MOBILE : BUTTON_SIZE_DESKTOP;
+}
 /** Position verticale par défaut : au-dessus du dock mobile (h-16 + zone tactile + safe-area, voir MobileDock.tsx). */
 const DEFAULT_BOTTOM_OFFSET = 96;
 /** Distance (px) avant de considérer le geste comme un drag plutôt qu'un simple clic. */
@@ -38,8 +45,9 @@ interface Position {
 }
 
 function clampPosition(pos: Position): Position {
-  const maxX = Math.max(window.innerWidth - BUTTON_SIZE - EDGE_MARGIN, EDGE_MARGIN);
-  const maxY = Math.max(window.innerHeight - BUTTON_SIZE - EDGE_MARGIN, EDGE_MARGIN);
+  const buttonSize = getButtonSize();
+  const maxX = Math.max(window.innerWidth - buttonSize - EDGE_MARGIN, EDGE_MARGIN);
+  const maxY = Math.max(window.innerHeight - buttonSize - EDGE_MARGIN, EDGE_MARGIN);
   return {
     x: Math.min(Math.max(pos.x, EDGE_MARGIN), maxX),
     y: Math.min(Math.max(pos.y, EDGE_MARGIN), maxY),
@@ -49,16 +57,18 @@ function clampPosition(pos: Position): Position {
 /** Ancre sur le bord vertical le plus proche (gauche ou droite) ; la position verticale, elle, est conservée telle que lâchée. */
 function snapToNearestEdge(pos: Position): Position {
   const viewportWidth = window.innerWidth;
+  const buttonSize = getButtonSize();
   const distanceToLeft = pos.x;
-  const distanceToRight = viewportWidth - (pos.x + BUTTON_SIZE);
-  const x = distanceToLeft <= distanceToRight ? EDGE_MARGIN : viewportWidth - BUTTON_SIZE - EDGE_MARGIN;
+  const distanceToRight = viewportWidth - (pos.x + buttonSize);
+  const x = distanceToLeft <= distanceToRight ? EDGE_MARGIN : viewportWidth - buttonSize - EDGE_MARGIN;
   return clampPosition({ x, y: pos.y });
 }
 
 function defaultPosition(): Position {
+  const buttonSize = getButtonSize();
   return clampPosition({
-    x: window.innerWidth - BUTTON_SIZE - EDGE_MARGIN,
-    y: window.innerHeight - BUTTON_SIZE - DEFAULT_BOTTOM_OFFSET,
+    x: window.innerWidth - buttonSize - EDGE_MARGIN,
+    y: window.innerHeight - buttonSize - DEFAULT_BOTTOM_OFFSET,
   });
 }
 
@@ -231,7 +241,7 @@ export function QuickActionsFab() {
         {/* Déclencheur -- icône adaptée à sa fonction (actions rapides), bascule vers une croix quand ouvert. */}
         <MenuItem icon={isExpanded ? <X /> : <Zap />} title={isExpanded ? 'Fermer' : 'Actions rapides'} />
 
-        <Can permission={PERMISSIONS.NEWS_CREATE}>
+        <Can permission={PERMISSIONS.ADMIN_QUICK_NEWS_CREATE}>
           <MenuItem icon={<PenSquare />} title="Publier un article" onClick={() => goTo('/news/creer')}>
             <span className="sr-only">Publier un article</span>
           </MenuItem>
