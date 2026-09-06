@@ -28,12 +28,6 @@ export const NewsDetailHero: React.FC<NewsDetailHeroProps> = ({ news, onUpdate, 
         {news.titre}
       </h1>
 
-      {news.description && (
-        <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
-          {news.description}
-        </p>
-      )}
-
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pt-4 border-t border-gray-100 dark:border-gray-800/80">
         {/* Auteur */}
         <div className="flex items-center gap-3 min-w-0">

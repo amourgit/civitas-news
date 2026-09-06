@@ -36,7 +36,7 @@ export const DefaultBackground: React.FC = () => {
       <AnimatedGradient
         config={{ preset: theme === 'dark' ? 'Civitas' : 'CivitasLight' }}
         noise={{ opacity: 0.05 }}
-        className="scale-105 blur-sm"
+        className="scale-105 blur-[6px]"
       />
       {/* Voile translucide par-dessus, sans bordure : adoucit encore le
           contraste du dégradé pour que le texte reste lisible quelle
