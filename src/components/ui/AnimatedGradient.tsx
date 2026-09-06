@@ -39,12 +39,15 @@ class WebGLErrorBoundary extends Component<WebGLErrorBoundaryProps, WebGLErrorBo
 /** Dégradé CSS statique (violet CIVITAS) affiché quand WebGL2 n'est pas
  * disponible -- même palette que le préréglage "Civitas" pour rester
  * cohérent visuellement avec la version animée. */
-const WebGLFallback: React.FC<{ className?: string }> = ({ className }) => (
-  <div
-    className={className}
-    style={{ background: 'radial-gradient(120% 120% at 20% 15%, #5B4DFF 0%, #1a0b3d 45%, #0a0118 100%)' }}
-  />
-);
+const WebGLFallback: React.FC<{ className?: string; colors?: [string, string, string] }> = ({ className, colors }) => {
+  const [c1, c2, c3] = colors ?? ['#0a0118', '#1a0b3d', '#5B4DFF'];
+  return (
+    <div
+      className={className}
+      style={{ background: `radial-gradient(120% 120% at 20% 15%, ${c3} 0%, ${c2} 45%, ${c1} 100%)` }}
+    />
+  );
+};
 
 // ============================================================
 // AnimatedGradient
@@ -75,28 +78,47 @@ interface PresetParams {
   shapeSize: number;
 }
 
-type PresetName = 'Aurora' | 'Oceanic' | 'Amber' | 'Toxic' | 'Ghost' | 'Civitas';
+type PresetName = 'Aurora' | 'Oceanic' | 'Amber' | 'Toxic' | 'Ghost' | 'Civitas' | 'CivitasLight';
 
 const presets: Record<PresetName, PresetParams> = {
-  // Préréglage de marque : violet CIVITAS (#5B4DFF), sur la base des
-  // réglages de mouvement d'Aurora (mêmes courbes, juste la palette
-  // change) -- c'est le fond par défaut de l'application (voir
-  // DefaultBackground.tsx).
+  // Préréglages de marque : violet CIVITAS (#5B4DFF) intact dans les deux
+  // cas -- seuls color1/color2 (base sombre vs claire) changent selon le
+  // thème (voir DefaultBackground.tsx, qui bascule entre les deux via
+  // useUiStore().theme). Forme "Checks" : motif périodique en x ET y
+  // (par opposition à "Edge", un balayage directionnel) -- répartit le
+  // mouvement uniformément sur toute la largeur au lieu de le concentrer
+  // d'un côté sur un écran large.
   Civitas: {
     color1: '#0a0118',
     color2: '#1a0b3d',
     color3: '#5B4DFF',
-    rotation: -45,
-    proportion: 60,
+    rotation: -30,
+    proportion: 50,
     scale: 0.6,
     speed: 15,
-    distortion: 40,
-    swirl: 80,
+    distortion: 35,
+    swirl: 70,
     swirlIterations: 10,
     softness: 100,
     offset: 200,
-    shape: 'Edge',
-    shapeSize: 50,
+    shape: 'Checks',
+    shapeSize: 26,
+  },
+  CivitasLight: {
+    color1: '#ffffff',
+    color2: '#e7e3ff',
+    color3: '#5B4DFF',
+    rotation: -30,
+    proportion: 50,
+    scale: 0.6,
+    speed: 15,
+    distortion: 35,
+    swirl: 70,
+    swirlIterations: 10,
+    softness: 100,
+    offset: 200,
+    shape: 'Checks',
+    shapeSize: 26,
   },
   Aurora: {
     color1: '#0a001a',
@@ -415,11 +437,11 @@ void main() {
   }, [hasWebGLError, isMounted, params]);
 
   if (hasWebGLError) {
-    return <WebGLFallback className={cn('absolute inset-0 overflow-hidden', className)} />;
+    return <WebGLFallback className={cn('absolute inset-0 overflow-hidden', className)} colors={[params.color1, params.color2, params.color3]} />;
   }
 
   return (
-    <WebGLErrorBoundary fallback={<WebGLFallback className={cn('absolute inset-0 overflow-hidden', className)} />}>
+    <WebGLErrorBoundary fallback={<WebGLFallback className={cn('absolute inset-0 overflow-hidden', className)} colors={[params.color1, params.color2, params.color3]} />}>
       <div
         ref={containerRef}
         className={cn('absolute inset-0 overflow-hidden', className)}
