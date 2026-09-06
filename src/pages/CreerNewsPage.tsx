@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Stepper } from '../components/ui/Stepper';
 import { Button } from '../components/ui/Button';
 import { DatePicker } from '../components/ui/DatePicker';
@@ -8,8 +8,10 @@ import { sondagesService } from '../services/api/sondages.service';
 import { referentielsService } from '../services/api/referentiels.service';
 import { NewsType, Categorie, Organisation, Etablissement } from '../types/global.types';
 import { useAuthStore } from '../store/auth.store';
+import { usePermissions } from '../lib/permissions/usePermissions';
+import { PERMISSIONS } from '../lib/permissions/permissions.catalog';
 import { toast } from '../hooks/useToast';
-import { FilePlus, ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, X } from 'lucide-react';
+import { FilePlus, ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, X, Loader2 } from 'lucide-react';
 import { RichTextViewer } from '../components/ui/RichTextViewer';
 import { RichContentRenderer } from '../components/ui/RichContentRenderer';
 import { MarkdownToolbar } from '../components/ui/MarkdownToolbar';
@@ -34,6 +36,15 @@ export default function CreerNewsPage() {
   const navigate = useNavigate();
   const openNewsDetail = useOpenNewsDetail();
   const { user } = useAuthStore();
+  const { can } = usePermissions();
+  const { id } = useParams<{ id?: string }>();
+  const isEditMode = Boolean(id);
+  // Un utilisateur du backoffice sans permission de gestion peut ouvrir la
+  // fiche (même mécanique que BackofficeRecordForm : consultation possible,
+  // action d'enregistrement masquée) -- ne s'applique qu'en mode édition ;
+  // la création reste ouverte à tout citoyen connecté, comme avant.
+  const canManageNews = can(PERMISSIONS.BACKOFFICE_NEWS_MANAGE);
+  const isReadOnly = isEditMode && !canManageNews;
   const [currentStep, setCurrentStep] = useState(0);
 
   const [titre, setTitre] = useState('');
@@ -68,6 +79,19 @@ export default function CreerNewsPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Mode édition (assistant ouvert depuis le backoffice) : la News
+  // existante est chargée une fois au montage et vient peupler tous les
+  // champs ci-dessus -- voir le useEffect dédié plus bas.
+  const [isLoadingRecord, setIsLoadingRecord] = useState(isEditMode);
+  const [loadRecordError, setLoadRecordError] = useState<string | null>(null);
+  const [existingNewsId, setExistingNewsId] = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  // Un sondage déjà rattaché n'est pas encore modifiable depuis cet
+  // assistant (aucun endpoint de mise à jour de sondage côté service) :
+  // ses champs sont affichés mais verrouillés, et il n'est pas recréé
+  // à l'enregistrement.
+  const [hasExistingSondage, setHasExistingSondage] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -80,7 +104,10 @@ export default function CreerNewsPage() {
         setCategories(cats);
         setOrganisations(orgs);
         setEtablissements(etabs);
-        if (cats.length > 0) setCategorieId(cats[0].id);
+        // En mode édition, le chargement de la News (voir useEffect
+        // ci-dessous) peut résoudre avant ou après celui-ci -- ne jamais
+        // écraser categorieId si une valeur y est déjà posée.
+        if (cats.length > 0) setCategorieId((prev) => prev || cats[0].id);
       })
       .catch((error) => console.error('Échec du chargement des référentiels :', error))
       .finally(() => {
@@ -90,6 +117,55 @@ export default function CreerNewsPage() {
       cancelled = true;
     };
   }, []);
+
+  // Charge la News existante en mode édition et peuple tous les champs du
+  // wizard -- c'est ce qui permet à l'assistant de « se charger avec
+  // toutes les données » plutôt que de repartir d'un formulaire vide.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setIsLoadingRecord(true);
+    setLoadRecordError(null);
+    newsService.getNewsBySlug(id)
+      .then((record) => {
+        if (cancelled) return;
+        if (!record) {
+          setLoadRecordError('News introuvable.');
+          return;
+        }
+        setExistingNewsId(record.id);
+        setTitre(record.titre);
+        setType(record.type);
+        setDescription(record.description);
+        setContenu(record.contenu || '');
+        setProvince(record.province || 'Estuaire');
+        setCategorieId(record.categorie.id);
+        setOrganisationId(record.organisation?.id || '');
+        setEtablissementId(record.etablissement?.id || '');
+        setExistingImageUrl(record.image || null);
+
+        const sondage = record.sondages?.[0];
+        if (sondage) {
+          setHasExistingSondage(true);
+          setAddPoll(true);
+          setPollQuestion(sondage.question);
+          setPollChoice1(sondage.choix[0]?.libelle || '');
+          setPollChoice2(sondage.choix[1]?.libelle || '');
+          setPollDateDebut(toDatetimeLocalValue(new Date(sondage.dateDebut)));
+          setPollDateFin(toDatetimeLocalValue(new Date(sondage.dateFin)));
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) setLoadRecordError(error instanceof Error ? error.message : 'Chargement impossible.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingRecord(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Nettoie l'URL d'objet créée pour la prévisualisation de l'image
   // lorsqu'un nouveau fichier est choisi ou que la page se démonte.
@@ -143,6 +219,42 @@ export default function CreerNewsPage() {
 
     setIsSubmitting(true);
     try {
+      if (isEditMode && existingNewsId) {
+        const updated = await newsService.updateNews(existingNewsId, {
+          titre,
+          type,
+          description,
+          contenu,
+          province,
+          categorie,
+          organisation: organisations.find((o) => o.id === organisationId),
+          etablissement: etablissements.find((e) => e.id === etablissementId),
+        });
+
+        // Un sondage n'est créé que s'il n'en existait pas déjà -- le
+        // modifier n'est pas encore possible depuis cet assistant (voir
+        // hasExistingSondage plus haut).
+        if (addPoll && pollQuestion.trim() && !hasExistingSondage) {
+          try {
+            await sondagesService.creerSondage({
+              newsId: updated.id,
+              titre: pollQuestion,
+              question: pollQuestion,
+              choix: [pollChoice1.trim() || 'Oui', pollChoice2.trim() || 'Non'],
+              dateDebut: new Date(pollDateDebut).toISOString(),
+              dateFin: new Date(pollDateFin).toISOString(),
+            });
+          } catch (pollError) {
+            console.error('Échec de la création du sondage :', pollError);
+            toast('warning', 'News mise à jour, sondage non créé', 'La mise à jour a réussi mais le sondage associé n’a pas pu être créé.');
+          }
+        }
+
+        toast('success', 'News mise à jour avec succès', 'Vos modifications ont bien été enregistrées.');
+        navigate(`/admin/news/${updated.id}`);
+        return;
+      }
+
       const created = await newsService.createNews({
         titre,
         type,
@@ -205,22 +317,48 @@ export default function CreerNewsPage() {
       navigate('/news');
       openNewsDetail(created.slug);
     } catch (err: any) {
-      toast('error', 'Erreur de publication', err?.message);
+      toast('error', isEditMode ? 'Erreur de mise à jour' : 'Erreur de publication', err?.message);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isEditMode && isLoadingRecord) {
+    return (
+      <div className="max-w-3xl mx-auto py-24 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-[#5B4DFF]" />
+      </div>
+    );
+  }
+
+  if (isEditMode && loadRecordError) {
+    return (
+      <div className="max-w-3xl mx-auto py-16 text-center space-y-4">
+        <p className="text-sm text-red-600 dark:text-red-400">{loadRecordError}</p>
+        <Button variant="outline" size="md" onClick={() => navigate('/admin/news')}>
+          Retour à la liste
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-16">
       <div className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white font-display flex items-center gap-3">
           <FilePlus className="w-8 h-8 text-[#5B4DFF]" />
-          Assistant de Création de News / Information
+          {isEditMode ? 'Assistant de Modification de News / Information' : 'Assistant de Création de News / Information'}
         </h1>
         <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          Publiez votre actualité, projet ou information en 4 étapes guidées.
+          {isEditMode
+            ? 'Modifiez votre actualité, projet ou information en 4 étapes guidées.'
+            : 'Publiez votre actualité, projet ou information en 4 étapes guidées.'}
         </p>
+        {isReadOnly && (
+          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3 py-2 inline-block">
+            Consultation seule — vous n'avez pas la permission de modifier cette news.
+          </p>
+        )}
       </div>
 
       <Stepper steps={WIZARD_STEPS} currentStepIndex={currentStep} onStepClick={setCurrentStep} />
@@ -241,7 +379,8 @@ export default function CreerNewsPage() {
                 value={titre}
                 onChange={(e) => setTitre(e.target.value)}
                 placeholder="Ex: Rénovation de la bibliothèque centrale..."
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm"
+                disabled={isReadOnly}
+                className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
               />
             </div>
 
@@ -253,7 +392,8 @@ export default function CreerNewsPage() {
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value as NewsType)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm"
+                  disabled={isReadOnly}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
                 >
                   <option value="consultation">Consultation Publique</option>
                   <option value="projet">Projet Académique / Associatif</option>
@@ -271,7 +411,8 @@ export default function CreerNewsPage() {
                 <select
                   value={province}
                   onChange={(e) => setProvince(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm"
+                  disabled={isReadOnly}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
                 >
                   {PROVINCES_GABON.map((p) => (
                     <option key={p} value={p}>{p}</option>
@@ -288,7 +429,7 @@ export default function CreerNewsPage() {
                 <select
                   value={categorieId}
                   onChange={(e) => setCategorieId(e.target.value)}
-                  disabled={isLoadingReferentiels}
+                  disabled={isLoadingReferentiels || isReadOnly}
                   className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
                 >
                   {isLoadingReferentiels && <option value="">Chargement…</option>}
@@ -306,7 +447,7 @@ export default function CreerNewsPage() {
                 <select
                   value={organisationId}
                   onChange={(e) => setOrganisationId(e.target.value)}
-                  disabled={isLoadingReferentiels}
+                  disabled={isLoadingReferentiels || isReadOnly}
                   className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
                 >
                   <option value="">Aucune</option>
@@ -323,7 +464,7 @@ export default function CreerNewsPage() {
                 <select
                   value={etablissementId}
                   onChange={(e) => setEtablissementId(e.target.value)}
-                  disabled={isLoadingReferentiels}
+                  disabled={isLoadingReferentiels || isReadOnly}
                   className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
                 >
                   <option value="">Aucun</option>
@@ -365,7 +506,8 @@ export default function CreerNewsPage() {
                     onChange={(e) => setDescription(e.target.value)}
                     rows={3}
                     placeholder="Présentez brièvement l'enjeu principal en 2-3 phrases (compatible gras **, italique *, etc.)..."
-                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#5B4DFF]"
+                    disabled={isReadOnly}
+                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#5B4DFF] disabled:opacity-60"
                   />
                 )}
               </div>
@@ -380,8 +522,13 @@ export default function CreerNewsPage() {
                 ref={richTextEditorRef}
                 value={contenu}
                 onChange={setContenu}
+                // En mode édition, la News existe déjà : tout média inséré
+                // est uploadé immédiatement (pas de file d'attente locale
+                // à publier après coup, contrairement à la création).
+                newsId={isEditMode ? existingNewsId || undefined : undefined}
                 placeholder="Rédigez le corps de votre article : titres, listes, images, vidéos, tableaux, galeries, documents joints..."
                 minHeight="280px"
+                disabled={isReadOnly}
               />
             </div>
 
@@ -390,7 +537,22 @@ export default function CreerNewsPage() {
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                 Image de couverture (optionnel)
               </label>
-              {imagePreviewUrl ? (
+              {isEditMode ? (
+                <div>
+                  {existingImageUrl ? (
+                    <div className="relative w-full h-48 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <img src={existingImageUrl} alt="Image de couverture actuelle" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 text-xs font-semibold">
+                      Aucune image de couverture
+                    </div>
+                  )}
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    L'image de couverture n'est pas modifiable pour une News existante (limitation actuelle de l'API).
+                  </p>
+                </div>
+              ) : imagePreviewUrl ? (
                 <div className="relative w-full h-48 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
                   <img src={imagePreviewUrl} alt="Prévisualisation" className="w-full h-full object-cover" />
                   <button
@@ -419,13 +581,20 @@ export default function CreerNewsPage() {
             <h3 className="text-lg font-bold text-gray-900 dark:text-white font-display">
               Intégration d'un Sondage (Optionnel)
             </h3>
+            {hasExistingSondage && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3 py-2">
+                Cette news a déjà un sondage associé. Sa modification n'est pas encore possible depuis cet assistant -- les champs ci-dessous sont affichés à titre indicatif.
+              </p>
+            )}
+
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="addPollCheck"
                 checked={addPoll}
                 onChange={(e) => setAddPoll(e.target.checked)}
-                className="w-4 h-4 text-[#5B4DFF]"
+                disabled={hasExistingSondage || isReadOnly}
+                className="w-4 h-4 text-[#5B4DFF] disabled:opacity-60"
               />
               <label htmlFor="addPollCheck" className="text-sm font-bold text-gray-800 dark:text-gray-200">
                 Ajouter une question de sondage à cette publication
@@ -433,7 +602,7 @@ export default function CreerNewsPage() {
             </div>
 
             {addPoll && (
-              <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-3">
+              <div className={`p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-3 ${hasExistingSondage || isReadOnly ? 'opacity-60 pointer-events-none' : ''}`}>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                     Question du sondage
@@ -443,6 +612,7 @@ export default function CreerNewsPage() {
                     value={pollQuestion}
                     onChange={(e) => setPollQuestion(e.target.value)}
                     placeholder="Ex: Êtes-vous favorable à cette mesure ?"
+                    disabled={hasExistingSondage || isReadOnly}
                     className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border text-xs"
                   />
                 </div>
@@ -452,6 +622,7 @@ export default function CreerNewsPage() {
                     value={pollChoice1}
                     onChange={(e) => setPollChoice1(e.target.value)}
                     placeholder="Option 1 (ex: Pour)"
+                    disabled={hasExistingSondage || isReadOnly}
                     className="px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border text-xs"
                   />
                   <input
@@ -459,6 +630,7 @@ export default function CreerNewsPage() {
                     value={pollChoice2}
                     onChange={(e) => setPollChoice2(e.target.value)}
                     placeholder="Option 2 (ex: Contre)"
+                    disabled={hasExistingSondage || isReadOnly}
                     className="px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border text-xs"
                   />
                 </div>
@@ -550,9 +722,9 @@ export default function CreerNewsPage() {
               <span>Suivant</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
-          ) : (
+          ) : isReadOnly ? null : (
             <Button variant="primary" size="lg" isLoading={isSubmitting} onClick={handlePublish}>
-              <span>Publier la news</span>
+              <span>{isEditMode ? 'Enregistrer les modifications' : 'Publier la news'}</span>
               <CheckCircle2 className="w-4 h-4" />
             </Button>
           )}

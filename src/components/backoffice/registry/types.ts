@@ -96,4 +96,20 @@ export interface ModelDef<TRecord = Record<string, unknown>> {
   /** Composant optionnel affichant des onglets supplémentaires sur la page de détail
    * (ex: médias/galerie/documents/tags pour News). Reçoit l'enregistrement courant. */
   DetailExtras?: ComponentType<{ record: TRecord }>;
+  /**
+   * Route de création personnalisée (ex: un assistant multi-étapes dédié),
+   * utilisée par BackofficeListPage à la place du formulaire générique
+   * `/admin/:modelKey/nouveau` quand elle est définie. D'autres modèles
+   * auront progressivement leur propre assistant (voir News et
+   * CreerNewsPage) sans que BackofficeListPage n'ait besoin de connaître
+   * chaque cas particulier.
+   */
+  createRoute?: string;
+  /**
+   * Route d'édition personnalisée, construite à partir de l'enregistrement
+   * cliqué (ex: `/news/modifier/${record.id}`) -- utilisée par
+   * BackofficeListPage à la place du formulaire générique
+   * `/admin/:modelKey/:id` quand elle est définie.
+   */
+  editRoute?: (record: TRecord) => string;
 }

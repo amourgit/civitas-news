@@ -72,6 +72,7 @@ export function App() {
                       <Route path="/" element={<HomePage />} />
                       <Route path="/news" element={<NewsListPage />} />
                       <Route path="/news/creer" element={<CreerNewsPage />} />
+                      <Route path="/news/modifier/:id" element={<CreerNewsPage />} />
                       {/* Page dédiée aux sondages existants (voir SondagesListPage.tsx) --
                           remplace l'ancien renvoi vers /news?type=sondage, qui affichait
                           les sondages comme de simples News génériques. */}
