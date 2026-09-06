@@ -63,11 +63,15 @@ export const AppLoadingOverlay: React.FC<AppLoadingOverlayProps> = ({
   if (!mounted) return null;
 
   return (
+    // z-30 : sous la topbar (z-50, voir notch-nav.tsx) et le dock mobile
+    // (z-40, voir MobileDock.tsx) -- ces deux-là doivent toujours rester
+    // visibles et immobiles au-dessus de l'overlay, jamais recouverts par
+    // lui ni par son flou, quelle que soit la tâche de chargement en cours.
     <div
       role="status"
       aria-live="polite"
       aria-label={label}
-      className={`fixed inset-0 z-[999] flex items-center justify-center backdrop-blur-sm civitas-loading-overlay ${
+      className={`fixed inset-0 z-30 flex items-center justify-center backdrop-blur-sm civitas-loading-overlay ${
         fadingOut ? 'civitas-loading-overlay--hidden' : ''
       }`}
     >
