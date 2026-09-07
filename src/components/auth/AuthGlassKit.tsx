@@ -49,7 +49,7 @@ export function AuthGlassStyles() {
       .civ-auth-glass-btn { -webkit-tap-highlight-color: transparent; position: relative; isolation: isolate; cursor: pointer; border-radius: 9999px; backdrop-filter: blur(clamp(1px, 0.125em, 4px)); transition: all 400ms cubic-bezier(0.25,1,0.5,1); background: linear-gradient(-75deg, oklch(from var(--civ-bg) l c h / 5%), oklch(from var(--civ-bg) l c h / 20%), oklch(from var(--civ-bg) l c h / 5%)); box-shadow: inset 0 0.125em 0.125em oklch(from var(--civ-fg) l c h / 5%), inset 0 -0.125em 0.125em oklch(from var(--civ-bg) l c h / 50%), 0 0.2em 0.1em -0.1em oklch(from var(--civ-fg) l c h / 18%), 0 0 0.1em 0.2em inset oklch(from var(--civ-bg) l c h / 20%); }
       .civ-auth-glass-btn:hover:not(:disabled) { transform: scale(0.975); }
       .civ-auth-glass-btn:disabled { cursor: not-allowed; opacity: 0.55; }
-      .civ-auth-glass-btn-text { position: relative; display: block; color: oklch(from var(--civ-fg) l c h / 92%); }
+      .civ-auth-glass-btn-text { position: relative; }
       .civ-auth-glass-btn::after { content: ""; position: absolute; z-index: 1; inset: 0; border-radius: 9999px; padding: 1px; box-sizing: border-box; background: conic-gradient(from var(--civ-angle-1) at 50% 50%, oklch(from var(--civ-fg) l c h / 45%) 0%, transparent 8% 40%, oklch(from var(--civ-fg) l c h / 45%) 50%, transparent 58% 92%, oklch(from var(--civ-fg) l c h / 45%) 100%); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; transition: --civ-angle-1 500ms ease; pointer-events: none; }
       .civ-auth-glass-btn:hover::after { --civ-angle-1: -125deg; }
 
@@ -83,8 +83,8 @@ export function AuthGlassStyles() {
 type GlassButtonSize = 'default' | 'sm' | 'icon';
 
 const sizeClasses: Record<GlassButtonSize, { btn: string; text: string }> = {
-  default: { btn: 'text-sm font-semibold', text: 'px-5 py-2.5' },
-  sm: { btn: 'text-xs font-semibold', text: 'px-3.5 py-2' },
+  default: { btn: 'text-sm font-semibold', text: 'block px-5 py-2.5' },
+  sm: { btn: 'text-xs font-semibold', text: 'block px-3.5 py-2' },
   icon: { btn: 'h-9 w-9', text: 'flex h-9 w-9 items-center justify-center' },
 };
 
