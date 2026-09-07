@@ -7,10 +7,12 @@ import { NewsGrid } from '../features/news/components/NewsGrid';
 import { NewsFiltres } from '../features/news/components/NewsFiltres';
 import { NewsDetailContent } from '../features/news/components/NewsDetailContent';
 import { BottomSheet } from '../components/ui/BottomSheet';
-import { SearchBar } from '../features/recherche/components/SearchBar';
+import { GooeySearchBar, type GooeySearchSuggestion } from '../components/ui/GooeySearchBar';
 import { useSetTopbarContent } from '../context/TopbarSlotsContext';
 import { NewsType } from '../types/global.types';
 import { filterNewsByFacets, hasActiveNewsFacetFilters } from '../features/news/utils/newsFilters';
+import { useReferentiels } from '../features/news/hooks/useReferentiels';
+import { PROVINCES_GABON } from '../features/news/constants/newsFieldOptions';
 import { SlidersHorizontal } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -78,6 +80,35 @@ export default function NewsListPage() {
   // NewsFiltres.tsx : `allNews`).
   const { newsList: allNews, sujets: allSujets } = useNewsList();
 
+  // Suggestions de la barre de recherche du topbar : tout ce qui
+  // gravite autour de News (elle-même + ses tables liées) --
+  // recalculé à chaque frappe côté frontend à partir des données déjà
+  // chargées (allNews/allSujets, référentiels, provinces), et donné
+  // TEL QUEL à GooeySearchBar qui n'a aucune connaissance de ces
+  // tables : c'est ce point qui rend le composant réutilisable
+  // ailleurs avec un tout autre jeu de données.
+  const { categories, organisations, etablissements } = useReferentiels();
+  const searchSuggestions = useMemo<GooeySearchSuggestion[]>(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return [];
+    const seen = new Set<string>();
+    const out: GooeySearchSuggestion[] = [];
+    const push = (id: string, label: string, sublabel: string) => {
+      const key = `${sublabel}:${label.toLowerCase()}`;
+      if (seen.has(key) || out.length >= 8) return;
+      seen.add(key);
+      out.push({ id, label, sublabel });
+    };
+    (allNews || allSujets || []).forEach((n) => {
+      if (n.titre.toLowerCase().includes(q)) push(`news-${n.id}`, n.titre, 'News');
+    });
+    categories.forEach((c) => { if (c.nom.toLowerCase().includes(q)) push(`cat-${c.id}`, c.nom, 'Thème'); });
+    organisations.forEach((o) => { if (o.nom.toLowerCase().includes(q)) push(`org-${o.id}`, o.nom, 'Organisation'); });
+    etablissements.forEach((e) => { if (e.nom.toLowerCase().includes(q)) push(`etab-${e.id}`, e.nom, 'Établissement'); });
+    PROVINCES_GABON.forEach((p) => { if (p.toLowerCase().includes(q)) push(`prov-${p}`, p, 'Province'); });
+    return out;
+  }, [search, allNews, allSujets, categories, organisations, etablissements]);
+
   const handleOpenDetail = (slug: string) => {
     setSelectedNewsSlug(slug);
     // ?news=slug rend l'URL partageable/copiable et réutilisable comme
@@ -111,11 +142,11 @@ export default function NewsListPage() {
   useSetTopbarContent(
     'lower',
     <div className="flex w-full items-center justify-between gap-3">
-      <SearchBar
+      <GooeySearchBar
         value={search}
         onChange={setSearch}
-        placeholder="Rechercher une news par titre, mot-clé..."
-        className="flex-1 max-w-md"
+        suggestions={searchSuggestions}
+        placeholder="Rechercher une news..."
       />
 
       <div className="relative shrink-0" ref={filtresRef}>
@@ -164,6 +195,7 @@ export default function NewsListPage() {
     </div>,
     [
       search,
+      searchSuggestions,
       selectedCategorieIds,
       selectedTypes,
       selectedProvinces,

@@ -1,0 +1,185 @@
+/* ============================================================
+   src/components/ui/GooeySearchBar.css
+   Habillage de GooeySearchBar.tsx (composant fourni tel quel côté
+   mécanique, sans CSS jointe) : reproduit le morphing pilule -> champ
+   de saisie et la bulle icône qui s'en détache par fusion visqueuse
+   (filtre SVG posé sur `.gooey-goo-layer`, voir le composant), thémé
+   aux couleurs de marque Civitas (violet #5B4DFF / #7B61FF) pour
+   s'intégrer au reste des contrôles du topbar (bouton filtre actif,
+   Button variant="primary"...), qui partagent déjà ce violet.
+
+   `max-width` sur `.search-btn` (et non une largeur JS plus petite)
+   pour contenir le morphing sur mobile : `width` est piloté en inline
+   par motion (voir buttonVariants), mais max-width reste une
+   contrainte CSS distincte qui s'applique même sur une valeur de
+   largeur posée en style inline -- pas de conflit de spécificité.
+   ============================================================ */
+
+.gooey-search-bar {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.gooey-goo-layer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Safari/iOS (voir isUnsupportedBrowser dans le composant) : le
+   filtre feColorMatrix/feGaussianBlur y est mal supporté (halos,
+   clignotements) -- on désactive juste l'effet de fusion, le
+   morphing du bouton reste intact. */
+.gooey-search-bar.no-goo .gooey-goo-layer {
+  filter: none !important;
+}
+
+.search-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  max-width: min(248px, 70vw);
+  padding: 0 14px;
+  border: none;
+  border-radius: 9999px;
+  background: var(--civitas-purple, #5b4dff);
+  color: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background-color 0.2s ease;
+}
+
+.search-btn:hover {
+  background: var(--civitas-purple-accent, #7b61ff);
+}
+
+.search-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.search-input {
+  width: 100%;
+  height: 100%;
+  padding: 0 28px 0 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.search-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-left: -32px;
+  border: none;
+  border-radius: 9999px;
+  background: var(--civitas-purple, #5b4dff);
+  color: #fff;
+  cursor: pointer;
+}
+
+.no-goo .search-bubble {
+  margin-left: 6px;
+}
+
+.search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: max(100%, 260px);
+  max-width: min(320px, 85vw);
+  max-height: min(60vh, 22rem);
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(91, 77, 255, 0.12);
+  box-shadow: 0 12px 32px -8px rgba(26, 31, 77, 0.25);
+}
+
+.dark .search-results {
+  background: var(--civitas-navy-light, #242a5c);
+  border-color: rgba(123, 97, 255, 0.25);
+}
+
+.search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #111827;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.dark .search-result {
+  color: #f3f4f6;
+}
+
+.search-result:hover,
+.search-result:focus-visible {
+  background: rgba(91, 77, 255, 0.1);
+  outline: none;
+}
+
+.search-result--empty {
+  cursor: default;
+  color: #6b7280;
+  gap: 8px;
+}
+
+.dark .search-result--empty {
+  color: #9ca3af;
+}
+
+.search-result-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-sublabel {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(91, 77, 255, 0.12);
+  color: var(--civitas-purple, #5b4dff);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.dark .search-result-sublabel {
+  background: rgba(123, 97, 255, 0.2);
+  color: #b8adff;
+}
