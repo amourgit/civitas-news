@@ -134,6 +134,7 @@ export const LIENS_ENDPOINTS = {
 
 export const STATISTIQUES_ENDPOINTS = {
   globales: '/statistiques/v1/globales/',
+  moi: '/statistiques/v1/moi/',
 } as const;
 
 export const NOTIFICATIONS_ENDPOINTS = {

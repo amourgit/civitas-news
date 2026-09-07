@@ -91,3 +91,79 @@ export const StatistiquesGlobalesSchema = z.object({
   }).optional().catch(undefined),
 });
 export type StatistiquesGlobales = z.infer<typeof StatistiquesGlobalesSchema>;
+
+// ============================================================
+// Statistiques PERSONNELLES (page Profil) — GET /statistiques/v1/moi/
+// Toutes déjà calculées et catégorisées côté backend (voir
+// statistiques/api/v1/services.py:calculer_statistiques_utilisateur) :
+// aucune donnée de substitution/mock ici, chaque champ vient du backend.
+// ============================================================
+
+export const CategorieEngagementSchema = z.object({
+  id: z.string(),
+  nom: z.string(),
+  couleur: z.string().catch('#5B4DFF'),
+  icone: z.string().optional().catch(undefined),
+  score: z.number().int().nonnegative().catch(0),
+});
+export type CategorieEngagement = z.infer<typeof CategorieEngagementSchema>;
+
+export const FavoriProfilSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  titre: z.string(),
+  image: z.string().nullable().catch(null),
+  type: z.string(),
+  categorieNom: z.string().nullable().catch(null),
+  categorieCouleur: z.string().catch('#5B4DFF'),
+  scoreEngagement: z.number().int().nonnegative().catch(0),
+});
+export type FavoriProfil = z.infer<typeof FavoriProfilSchema>;
+
+export const VoteRecentProfilSchema = z.object({
+  sondageId: z.string(),
+  sondageTitre: z.string(),
+  newsSlug: z.string().nullable().catch(null),
+  choix: z.array(z.string()).catch([]),
+  date: z.string(),
+  statut: z.string(),
+});
+export type VoteRecentProfil = z.infer<typeof VoteRecentProfilSchema>;
+
+export const ActiviteRecenteProfilSchema = z.object({
+  type: z.enum(['commentaire', 'reaction', 'vote', 'publication']).catch('commentaire'),
+  titre: z.string(),
+  extrait: z.string().catch(''),
+  date: z.string(),
+  newsSlug: z.string().nullable().catch(null),
+});
+export type ActiviteRecenteProfil = z.infer<typeof ActiviteRecenteProfilSchema>;
+
+export const MesStatistiquesSchema = z.object({
+  contributions: z
+    .object({
+      news: z.number().int().nonnegative().catch(0),
+      commentaires: z.number().int().nonnegative().catch(0),
+    })
+    .catch({ news: 0, commentaires: 0 }),
+  interactions: z
+    .object({
+      reactionsNews: z.number().int().nonnegative().catch(0),
+      reactionsCommentaires: z.number().int().nonnegative().catch(0),
+      votesSondages: z.number().int().nonnegative().catch(0),
+      votesCommentaires: z.number().int().nonnegative().catch(0),
+    })
+    .catch({ reactionsNews: 0, reactionsCommentaires: 0, votesSondages: 0, votesCommentaires: 0 }),
+  engagementRecu: z
+    .object({
+      reactions: z.number().int().nonnegative().catch(0),
+      commentaires: z.number().int().nonnegative().catch(0),
+      vues: z.number().int().nonnegative().catch(0),
+    })
+    .catch({ reactions: 0, commentaires: 0, vues: 0 }),
+  topCategories: z.array(CategorieEngagementSchema).catch([]),
+  favoris: z.array(FavoriProfilSchema).catch([]),
+  votesRecents: z.array(VoteRecentProfilSchema).catch([]),
+  activiteRecente: z.array(ActiviteRecenteProfilSchema).catch([]),
+});
+export type MesStatistiques = z.infer<typeof MesStatistiquesSchema>;
