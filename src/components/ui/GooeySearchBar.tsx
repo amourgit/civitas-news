@@ -49,6 +49,9 @@ export interface GooeySearchBarProps {
   /** Suggestions déjà calculées/filtrées par l'appelant pour la `value` courante. */
   suggestions?: GooeySearchSuggestion[];
   isLoading?: boolean;
+  /** Texte du bouton au repos — un seul mot court, comme dans le composant fourni ("Search"), pour ne jamais dépasser du champ. */
+  collapsedLabel?: string;
+  /** Placeholder du champ une fois déployé (peut être plus long/descriptif). */
   placeholder?: string;
   onSelectSuggestion?: (item: GooeySearchSuggestion) => void;
   autoFocus?: boolean;
@@ -56,7 +59,7 @@ export interface GooeySearchBarProps {
 }
 
 const buttonVariants: Variants = {
-  collapsed: { width: 132 },
+  collapsed: { width: 112 },
   expanded: { width: 248 },
 };
 
@@ -84,6 +87,7 @@ export const GooeySearchBar: React.FC<GooeySearchBarProps> = ({
   onChange,
   suggestions = [],
   isLoading = false,
+  collapsedLabel = 'Search',
   placeholder = 'Rechercher…',
   onSelectSuggestion,
   autoFocus = false,
@@ -158,12 +162,12 @@ export const GooeySearchBar: React.FC<GooeySearchBarProps> = ({
           transition={{ type: 'spring', stiffness: 260, damping: 26 }}
           onClick={step === 1 ? expand : undefined}
           className="search-btn"
-          aria-label={placeholder}
+          aria-label={collapsedLabel}
         >
           {step === 1 ? (
             <span className="search-text">
               <Search className="w-3.5 h-3.5 shrink-0" />
-              {placeholder}
+              {collapsedLabel}
             </span>
           ) : (
             <input
