@@ -64,7 +64,7 @@
 // restent visibles, dans le même habillage détaché.
 // ============================================================
 
-import { forwardRef, useCallback, useId, useState } from "react";
+import { forwardRef, useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { LayoutGroup, motion } from "motion/react";
 
@@ -409,172 +409,196 @@ export function NotchNav({
   const hasRightAction = showRightAction && !!rightAction;
   const hasLowerContent = !!lowerContent;
 
+  // La topbar n'a plus de hauteur figée en dur (voir plus bas : elle
+  // s'ajuste désormais à son contenu). Le padding qui compense sa
+  // hauteur sous/sur `children` (pour qu'elle ne le recouvre jamais)
+  // doit donc suivre sa hauteur RÉELLE plutôt qu'une valeur supposée à
+  // l'avance -- measuredHeight (mise à jour par ResizeObserver, donc
+  // automatiquement sur tout changement futur de contenu, breakpoint,
+  // etc.) + une même marge de respiration (26px) que l'ancien calcul
+  // statique (70px = 44px de topbar + 26px, 126px = 100px + 26px).
+  const topbarRef = useRef<HTMLDivElement>(null);
+  const [measuredHeight, setMeasuredHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = topbarRef.current;
+    if (!el) return;
+    const update = () => setMeasuredHeight(el.offsetHeight);
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <>
       {/* Topbar -- fixed, collée aux vrais bords du viewport. Ce
           conteneur n'intercepte lui-même aucun clic : seuls les
-          notches individuels le font (pointer-events-auto). Il porte
-          désormais une hauteur réelle (44px niveau supérieur seul,
-          +56px si un niveau inférieur est publié -- toujours 0 gap
-          entre les deux, top-11 du niveau inférieur = h-11 exact du
-          plus haut élément du niveau supérieur) et un fond
-          glassmorphism (même traitement que le popup de filtres News :
-          bg-white/10 dark:bg-black/20 + backdrop-blur-2xl), pour que
-          les zones SANS notch/pilule (les espaces vides entre eux)
-          paraissent floutées -- chaque notch garde son propre fond
-          opaque par-dessus, inchangé. */}
+          notches individuels le font (pointer-events-auto). Hauteur en
+          fit-content (plus aucune valeur figée en dur) : flex-col
+          empile simplement le niveau supérieur puis, s'il existe, le
+          niveau inférieur -- chacun garde sa hauteur naturelle, et
+          measuredHeight (voir plus haut) suit automatiquement le
+          résultat. Fond glassmorphism (même traitement que le popup de
+          filtres News : bg-white/10 dark:bg-black/20 + backdrop-blur-2xl)
+          par-dessus les deux niveaux -- chaque notch garde son propre
+          fond opaque par-dessus, inchangé. En position "bottom",
+          flex-col-reverse inverse l'ordre VISUEL (le niveau supérieur
+          reste collé au bord réel du viewport) sans toucher à l'ordre
+          DOM (niveau supérieur toujours codé en premier ci-dessous). */}
       <div
+        ref={topbarRef}
         className={cn(
-          "pointer-events-none fixed inset-x-0 z-50 select-none bg-white/10 dark:bg-black/20 backdrop-blur-2xl transition-colors duration-200",
-          hasLowerContent ? "h-[100px]" : "h-11",
-          isBottom ? "bottom-0" : "top-0",
+          "pointer-events-none fixed inset-x-0 z-50 flex select-none flex-col bg-white/10 dark:bg-black/20 backdrop-blur-2xl transition-colors duration-200",
+          isBottom ? "bottom-0 flex-col-reverse" : "top-0",
           className
         )}
         {...props}
       >
-        {/* 1. Logo Notch -- visible à TOUTES les tailles (desktop,
-            tablette, mobile), toujours collée au coin gauche réel. */}
-        {showLogo && logo && (
-          <aside
-            aria-label="Brand logo notch"
+        {/* Niveau supérieur -- trois zones (gauche/milieu/droite) en
+            flex, réparties en space-between. Gauche et milieu restent
+            en largeur fit-content (shrink-0 : leur taille ne suit que
+            leur propre contenu, jamais compressée par la droite) ; la
+            droite est plafonnée à 50% de la largeur totale
+            (max-w-[50%]). Aucune des trois n'a de hauteur imposée :
+            align-items par défaut (stretch) fait que la zone au
+            contenu le plus haut détermine la hauteur de la ligne, et
+            les deux autres s'étirent pour la suivre -- donc toujours
+            alignées entre elles, quel que soit leur contenu respectif. */}
+        <div className="relative flex w-full justify-between">
+          {/* 1. Logo Notch -- visible à TOUTES les tailles (desktop,
+              tablette, mobile), toujours collée au coin gauche réel. */}
+          {showLogo && logo && (
+            <aside
+              aria-label="Brand logo notch"
+              className={cn(
+                "pointer-events-auto relative flex shrink-0 items-center px-3.5 sm:px-5 bg-[#3B3DD9] transition-colors duration-200",
+                isBottom ? "rounded-tr-[24px]" : "rounded-br-[24px]"
+              )}
+            >
+              <div className="flex items-center text-white">{logo}</div>
+
+              <NotchRightWing position={position} />
+
+              <NotchCornerLeftWing position={position} />
+            </aside>
+          )}
+
+          {/* 2. Center Menu Notch -- desktop ET tablette (sm et plus).
+              En dessous de sm (vrai mobile), disparaît : MobileDock
+              prend le relais pour la navigation principale (voir
+              Header.tsx / MobileDock.tsx). */}
+          <header
+            role="tablist"
+            aria-orientation="horizontal"
             className={cn(
-              "pointer-events-auto absolute left-0 flex items-center h-11 px-3.5 sm:px-5 bg-[#3B3DD9] transition-colors duration-200",
-              isBottom ? "bottom-0 rounded-tr-[24px]" : "top-0 rounded-br-[24px]"
+              "pointer-events-auto relative hidden shrink-0 items-center px-4 bg-[#3B3DD9] text-white transition-colors duration-200 sm:flex",
+              isBottom ? "rounded-t-[24px]" : "rounded-b-[24px]"
             )}
           >
-            <div className="flex items-center text-white">{logo}</div>
+            <NotchLeftWing position={position} />
 
             <NotchRightWing position={position} />
 
-            <NotchCornerLeftWing position={position} />
-          </aside>
-        )}
+            <LayoutGroup id={layoutGroupId}>
+              <div className="flex items-center gap-1">
+                {items.map((item) => (
+                  <NotchItem
+                    key={item.id}
+                    id={item.id}
+                    label={item.label}
+                    icon={item.icon}
+                    badge={item.badge}
+                    disabled={item.disabled}
+                    isActive={item.id === activeId}
+                    onSelect={handleSelect}
+                  />
+                ))}
+              </div>
+            </LayoutGroup>
+          </header>
 
-        {/* 2. Center Menu Notch -- desktop ET tablette (sm et plus).
-            En dessous de sm (vrai mobile), disparaît : MobileDock
-            prend le relais pour la navigation principale (voir
-            Header.tsx / MobileDock.tsx). */}
-        <header
-          role="tablist"
-          aria-orientation="horizontal"
-          className={cn(
-            "pointer-events-auto hidden sm:flex absolute left-1/2 -translate-x-1/2 items-center h-11 px-4 bg-[#3B3DD9] text-white transition-colors duration-200",
-            isBottom ? "bottom-0 rounded-t-[24px]" : "top-0 rounded-b-[24px]"
-          )}
-        >
-          <NotchLeftWing position={position} />
+          {/* 3. Right side -- deux pièces rondes et détachées, visibles
+              à TOUTES les tailles. Contrairement au logo (coin découpé,
+              wings pour se raccorder au calque plein écran d'origine),
+              ces deux-là sont de simples pastilles `rounded-full`
+              flottantes. Zone plafonnée à 50% de la largeur totale
+              (max-w-[50%]) et dotée d'un léger padding vertical
+              (py-1.5) pour que ses pilules ne soient jamais collées au
+              haut/bas de la zone une fois étirée à la hauteur commune
+              -- items-stretch fait que les pilules remplissent
+              exactement l'espace disponible (zone moins son propre
+              padding), sans hauteur fixe à maintenir à la main.
+              Padding intérieur des pilules réduit (px-3/sm:px-3.5,
+              était px-4/sm:px-5, trop large).
+                - `rightContent` (aide, backoffice, profil/connexion) :
+                  une pilule (plusieurs icônes).
+                - `rightAction` (bascule sidebar) : un cercle strict
+                  (aspect-square -- reste rond quelle que soit la
+                  hauteur finale, plus besoin de h/w figés à l'unisson).
+                - `upperContent` (injecté par la page active, voir
+                  TopbarSlotsContext.tsx) : une pilule de plus dans le
+                  même groupe, toujours affichée EN PREMIER (la plus
+                  éloignée du bord réel), pour ne jamais déplacer
+                  rightContent/rightAction que d'autres écrans peuvent
+                  cibler visuellement de façon stable. */}
+          {(hasUpperContent || hasRightContent || hasRightAction) && (
+            <div className="pointer-events-none flex max-w-[50%] items-stretch justify-end gap-2.5 py-1.5 sm:gap-3">
+              {hasUpperContent && (
+                <aside
+                  aria-label="Contenu additionnel de la page (niveau supérieur)"
+                  className="pointer-events-auto flex w-fit items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
+                >
+                  {upperContent}
+                </aside>
+              )}
 
-          <NotchRightWing position={position} />
+              {hasRightContent && (
+                <aside
+                  aria-label="User actions notch"
+                  className="pointer-events-auto flex w-fit items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
+                >
+                  {rightContent}
+                </aside>
+              )}
 
-          <LayoutGroup id={layoutGroupId}>
-            <div className="flex items-center gap-1">
-              {items.map((item) => (
-                <NotchItem
-                  key={item.id}
-                  id={item.id}
-                  label={item.label}
-                  icon={item.icon}
-                  badge={item.badge}
-                  disabled={item.disabled}
-                  isActive={item.id === activeId}
-                  onSelect={handleSelect}
-                />
-              ))}
+              {/* 4. Sidebar Action Notch -- toujours seule dans son
+                  propre cercle. */}
+              {hasRightAction && (
+                <aside
+                  aria-label="Sidebar action notch"
+                  className="pointer-events-auto flex aspect-square items-center justify-center rounded-full bg-[#3B3DD9] text-white transition-colors duration-200"
+                >
+                  {rightAction}
+                </aside>
+              )}
             </div>
-          </LayoutGroup>
-        </header>
+          )}
+        </div>
 
-        {/* 3. Right side -- deux pièces rondes et détachées, visibles
-            à TOUTES les tailles. Contrairement au logo (coin découpé,
-            wings pour se raccorder au calque plein écran d'origine),
-            ces deux-là sont de simples pastilles `rounded-full`
-            flottantes, légèrement décollées du bord droit (right-3).
-            Décalées de 1px par rapport au logo/menu central (top-0)
-            pour bien les détacher visuellement du reste de la topbar :
-            un `margin-top`/`margin-bottom` de 1px posé ICI, sur ce
-            groupe uniquement -- PAS un padding sur le wrapper `fixed`
-            parent (qui n'aurait d'ailleurs aucun effet : les enfants
-            sont tous en `position: absolute`, positionnés par rapport
-            au bord de padding de ce parent, donc insensibles à SON
-            propre padding -- et qui, même si ça marchait, décalerait
-            aussi le logo et le menu central, cassant leur alignement).
-            Cette marge, posée sur un élément frère indépendant
-            (`position: absolute` séparé), ne touche donc ni le logo ni
-            le menu central. Depuis la suppression
-            du calque plein écran, le fond derrière la topbar est
-            transparent : plus besoin de wings ni de couleur de fond à
-            raccorder pour "fondre" dans un contexte -- le rounded-full
-            suffit à lui seul à donner des ronds parfaits.
-              - `rightContent` (aide, backoffice, profil/connexion) :
-                une pilule (plusieurs icônes, hauteur fixe h-10).
-              - `rightAction` (bascule sidebar) : un cercle strict
-                (h-10 w-10), une seule icône.
-              - `upperContent` (injecté par la page active, voir
-                TopbarSlotsContext.tsx) : une pilule de plus dans le
-                même groupe, toujours affichée EN PREMIER (la plus
-                éloignée du bord réel), pour ne jamais déplacer
-                rightContent/rightAction que d'autres écrans peuvent
-                cibler visuellement de façon stable. */}
-        {(hasUpperContent || hasRightContent || hasRightAction) && (
-          <div
-            className={cn(
-              "pointer-events-none absolute right-3 flex items-center gap-2.5 sm:gap-3",
-              isBottom ? "bottom-0" : "top-0"
-            )}
-          >
-            {hasUpperContent && (
-              <aside
-                aria-label="Contenu additionnel de la page (niveau supérieur)"
-                className="pointer-events-auto flex h-11 w-fit items-center rounded-full bg-[#3B3DD9] px-4 sm:px-5 text-white transition-colors duration-200"
-              >
-                {upperContent}
-              </aside>
-            )}
-
-            {hasRightContent && (
-              <aside
-                aria-label="User actions notch"
-                className="pointer-events-auto flex h-11 w-fit items-center rounded-full bg-[#3B3DD9] px-4 sm:px-5 text-white transition-colors duration-200"
-              >
-                {rightContent}
-              </aside>
-            )}
-
-            {/* 4. Sidebar Action Notch -- toujours seule dans son
-                propre cercle. */}
-            {hasRightAction && (
-              <aside
-                aria-label="Sidebar action notch"
-                className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#3B3DD9] text-white transition-colors duration-200"
-              >
-                {rightAction}
-              </aside>
-            )}
-          </div>
-        )}
-
-        {/* 5. Niveau inférieur -- seconde couche de la topbar, collée
-            juste sous le niveau historique ci-dessus (top-11 = 44px,
-            hauteur exacte du menu central h-11, le plus haut des
-            éléments du niveau supérieur), toujours dans le MÊME
-            wrapper `fixed` que lui : une seule et même topbar fixed en
-            deux niveaux, jamais deux éléments fixed séparés à
-            resynchroniser. N'existe dans le DOM que si une page a
-            publié du contenu dedans (voir hasLowerContent) -- les
-            pages qui n'y touchent pas ne voient donc aucune barre
-            vide ni aucun changement de mise en page.
+        {/* Niveau inférieur -- seconde couche de la topbar, collée
+            juste sous (ou au-dessus, en position "bottom") le niveau
+            supérieur ci-dessus : dans le flux normal du flex-col
+            parent désormais (plus une position absolue calculée à la
+            main sur une hauteur supposée), elle suit donc TOUJOURS la
+            hauteur RÉELLE du niveau supérieur, même si celle-ci change.
+            N'existe dans le DOM que si une page a publié du contenu
+            dedans (voir hasLowerContent) -- les pages qui n'y touchent
+            pas ne voient donc aucune barre vide ni aucun changement de
+            mise en page.
             Fond transparent (comme le reste de la topbar depuis la
             suppression du calque plein écran) : seuls deux petits
             accents arrondis à gauche (même composant, même couleur
             #3B3DD9 que le niveau supérieur, voir NotchCornerLeftWing
-            plus haut) ET une bordure inférieure pleine largeur assurent
-            la continuité visuelle avec le niveau du dessus, sans
-            dupliquer son remplissage plein. */}
+            plus haut) ET une bordure pleine largeur (vers le niveau
+            supérieur) assurent la continuité visuelle, sans dupliquer
+            son remplissage plein. */}
         {hasLowerContent && (
           <div
             className={cn(
-              "pointer-events-none absolute inset-x-0 h-14 border-[#3B3DD9] transition-colors duration-200",
-              isBottom ? "bottom-11 border-t-2" : "top-11 border-b-2"
+              "pointer-events-none relative h-14 w-full border-[#3B3DD9] transition-colors duration-200",
+              isBottom ? "border-b-2" : "border-t-2"
             )}
           >
             {/* L'accent de continuité qui se trouvait ici, côté niveau
@@ -606,17 +630,22 @@ export function NotchNav({
           fond ni arrondi imposés : App.tsx reste seul responsable du
           fond par défaut, et chaque page peut poser le sien par-dessus
           sans rien avoir à contourner. Le padding compense la hauteur
-          réelle de la topbar fixed (un ou deux niveaux selon
-          hasLowerContent) pour qu'elle ne recouvre jamais le contenu ;
-          les pages sans niveau inférieur gardent EXACTEMENT le padding
-          d'origine (17.5 = 70px), aucune régression. */}
+          RÉELLE mesurée de la topbar (measuredHeight, voir plus haut) +
+          26px de respiration (même marge que l'ancien calcul statique
+          70px/126px) -- suit donc n'importe quel changement de contenu
+          futur au lieu de supposer une hauteur fixe. Tant que la mesure
+          n'est pas encore posée (tout premier rendu), on retombe sur
+          l'ancien padding statique (17.5 = 70px) pour ne rien laisser
+          d'incorrect le temps que l'effet se déclenche. */}
       <div
-        className={cn(
-          "w-full",
-          isBottom
-            ? `pt-3 ${hasLowerContent ? "pb-[126px]" : "pb-17.5"}`
-            : `${hasLowerContent ? "pt-[126px]" : "pt-17.5"} pb-3`
-        )}
+        className={cn("w-full", isBottom ? "pt-3 pb-17.5" : "pt-17.5 pb-3")}
+        style={
+          measuredHeight
+            ? isBottom
+              ? { paddingBottom: measuredHeight + 26 }
+              : { paddingTop: measuredHeight + 26 }
+            : undefined
+        }
       >
         {children}
       </div>
