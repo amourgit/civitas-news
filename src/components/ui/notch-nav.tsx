@@ -456,24 +456,31 @@ export function NotchNav({
         )}
         {...props}
       >
-        {/* Niveau supérieur -- trois zones (gauche/milieu/droite) en
-            flex, réparties en space-between. Gauche et milieu restent
-            en largeur fit-content (shrink-0 : leur taille ne suit que
-            leur propre contenu, jamais compressée par la droite) ; la
-            droite est plafonnée à 50% de la largeur totale
-            (max-w-[50%]). Aucune des trois n'a de hauteur imposée :
+        {/* Niveau supérieur -- deux groupes en flex. Gauche (logo)
+            plafonné à 50% de la largeur totale (max-w-[50%], shrink-0 :
+            garde sa taille naturelle, ce plafond n'est qu'un
+            garde-fou). Milieu + droite se partagent le reste dans un
+            sous-conteneur (flex-1 min-w-0) : la droite garde toujours
+            sa taille naturelle (shrink-0, jamais compressée) collée au
+            bord réel via justify-between, et c'est le milieu (les
+            options de nav, nombre variable) qui absorbe un manque de
+            place éventuel -- min-w-0 + overflow-x-auto lui permettent
+            de défiler horizontalement plutôt que de déborder sur la
+            droite ou de la pousser hors cadre. Résultat : jamais de
+            chevauchement entre les trois zones, quelle que soit la
+            largeur d'écran. Aucune des trois n'a de hauteur imposée :
             align-items par défaut (stretch) fait que la zone au
             contenu le plus haut détermine la hauteur de la ligne, et
             les deux autres s'étirent pour la suivre -- donc toujours
             alignées entre elles, quel que soit leur contenu respectif. */}
-        <div className="relative flex w-full justify-between">
+        <div className="relative flex w-full">
           {/* 1. Logo Notch -- visible à TOUTES les tailles (desktop,
               tablette, mobile), toujours collée au coin gauche réel. */}
           {showLogo && logo && (
             <aside
               aria-label="Brand logo notch"
               className={cn(
-                "pointer-events-auto relative flex shrink-0 items-center px-3.5 sm:px-5 bg-[#3B3DD9] transition-colors duration-200",
+                "pointer-events-auto relative flex max-w-[50%] shrink-0 items-center px-3.5 sm:px-5 bg-[#3B3DD9] transition-colors duration-200",
                 isBottom ? "rounded-tr-[24px]" : "rounded-br-[24px]"
               )}
             >
@@ -485,96 +492,104 @@ export function NotchNav({
             </aside>
           )}
 
-          {/* 2. Center Menu Notch -- desktop ET tablette (sm et plus).
-              En dessous de sm (vrai mobile), disparaît : MobileDock
-              prend le relais pour la navigation principale (voir
-              Header.tsx / MobileDock.tsx). */}
-          <header
-            role="tablist"
-            aria-orientation="horizontal"
-            className={cn(
-              "pointer-events-auto relative hidden shrink-0 items-center px-4 bg-[#3B3DD9] text-white transition-colors duration-200 sm:flex",
-              isBottom ? "rounded-t-[24px]" : "rounded-b-[24px]"
-            )}
-          >
-            <NotchLeftWing position={position} />
+          {/* 2 + 3. Milieu (nav) et droite (actions) : sous-groupe qui
+              se partage tout l'espace restant après la zone gauche. */}
+          <div className="flex min-w-0 flex-1 items-stretch justify-between">
+            {/* 2. Center Menu Notch -- desktop ET tablette (sm et
+                plus). En dessous de sm (vrai mobile), disparaît :
+                MobileDock prend le relais pour la navigation
+                principale (voir Header.tsx / MobileDock.tsx). min-w-0
+                + overflow-x-auto : défile plutôt que de déborder si
+                jamais elle ne tient pas dans l'espace restant. */}
+            <header
+              role="tablist"
+              aria-orientation="horizontal"
+              className={cn(
+                "pointer-events-auto relative hidden min-w-0 items-center overflow-x-auto px-4 bg-[#3B3DD9] text-white transition-colors duration-200 sm:flex",
+                isBottom ? "rounded-t-[24px]" : "rounded-b-[24px]"
+              )}
+            >
+              <NotchLeftWing position={position} />
 
-            <NotchRightWing position={position} />
+              <NotchRightWing position={position} />
 
-            <LayoutGroup id={layoutGroupId}>
-              <div className="flex items-center gap-1">
-                {items.map((item) => (
-                  <NotchItem
-                    key={item.id}
-                    id={item.id}
-                    label={item.label}
-                    icon={item.icon}
-                    badge={item.badge}
-                    disabled={item.disabled}
-                    isActive={item.id === activeId}
-                    onSelect={handleSelect}
-                  />
-                ))}
+              <LayoutGroup id={layoutGroupId}>
+                <div className="flex items-center gap-1">
+                  {items.map((item) => (
+                    <NotchItem
+                      key={item.id}
+                      id={item.id}
+                      label={item.label}
+                      icon={item.icon}
+                      badge={item.badge}
+                      disabled={item.disabled}
+                      isActive={item.id === activeId}
+                      onSelect={handleSelect}
+                    />
+                  ))}
+                </div>
+              </LayoutGroup>
+            </header>
+
+            {/* 3. Right side -- deux pièces rondes et détachées,
+                visibles à TOUTES les tailles. Contrairement au logo
+                (coin découpé, wings pour se raccorder au calque plein
+                écran d'origine), ces deux-là sont de simples pastilles
+                `rounded-full` flottantes. shrink-0 : garde toujours sa
+                taille naturelle (jamais compressée -- c'est le milieu,
+                ci-dessus, qui absorbe le manque de place). Léger
+                padding vertical (py-1.5) pour que ses pilules ne
+                soient jamais collées au haut/bas de la zone une fois
+                étirée à la hauteur commune -- items-stretch fait que
+                les pilules remplissent exactement l'espace disponible
+                (zone moins son propre padding), sans hauteur fixe à
+                maintenir à la main. Padding intérieur des pilules
+                réduit (px-3/sm:px-3.5, était px-4/sm:px-5, trop large).
+                  - `rightContent` (aide, backoffice, profil/connexion) :
+                    une pilule (plusieurs icônes).
+                  - `rightAction` (bascule sidebar) : un cercle strict
+                    (aspect-square -- reste rond quelle que soit la
+                    hauteur finale, plus besoin de h/w figés à
+                    l'unisson).
+                  - `upperContent` (injecté par la page active, voir
+                    TopbarSlotsContext.tsx) : une pilule de plus dans le
+                    même groupe, toujours affichée EN PREMIER (la plus
+                    éloignée du bord réel), pour ne jamais déplacer
+                    rightContent/rightAction que d'autres écrans peuvent
+                    cibler visuellement de façon stable. */}
+            {(hasUpperContent || hasRightContent || hasRightAction) && (
+              <div className="pointer-events-none flex shrink-0 items-stretch gap-2.5 py-1.5 sm:gap-3">
+                {hasUpperContent && (
+                  <aside
+                    aria-label="Contenu additionnel de la page (niveau supérieur)"
+                    className="pointer-events-auto flex w-fit items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
+                  >
+                    {upperContent}
+                  </aside>
+                )}
+
+                {hasRightContent && (
+                  <aside
+                    aria-label="User actions notch"
+                    className="pointer-events-auto flex w-fit items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
+                  >
+                    {rightContent}
+                  </aside>
+                )}
+
+                {/* 4. Sidebar Action Notch -- toujours seule dans son
+                    propre cercle. */}
+                {hasRightAction && (
+                  <aside
+                    aria-label="Sidebar action notch"
+                    className="pointer-events-auto flex aspect-square items-center justify-center rounded-full bg-[#3B3DD9] text-white transition-colors duration-200"
+                  >
+                    {rightAction}
+                  </aside>
+                )}
               </div>
-            </LayoutGroup>
-          </header>
-
-          {/* 3. Right side -- deux pièces rondes et détachées, visibles
-              à TOUTES les tailles. Contrairement au logo (coin découpé,
-              wings pour se raccorder au calque plein écran d'origine),
-              ces deux-là sont de simples pastilles `rounded-full`
-              flottantes. Zone plafonnée à 50% de la largeur totale
-              (max-w-[50%]) et dotée d'un léger padding vertical
-              (py-1.5) pour que ses pilules ne soient jamais collées au
-              haut/bas de la zone une fois étirée à la hauteur commune
-              -- items-stretch fait que les pilules remplissent
-              exactement l'espace disponible (zone moins son propre
-              padding), sans hauteur fixe à maintenir à la main.
-              Padding intérieur des pilules réduit (px-3/sm:px-3.5,
-              était px-4/sm:px-5, trop large).
-                - `rightContent` (aide, backoffice, profil/connexion) :
-                  une pilule (plusieurs icônes).
-                - `rightAction` (bascule sidebar) : un cercle strict
-                  (aspect-square -- reste rond quelle que soit la
-                  hauteur finale, plus besoin de h/w figés à l'unisson).
-                - `upperContent` (injecté par la page active, voir
-                  TopbarSlotsContext.tsx) : une pilule de plus dans le
-                  même groupe, toujours affichée EN PREMIER (la plus
-                  éloignée du bord réel), pour ne jamais déplacer
-                  rightContent/rightAction que d'autres écrans peuvent
-                  cibler visuellement de façon stable. */}
-          {(hasUpperContent || hasRightContent || hasRightAction) && (
-            <div className="pointer-events-none flex max-w-[50%] items-stretch justify-end gap-2.5 py-1.5 sm:gap-3">
-              {hasUpperContent && (
-                <aside
-                  aria-label="Contenu additionnel de la page (niveau supérieur)"
-                  className="pointer-events-auto flex w-fit items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
-                >
-                  {upperContent}
-                </aside>
-              )}
-
-              {hasRightContent && (
-                <aside
-                  aria-label="User actions notch"
-                  className="pointer-events-auto flex w-fit items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
-                >
-                  {rightContent}
-                </aside>
-              )}
-
-              {/* 4. Sidebar Action Notch -- toujours seule dans son
-                  propre cercle. */}
-              {hasRightAction && (
-                <aside
-                  aria-label="Sidebar action notch"
-                  className="pointer-events-auto flex aspect-square items-center justify-center rounded-full bg-[#3B3DD9] text-white transition-colors duration-200"
-                >
-                  {rightAction}
-                </aside>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Niveau inférieur -- seconde couche de la topbar, collée
@@ -598,7 +613,7 @@ export function NotchNav({
           <div
             className={cn(
               "pointer-events-none relative h-14 w-full border-[#3B3DD9] transition-colors duration-200",
-              isBottom ? "border-b-2" : "border-t-2"
+              isBottom ? "border-t-2" : "border-b-2"
             )}
           >
             {/* L'accent de continuité qui se trouvait ici, côté niveau
