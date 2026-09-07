@@ -598,7 +598,7 @@ export function NotchNav({
           <div
             className={cn(
               "pointer-events-none relative h-14 w-full border-[#3B3DD9] transition-colors duration-200",
-              isBottom ? "border-b-2" : "border-t-2"
+              isBottom ? "border-t-2" : "border-b-2"
             )}
           >
             {/* L'accent de continuité qui se trouvait ici, côté niveau
