@@ -1,8 +1,8 @@
 /* ============================================================
    src/components/ui/AnimatedTabBar.css
    Habillage du composant AnimatedTabBar.tsx (copié tel quel — voir
-   ce fichier) : bordure SVG en vague (clip-path #menu-clip-path,
-   défini dans le .tsx) qui glisse pour se placer sous l'onglet actif,
+   ce fichier) : bordure SVG en vague (mask-image, voir .menu__border
+   plus bas) qui glisse pour se placer sous l'onglet actif,
    dont l'icône flotte au-dessus du dock dans un badge circulaire de
    couleur (--bgColorItem, fournie par chaque TabItem).
    Design de référence : https://dribbble.com/shots/5619509-Animated-Tab-Bar
@@ -100,35 +100,31 @@
   }
 }
 
+/* La vague était découpée via clip-path:url(#menu-clip-path) (un
+   <clipPath> du DOM, voir AnimatedTabBar.tsx). Même déporté sur un
+   enfant (::before), le backdrop-filter restait transparent : un
+   clip-path référençant une ressource SVG casse le rendu de TOUT
+   backdrop-filter dans son sous-arbre, pas seulement sur l'élément qui
+   le porte. Remplacé par mask-image (SVG encodé en data-URI, même
+   path/viewBox ; mask-size:100% 100% reproduit l'échelle non-uniforme
+   de l'ancien objectBoundingBox) : un masque-image compose normalement
+   avec backdrop-filter, à la différence d'une référence de ressource
+   SVG -- même fond/flou hérités de .menu (voir plus haut). */
 .menu__border {
   left: 0;
   bottom: 99%;
   width: 10.9em;
   height: 2.4em;
   position: absolute;
-  clip-path: url(#menu-clip-path);
   will-change: transform;
   transition: transform var(--timeOut, 0.7s);
-}
-
-/* backdrop-filter porté ici plutôt que directement sur .menu__border :
-   combiné à un clip-path SVG (url(...)) sur le MÊME élément, la plupart
-   des moteurs ne rendent pas le flou/la teinte (résultat transparent).
-   Ce ::before n'a lui-même aucun clip-path -- il est simplement rogné à
-   la forme de la vague par celui du parent -- donc son backdrop-filter
-   se comporte exactement comme celui de .menu, avec le même fond/flou
-   hérités (voir .menu ci-dessus). */
-.menu__border::before {
-  content: "";
-  position: absolute;
-  inset: 0;
   background: var(--bgColorMenu);
   backdrop-filter: var(--dock-glass-filter);
   -webkit-backdrop-filter: var(--dock-glass-filter);
-}
-
-.svg-container {
-  width: 0;
-  height: 0;
-  position: absolute;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20202.9%2045.5'%3E%3Cpath%20fill='%23fff'%20d='M6.7,45.5c5.7,0.1,14.1-0.4,23.3-4c5.7-2.3,9.9-5,18.1-10.5c10.7-7.1,11.8-9.2,20.6-14.3c5-2.9,9.2-5.2,15.2-7%20c7.1-2.1,13.3-2.3,17.6-2.1c4.2-0.2,10.5,0.1,17.6,2.1c6.1,1.8,10.2,4.1,15.2,7c8.8,5,9.9,7.1,20.6,14.3c8.3,5.5,12.4,8.2,18.1,10.5%20c9.2,3.6,17.6,4.2,23.3,4H6.7z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20202.9%2045.5'%3E%3Cpath%20fill='%23fff'%20d='M6.7,45.5c5.7,0.1,14.1-0.4,23.3-4c5.7-2.3,9.9-5,18.1-10.5c10.7-7.1,11.8-9.2,20.6-14.3c5-2.9,9.2-5.2,15.2-7%20c7.1-2.1,13.3-2.3,17.6-2.1c4.2-0.2,10.5,0.1,17.6,2.1c6.1,1.8,10.2,4.1,15.2,7c8.8,5,9.9,7.1,20.6,14.3c8.3,5.5,12.4,8.2,18.1,10.5%20c9.2,3.6,17.6,4.2,23.3,4H6.7z'/%3E%3C/svg%3E");
 }
