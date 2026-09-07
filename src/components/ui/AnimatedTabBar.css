@@ -108,10 +108,23 @@
   position: absolute;
   clip-path: url(#menu-clip-path);
   will-change: transform;
+  transition: transform var(--timeOut, 0.7s);
+}
+
+/* backdrop-filter porté ici plutôt que directement sur .menu__border :
+   combiné à un clip-path SVG (url(...)) sur le MÊME élément, la plupart
+   des moteurs ne rendent pas le flou/la teinte (résultat transparent).
+   Ce ::before n'a lui-même aucun clip-path -- il est simplement rogné à
+   la forme de la vague par celui du parent -- donc son backdrop-filter
+   se comporte exactement comme celui de .menu, avec le même fond/flou
+   hérités (voir .menu ci-dessus). */
+.menu__border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: var(--bgColorMenu);
   backdrop-filter: var(--dock-glass-filter);
   -webkit-backdrop-filter: var(--dock-glass-filter);
-  transition: transform var(--timeOut, 0.7s);
 }
 
 .svg-container {
