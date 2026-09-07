@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckSquare } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import { toast } from '../hooks/useToast';
 
 export default function CreerSondagePage() {
@@ -29,36 +30,24 @@ export default function CreerSondagePage() {
       </h1>
 
       <form onSubmit={handleSubmit} className="bg-white dark:bg-[#1A1F4D] p-6 rounded-3xl border space-y-4">
-        <div>
-          <label className="block text-xs font-bold mb-1">Question du sondage *</label>
-          <input
-            type="text"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ex: Êtes-vous satisfait du réseau WiFi ?"
-            className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 border text-xs"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-bold mb-1">Choix 1 *</label>
-          <input
-            type="text"
-            value={choix1}
-            onChange={(e) => setChoix1(e.target.value)}
-            placeholder="Ex: Satisfait"
-            className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 border text-xs"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-bold mb-1">Choix 2 *</label>
-          <input
-            type="text"
-            value={choix2}
-            onChange={(e) => setChoix2(e.target.value)}
-            placeholder="Ex: Insatisfait"
-            className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 border text-xs"
-          />
-        </div>
+        <Input
+          label="Question du sondage *"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Ex: Êtes-vous satisfait du réseau WiFi ?"
+        />
+        <Input
+          label="Choix 1 *"
+          value={choix1}
+          onChange={(e) => setChoix1(e.target.value)}
+          placeholder="Ex: Satisfait"
+        />
+        <Input
+          label="Choix 2 *"
+          value={choix2}
+          onChange={(e) => setChoix2(e.target.value)}
+          placeholder="Ex: Insatisfait"
+        />
 
         <Button type="submit" variant="primary" size="md" className="w-full">
           Publier le Sondage

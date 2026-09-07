@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { liensService } from '../../../services/api/liens.service';
 import { LienPublication } from '../../../types/global.types';
 import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { LienQrCode } from './LienQrCode';
-import { Link2, Shield, Calendar, Lock } from 'lucide-react';
+import { Link2, Shield, Calendar } from 'lucide-react';
 import { toast } from '../../../hooks/useToast';
 
 export interface LienGenerateurFormProps {
@@ -110,18 +111,13 @@ export const LienGenerateurForm: React.FC<LienGenerateurFormProps> = ({ sujetId 
         </div>
 
         {hasPassword && (
-          <div>
-            <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5" /> Mot de passe
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mot de passe requis pour accéder au lien"
-              className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-            />
-          </div>
+          <Input
+            type="password"
+            label="Mot de passe"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mot de passe requis pour accéder au lien"
+          />
         )}
 
         <Button type="submit" variant="primary" size="md" isLoading={isLoading} className="w-full">

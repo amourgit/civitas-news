@@ -8,6 +8,7 @@
 import React, { useMemo, useState } from 'react';
 import { Save, Plus } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 import { DatePicker } from '../ui/DatePicker';
 import { FkSelectField } from './fields/FkSelectField';
 import { TagsField } from './fields/TagsField';
@@ -132,17 +133,14 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
 
   if (field.type === 'date') {
     return (
-      <div className="flex flex-col gap-1.5 w-full">
-        <label htmlFor={fieldId} className={labelClass}>{field.label}</label>
-        <input
-          id={fieldId}
-          type="date"
-          value={(value as string) ?? ''}
-          disabled={isReadOnly}
-          onChange={(e) => onChange(e.target.value)}
-          className={inputClass}
-        />
-      </div>
+      <Input
+        id={fieldId}
+        type="date"
+        label={field.label}
+        value={(value as string) ?? ''}
+        disabled={isReadOnly}
+        onChange={(e) => onChange(e.target.value)}
+      />
     );
   }
 
@@ -180,10 +178,10 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
   }
 
   // text / number / color / défaut
+  const fieldLabel = `${field.label}${field.required ? ' *' : ''}`;
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      <label htmlFor={fieldId} className={labelClass}>{field.label}{field.required && <span className="text-red-500">*</span>}</label>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {field.type === 'color' && (
           <input
             type="color"
@@ -193,15 +191,16 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
             className="w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 shrink-0 cursor-pointer disabled:cursor-not-allowed"
           />
         )}
-        <input
+        <Input
           id={fieldId}
           type={field.type === 'number' ? 'number' : 'text'}
+          label={fieldLabel}
           value={(value as string | number) ?? ''}
           disabled={isReadOnly}
           required={field.required}
           placeholder={field.placeholder}
           onChange={(e) => onChange(field.type === 'number' ? e.target.valueAsNumber : e.target.value)}
-          className={inputClass}
+          className="flex-1"
         />
       </div>
       {field.helpText && <p className="text-xs text-gray-400">{field.helpText}</p>}

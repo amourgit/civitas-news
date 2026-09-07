@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Stepper } from '../components/ui/Stepper';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import { DatePicker } from '../components/ui/DatePicker';
 import { newsService } from '../services/api/news.service';
 import { sondagesService } from '../services/api/sondages.service';
@@ -370,19 +371,13 @@ export default function CreerNewsPage() {
             <h3 className="text-lg font-bold text-gray-900 dark:text-white font-display">
               Informations Principales
             </h3>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                Titre de la news / de la publication *
-              </label>
-              <input
-                type="text"
-                value={titre}
-                onChange={(e) => setTitre(e.target.value)}
-                placeholder="Ex: Rénovation de la bibliothèque centrale..."
-                disabled={isReadOnly}
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
-              />
-            </div>
+            <Input
+              label="Titre de la news / de la publication *"
+              value={titre}
+              onChange={(e) => setTitre(e.target.value)}
+              placeholder="Ex: Rénovation de la bibliothèque centrale..."
+              disabled={isReadOnly}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -603,35 +598,27 @@ export default function CreerNewsPage() {
 
             {addPoll && (
               <div className={`p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-3 ${hasExistingSondage || isReadOnly ? 'opacity-60 pointer-events-none' : ''}`}>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Question du sondage
-                  </label>
-                  <input
-                    type="text"
-                    value={pollQuestion}
-                    onChange={(e) => setPollQuestion(e.target.value)}
-                    placeholder="Ex: Êtes-vous favorable à cette mesure ?"
-                    disabled={hasExistingSondage || isReadOnly}
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border text-xs"
-                  />
-                </div>
+                <Input
+                  label="Question du sondage"
+                  value={pollQuestion}
+                  onChange={(e) => setPollQuestion(e.target.value)}
+                  placeholder="Ex: Êtes-vous favorable à cette mesure ?"
+                  disabled={hasExistingSondage || isReadOnly}
+                />
                 <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="text"
+                  <Input
+                    label="Option 1"
                     value={pollChoice1}
                     onChange={(e) => setPollChoice1(e.target.value)}
-                    placeholder="Option 1 (ex: Pour)"
+                    placeholder="Ex: Pour"
                     disabled={hasExistingSondage || isReadOnly}
-                    className="px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border text-xs"
                   />
-                  <input
-                    type="text"
+                  <Input
+                    label="Option 2"
                     value={pollChoice2}
                     onChange={(e) => setPollChoice2(e.target.value)}
-                    placeholder="Option 2 (ex: Contre)"
+                    placeholder="Ex: Contre"
                     disabled={hasExistingSondage || isReadOnly}
-                    className="px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border text-xs"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
