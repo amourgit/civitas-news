@@ -101,15 +101,16 @@
 }
 
 /* La vague était découpée via clip-path:url(#menu-clip-path) (un
-   <clipPath> du DOM, voir AnimatedTabBar.tsx). Même déporté sur un
-   enfant (::before), le backdrop-filter restait transparent : un
-   clip-path référençant une ressource SVG casse le rendu de TOUT
-   backdrop-filter dans son sous-arbre, pas seulement sur l'élément qui
-   le porte. Remplacé par mask-image (SVG encodé en data-URI, même
-   path/viewBox ; mask-size:100% 100% reproduit l'échelle non-uniforme
-   de l'ancien objectBoundingBox) : un masque-image compose normalement
-   avec backdrop-filter, à la différence d'une référence de ressource
-   SVG -- même fond/flou hérités de .menu (voir plus haut). */
+   <clipPath> du DOM). Déporter le flou sur un ::before, puis passer à
+   mask-image (SVG data-URI, vérifié syntaxiquement valide) n'a rien
+   changé non plus : le vrai problème n'est pas l'encodage mais le
+   compositing -- backdrop-filter combiné à un mask ET un transform
+   (translate3d appliqué en JS à chaque changement d'onglet, voir
+   AnimatedTabBar.tsx) sur le même élément n'est pas fiable, quelle que
+   soit la technique de découpe. On arrête d'essayer de flouter ce
+   fragment en direct : il reprend simplement la MÊME teinte pleine que
+   .menu (héritée), sans backdrop-filter -- un fond uni masqué est,
+   lui, garanti de s'afficher. */
 .menu__border {
   left: 0;
   bottom: 99%;
@@ -119,8 +120,6 @@
   will-change: transform;
   transition: transform var(--timeOut, 0.7s);
   background: var(--bgColorMenu);
-  backdrop-filter: var(--dock-glass-filter);
-  -webkit-backdrop-filter: var(--dock-glass-filter);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;
