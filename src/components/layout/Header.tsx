@@ -202,7 +202,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   // bouton corresponde pile au cercle visible, sans saut de taille au
   // moment où le clone prend le relais.
   const sidebarToggleButtonClassName =
-    'flex h-10 w-10 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 hover:text-white hover:bg-[#4749e0] transition-colors duration-200';
+    'flex h-11 w-11 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 hover:text-white hover:bg-[#4749e0] transition-colors duration-200';
 
   const rightAction = isAdmin ? (
     <button

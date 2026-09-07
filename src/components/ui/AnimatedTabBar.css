@@ -16,7 +16,15 @@
    ============================================================ */
 
 .menu {
-  --bgColorMenu: #1a1f4d;
+  /* Verre dépoli iOS -- volontairement fixe (pas de variante dark:,
+     comme GLASS_SURFACE dans MenuPrimitives.tsx) : les icônes du dock
+     sont blanches, un fond clair casserait leur contraste. --bgColorMenu
+     et --dock-glass-filter sont hérités par .menu__border juste en
+     dessous (enfant direct dans le DOM, voir AnimatedTabBar.tsx) : même
+     fond, même flou, même saturation des DEUX côtés, pour qu'aucune
+     différence ne trahisse que ce sont deux éléments distincts. */
+  --bgColorMenu: rgba(0, 0, 0, 0.25);
+  --dock-glass-filter: blur(24px) saturate(1.5);
 
   margin: 0;
   list-style: none;
@@ -27,7 +35,9 @@
   position: relative;
   align-items: center;
   justify-content: center;
-  background-color: var(--bgColorMenu);
+  background: var(--bgColorMenu);
+  backdrop-filter: var(--dock-glass-filter);
+  -webkit-backdrop-filter: var(--dock-glass-filter);
 }
 
 .menu__item {
@@ -98,7 +108,9 @@
   position: absolute;
   clip-path: url(#menu-clip-path);
   will-change: transform;
-  background-color: var(--bgColorMenu);
+  background: var(--bgColorMenu);
+  backdrop-filter: var(--dock-glass-filter);
+  -webkit-backdrop-filter: var(--dock-glass-filter);
   transition: transform var(--timeOut, 0.7s);
 }
 

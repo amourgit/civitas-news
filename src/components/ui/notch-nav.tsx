@@ -438,7 +438,7 @@ export function NotchNav({
           <aside
             aria-label="Brand logo notch"
             className={cn(
-              "pointer-events-auto absolute left-0 flex items-center h-10 px-3.5 sm:px-5 bg-[#3B3DD9] transition-colors duration-200",
+              "pointer-events-auto absolute left-0 flex items-center h-11 px-3.5 sm:px-5 bg-[#3B3DD9] transition-colors duration-200",
               isBottom ? "bottom-0 rounded-tr-[24px]" : "top-0 rounded-br-[24px]"
             )}
           >
@@ -519,13 +519,13 @@ export function NotchNav({
           <div
             className={cn(
               "pointer-events-none absolute right-3 flex items-center gap-2.5 sm:gap-3",
-              isBottom ? "bottom-0 mb-px" : "top-0 mt-px"
+              isBottom ? "bottom-0" : "top-0"
             )}
           >
             {hasUpperContent && (
               <aside
                 aria-label="Contenu additionnel de la page (niveau supérieur)"
-                className="pointer-events-auto flex h-10 w-fit items-center rounded-full bg-[#3B3DD9] px-4 sm:px-5 text-white transition-colors duration-200"
+                className="pointer-events-auto flex h-11 w-fit items-center rounded-full bg-[#3B3DD9] px-4 sm:px-5 text-white transition-colors duration-200"
               >
                 {upperContent}
               </aside>
@@ -534,7 +534,7 @@ export function NotchNav({
             {hasRightContent && (
               <aside
                 aria-label="User actions notch"
-                className="pointer-events-auto flex h-10 w-fit items-center rounded-full bg-[#3B3DD9] px-4 sm:px-5 text-white transition-colors duration-200"
+                className="pointer-events-auto flex h-11 w-fit items-center rounded-full bg-[#3B3DD9] px-4 sm:px-5 text-white transition-colors duration-200"
               >
                 {rightContent}
               </aside>
@@ -545,7 +545,7 @@ export function NotchNav({
             {hasRightAction && (
               <aside
                 aria-label="Sidebar action notch"
-                className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#3B3DD9] text-white transition-colors duration-200"
+                className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#3B3DD9] text-white transition-colors duration-200"
               >
                 {rightAction}
               </aside>
