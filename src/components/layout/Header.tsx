@@ -93,11 +93,11 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   );
 
   const rightContent = (
-    <div className="flex items-center gap-1 sm:gap-1.5">
+    <div className="flex items-center">
       {/* Help icon */}
       <button
         type="button"
-        className="hidden sm:flex p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+        className="hidden h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 ring-2 ring-white/20 transition-colors hover:bg-[#4749e0] hover:text-white sm:flex [&:not(:first-child)]:-ml-1.5"
         title="Aide & Support"
       >
         <HelpCircle className="w-4 h-4" />
@@ -110,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
       {isAuthenticated && (can(PERMISSIONS.BACKOFFICE_ACCESS) || can(PERMISSIONS.ADMIN_ACCESS)) && (
         <Link
           to="/admin"
-          className="flex p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 ring-2 ring-white/20 transition-colors hover:bg-[#4749e0] hover:text-white [&:not(:first-child)]:-ml-1.5"
           title="Backoffice"
         >
           <ShieldCheck className="w-4 h-4" />
@@ -124,14 +124,19 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
           neutre plutôt que de flasher "Se connecter" puis basculer
           vers l'avatar une fois la session restaurée. */}
       {isHydrating ? (
-        <div className="w-6 h-6 rounded-full bg-white/15 animate-pulse shrink-0" aria-hidden="true" />
+        <div
+          className="h-6 w-6 shrink-0 rounded-full bg-white/15 animate-pulse [&:not(:first-child)]:-ml-1.5"
+          aria-hidden="true"
+        />
       ) : isAuthenticated ? (
-        <ProfileDropdown />
+        <div className="shrink-0 [&:not(:first-child)]:-ml-1.5">
+          <ProfileDropdown />
+        </div>
       ) : (
         <button
           type="button"
           onClick={openLoginModal}
-          className="flex p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/15 transition-colors"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 ring-2 ring-white/20 transition-colors hover:bg-[#4749e0] hover:text-white [&:not(:first-child)]:-ml-1.5"
           title="Se connecter"
         >
           <LogIn className="w-4 h-4" />
@@ -197,12 +202,12 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   const sidebarToggleLabel = isBackofficeNavExpanded ? 'Fermer la navigation du backoffice' : 'Ouvrir la navigation du backoffice';
 
   // Classes partagées entre le vrai bouton et son clone portalé : même
-  // taille (h-10 w-10, identique au cercle de l'aside qui l'entoure
-  // dans la topbar) pour que la mesure getBoundingClientRect() du vrai
-  // bouton corresponde pile au cercle visible, sans saut de taille au
-  // moment où le clone prend le relais.
+  // taille (h-6 w-6, assortie aux autres boutons de la partie droite,
+  // voir rightContent ci-dessus) pour que la mesure
+  // getBoundingClientRect() du vrai bouton corresponde pile au cercle
+  // visible, sans saut de taille au moment où le clone prend le relais.
   const sidebarToggleButtonClassName =
-    'flex h-11 w-11 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 hover:text-white hover:bg-[#4749e0] transition-colors duration-200';
+    'flex h-6 w-6 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 hover:text-white hover:bg-[#4749e0] transition-colors duration-200';
 
   const rightAction = isAdmin ? (
     <button

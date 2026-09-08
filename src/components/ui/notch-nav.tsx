@@ -519,46 +519,46 @@ export function NotchNav({
             </LayoutGroup>
           </header>
 
-          {/* 3. Right side -- deux pièces rondes et détachées, visibles
-              à TOUTES les tailles. Contrairement au logo (coin découpé,
-              wings pour se raccorder au calque plein écran d'origine),
-              ces deux-là sont de simples pastilles `rounded-full`
-              flottantes. Zone plafonnée à 50% de la largeur totale
+          {/* 3. Right side -- deux pièces détachées, visibles à TOUTES
+              les tailles. Zone plafonnée à 50% de la largeur totale
               (max-w-[50%]) et dotée d'un léger padding vertical
-              (py-1.5) pour que ses pilules ne soient jamais collées au
-              haut/bas de la zone une fois étirée à la hauteur commune
-              -- items-stretch fait que les pilules remplissent
-              exactement l'espace disponible (zone moins son propre
-              padding), sans hauteur fixe à maintenir à la main.
-              Padding intérieur des pilules réduit (px-3/sm:px-3.5,
-              était px-4/sm:px-5, trop large).
-                - `rightContent` (aide, backoffice, profil/connexion) :
-                  une pilule (plusieurs icônes).
-                - `rightAction` (bascule sidebar) : un cercle strict
-                  (aspect-square -- reste rond quelle que soit la
-                  hauteur finale, plus besoin de h/w figés à l'unisson).
-                - `upperContent` (injecté par la page active, voir
-                  TopbarSlotsContext.tsx) : une pilule de plus dans le
-                  même groupe, toujours affichée EN PREMIER (la plus
-                  éloignée du bord réel), pour ne jamais déplacer
-                  rightContent/rightAction que d'autres écrans peuvent
-                  cibler visuellement de façon stable. */}
+              (py-1.5) pour ne jamais coller au haut/bas de la zone une
+              fois étirée à la hauteur commune.
+                - `rightContent` (aide, backoffice, profil/connexion) et
+                  `upperContent` (injecté par la page active, voir
+                  TopbarSlotsContext.tsx) : ASIDE volontairement
+                  transparent, sans fond ni arrondi propre -- chaque
+                  bouton à l'intérieur porte désormais SON PROPRE cercle
+                  (bg-[#3B3DD9] rounded-full, taille fixe, voir
+                  Header.tsx) et se chevauche horizontalement avec ses
+                  voisins (margin négative), même principe visuel que
+                  la pile d'avatars des réactions sur les cards News
+                  (voir AvatarGroup.tsx) : plusieurs cercles PARFAITS
+                  distincts plutôt qu'une seule pilule commune qui les
+                  aurait déformés en rectangle aux coins arrondis dès
+                  qu'il y en a plus d'un.
+                - `rightAction` (bascule sidebar) : même traitement --
+                  l'aside ne porte plus le cercle, seul le bouton à
+                  l'intérieur (voir sidebarToggleButtonClassName dans
+                  Header.tsx) le porte, pour ne jamais afficher deux
+                  cercles concentriques de tailles différentes.
+              `upperContent` reste toujours affiché EN PREMIER (le plus
+              éloigné du bord réel), pour ne jamais déplacer
+              rightContent/rightAction que d'autres écrans peuvent
+              cibler visuellement de façon stable. */}
           {(hasUpperContent || hasRightContent || hasRightAction) && (
             <div className="pointer-events-none flex max-w-[50%] items-stretch justify-end gap-2.5 py-1.5 sm:gap-3">
               {hasUpperContent && (
                 <aside
                   aria-label="Contenu additionnel de la page (niveau supérieur)"
-                  className="pointer-events-auto flex aspect-square items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
+                  className="pointer-events-auto flex items-center text-white"
                 >
                   {upperContent}
                 </aside>
               )}
 
               {hasRightContent && (
-                <aside
-                  aria-label="User actions notch"
-                  className="pointer-events-auto flex aspect-square items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
-                >
+                <aside aria-label="User actions notch" className="pointer-events-auto flex items-center text-white">
                   {rightContent}
                 </aside>
               )}
@@ -568,7 +568,7 @@ export function NotchNav({
               {hasRightAction && (
                 <aside
                   aria-label="Sidebar action notch"
-                  className="pointer-events-auto flex aspect-square items-center justify-center rounded-full bg-[#3B3DD9] text-white transition-colors duration-200"
+                  className="pointer-events-auto flex items-center justify-center text-white"
                 >
                   {rightAction}
                 </aside>
