@@ -83,6 +83,13 @@ export interface CreerNewsInput {
   contenu?: string;
   province?: string;
   lieu?: string;
+  /** Fenêtre temporelle de l'événement/la publication (ISO 8601) --
+   * pertinent surtout pour les formats datés (événement, conférence,
+   * réunion, atelier...), voir NEWS_TYPE_OPTIONS. Déjà supporté par
+   * news.repository.ts (NewsEcriturePayload), simplement jamais exposé
+   * jusqu'ici dans ce contrat d'entrée. */
+  dateDebut?: string;
+  dateFin?: string;
   /** Fichier image de couverture (optionnel). */
   image?: File;
   categorie: Categorie;
@@ -243,6 +250,8 @@ export const newsService = {
         tags: input.tags || [],
         province: input.province || 'Estuaire',
         lieu: input.lieu,
+        dateDebut: input.dateDebut || null,
+        dateFin: input.dateFin || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         statut: 'publie',
@@ -267,6 +276,8 @@ export const newsService = {
       tags: input.tags,
       province: input.province,
       lieu: input.lieu,
+      dateDebut: input.dateDebut,
+      dateFin: input.dateFin,
       visibilite: input.visibilite,
     });
     newsMemory = [created, ...newsMemory];
@@ -293,6 +304,8 @@ export const newsService = {
     contenu: string;
     province: string;
     lieu: string;
+    dateDebut: string | null;
+    dateFin: string | null;
     image: File;
     categorie: Categorie;
     organisation: Organisation;

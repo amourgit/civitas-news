@@ -1,330 +1,58 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Stepper } from '../components/ui/Stepper';
+// ============================================================
+// src/pages/CreerNewsPage.tsx
+// Assistant de création/édition de News -- refonte complète : plus de
+// wizard à étapes, une seule page où les sections s'enchaînent
+// librement vers le bas (titre, métadonnées, contenu, couverture,
+// médias), sans carte/bordure/fond propre à chacune -- seul le fond
+// de page (voir DefaultBackground) reste visible. Le niveau 1 de la
+// topbar porte la bascule Standard/Avancé (voir ModeToggle), le
+// niveau 2 le "bref" de diffusion façon Facebook (voir
+// CreationTopbarBrief). Toute la logique de données vit dans
+// useNewsCreationForm -- cette page se contente de l'assembler.
+// ============================================================
+
+import React, { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useSetTopbarContent } from '../context/TopbarSlotsContext';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { DatePicker } from '../components/ui/DatePicker';
-import { newsService } from '../services/api/news.service';
-import { sondagesService } from '../services/api/sondages.service';
-import { referentielsService } from '../services/api/referentiels.service';
-import { NewsType, Categorie, Organisation, Etablissement } from '../types/global.types';
-import { useAuthStore } from '../store/auth.store';
-import { usePermissions } from '../lib/permissions/usePermissions';
-import { PERMISSIONS } from '../lib/permissions/permissions.catalog';
-import { toast } from '../hooks/useToast';
-import { FilePlus, ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, X, Loader2 } from 'lucide-react';
-import { RichTextViewer } from '../components/ui/RichTextViewer';
-import { RichContentRenderer } from '../components/ui/RichContentRenderer';
-import { MarkdownToolbar } from '../components/ui/MarkdownToolbar';
-import { RichTextEditor, type RichTextEditorHandle } from '../components/editor/RichTextEditor';
-import { useOpenNewsDetail } from '../features/news/hooks/useOpenNewsDetail';
-import { PROVINCES_GABON } from '../features/news/constants/newsFieldOptions';
-
-const WIZARD_STEPS = [
-  { id: 'step-1', title: '1. Informations', description: 'Titre & Thématique' },
-  { id: 'step-2', title: '2. Contenu & Médias', description: 'Description & Image' },
-  { id: 'step-3', title: '3. Sondage (Option)', description: 'Question & Choix' },
-  { id: 'step-4', title: '4. Validation', description: 'Aperçu & Publication' },
-];
-
-/** Formate une Date en valeur compatible avec <input type="datetime-local">. */
-function toDatetimeLocalValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+import { useNewsCreationForm } from '../features/news/creation/useNewsCreationForm';
+import type { CreationMode } from '../features/news/creation/types';
+import { ModeToggle } from '../features/news/creation/components/ModeToggle';
+import { CreationTopbarBrief } from '../features/news/creation/components/CreationTopbarBrief';
+import { AdvancedModePlaceholder } from '../features/news/creation/components/AdvancedModePlaceholder';
+import { TitleField } from '../features/news/creation/components/TitleField';
+import { MetaFieldsRow } from '../features/news/creation/components/MetaFieldsRow';
+import { ContentEditorField } from '../features/news/creation/components/ContentEditorField';
+import { CoverImageField } from '../features/news/creation/components/CoverImageField';
+import { MediaGallerySection } from '../features/news/creation/components/MediaGallerySection';
 
 export default function CreerNewsPage() {
-  const navigate = useNavigate();
-  const openNewsDetail = useOpenNewsDetail();
-  const { user } = useAuthStore();
-  const { can } = usePermissions();
-  const { id } = useParams<{ id?: string }>();
-  const isEditMode = Boolean(id);
-  // Un utilisateur du backoffice sans permission de gestion peut ouvrir la
-  // fiche (même mécanique que BackofficeRecordForm : consultation possible,
-  // action d'enregistrement masquée) -- ne s'applique qu'en mode édition ;
-  // la création reste ouverte à tout citoyen connecté, comme avant.
-  const canManageNews = can(PERMISSIONS.BACKOFFICE_NEWS_MANAGE);
-  const isReadOnly = isEditMode && !canManageNews;
-  const [currentStep, setCurrentStep] = useState(0);
+  const [mode, setMode] = useState<CreationMode>('standard');
+  const form = useNewsCreationForm();
+  const selectedOrganisation = form.organisations.find((o) => o.id === form.organisationId);
 
-  const [titre, setTitre] = useState('');
-  const [type, setType] = useState<NewsType>('consultation');
-  const [description, setDescription] = useState('');
-  const [contenu, setContenu] = useState('');
-  const [showPreviewDesc, setShowPreviewDesc] = useState(false);
-  const richTextEditorRef = useRef<RichTextEditorHandle>(null);
-  const [province, setProvince] = useState('Estuaire');
+  // Niveau 1 (droite de la topbar) : bascule de mode -- toujours
+  // affichée, y compris pendant le chargement, pour ne jamais faire
+  // "sauter" la mise en page de la topbar.
+  useSetTopbarContent('upper', <ModeToggle mode={mode} onChange={setMode} />, [mode]);
 
-  // Référentiels (catégories, organisations, établissements) — peuplés
-  // depuis referentielsService (bascule mock/réel automatique).
-  const [categories, setCategories] = useState<Categorie[]>([]);
-  const [organisations, setOrganisations] = useState<Organisation[]>([]);
-  const [etablissements, setEtablissements] = useState<Etablissement[]>([]);
-  const [categorieId, setCategorieId] = useState('');
-  const [organisationId, setOrganisationId] = useState('');
-  const [etablissementId, setEtablissementId] = useState('');
-  const [isLoadingReferentiels, setIsLoadingReferentiels] = useState(true);
+  // Niveau 2 : qui publie, pour quelle organisation, avec quelle
+  // visibilité -- reflète l'état du formulaire en direct.
+  useSetTopbarContent(
+    'lower',
+    (
+      <CreationTopbarBrief
+        user={form.user}
+        organisation={selectedOrganisation}
+        visibilite={form.visibilite}
+        onVisibiliteChange={form.setVisibilite}
+        disabled={form.isReadOnly}
+      />
+    ),
+    [form.user, selectedOrganisation, form.visibilite, form.isReadOnly],
+  );
 
-  // Image de couverture (fichier réel — le backend attend un ImageField, pas une URL).
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-
-  // Poll state inside wizard
-  const [addPoll, setAddPoll] = useState(false);
-  const [pollQuestion, setPollQuestion] = useState('');
-  const [pollChoice1, setPollChoice1] = useState('');
-  const [pollChoice2, setPollChoice2] = useState('');
-  const [pollDateDebut, setPollDateDebut] = useState(() => toDatetimeLocalValue(new Date()));
-  const [pollDateFin, setPollDateFin] = useState(() => toDatetimeLocalValue(new Date(Date.now() + 30 * 86400 * 1000)));
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Mode édition (assistant ouvert depuis le backoffice) : la News
-  // existante est chargée une fois au montage et vient peupler tous les
-  // champs ci-dessus -- voir le useEffect dédié plus bas.
-  const [isLoadingRecord, setIsLoadingRecord] = useState(isEditMode);
-  const [loadRecordError, setLoadRecordError] = useState<string | null>(null);
-  const [existingNewsId, setExistingNewsId] = useState<string | null>(null);
-  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
-  // Un sondage déjà rattaché n'est pas encore modifiable depuis cet
-  // assistant (aucun endpoint de mise à jour de sondage côté service) :
-  // ses champs sont affichés mais verrouillés, et il n'est pas recréé
-  // à l'enregistrement.
-  const [hasExistingSondage, setHasExistingSondage] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      referentielsService.getCategories(),
-      referentielsService.getOrganisations(),
-      referentielsService.getEtablissements(),
-    ])
-      .then(([cats, orgs, etabs]) => {
-        if (cancelled) return;
-        setCategories(cats);
-        setOrganisations(orgs);
-        setEtablissements(etabs);
-        // En mode édition, le chargement de la News (voir useEffect
-        // ci-dessous) peut résoudre avant ou après celui-ci -- ne jamais
-        // écraser categorieId si une valeur y est déjà posée.
-        if (cats.length > 0) setCategorieId((prev) => prev || cats[0].id);
-      })
-      .catch((error) => console.error('Échec du chargement des référentiels :', error))
-      .finally(() => {
-        if (!cancelled) setIsLoadingReferentiels(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Charge la News existante en mode édition et peuple tous les champs du
-  // wizard -- c'est ce qui permet à l'assistant de « se charger avec
-  // toutes les données » plutôt que de repartir d'un formulaire vide.
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    setIsLoadingRecord(true);
-    setLoadRecordError(null);
-    newsService.getNewsBySlug(id)
-      .then((record) => {
-        if (cancelled) return;
-        if (!record) {
-          setLoadRecordError('News introuvable.');
-          return;
-        }
-        setExistingNewsId(record.id);
-        setTitre(record.titre);
-        setType(record.type);
-        setDescription(record.description);
-        setContenu(record.contenu || '');
-        setProvince(record.province || 'Estuaire');
-        setCategorieId(record.categorie.id);
-        setOrganisationId(record.organisation?.id || '');
-        setEtablissementId(record.etablissement?.id || '');
-        setExistingImageUrl(record.image || null);
-
-        const sondage = record.sondages?.[0];
-        if (sondage) {
-          setHasExistingSondage(true);
-          setAddPoll(true);
-          setPollQuestion(sondage.question);
-          setPollChoice1(sondage.choix[0]?.libelle || '');
-          setPollChoice2(sondage.choix[1]?.libelle || '');
-          setPollDateDebut(toDatetimeLocalValue(new Date(sondage.dateDebut)));
-          setPollDateFin(toDatetimeLocalValue(new Date(sondage.dateFin)));
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) setLoadRecordError(error instanceof Error ? error.message : 'Chargement impossible.');
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingRecord(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  // Nettoie l'URL d'objet créée pour la prévisualisation de l'image
-  // lorsqu'un nouveau fichier est choisi ou que la page se démonte.
-  useEffect(() => {
-    return () => {
-      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    };
-  }, [imagePreviewUrl]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    setImageFile(file);
-    setImagePreviewUrl(URL.createObjectURL(file));
-  };
-
-  const handleRemoveImage = () => {
-    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    setImageFile(null);
-    setImagePreviewUrl(null);
-  };
-
-  const handleNext = () => {
-    if (currentStep === 0 && !titre.trim()) {
-      toast('warning', 'Champ requis', 'Veuillez saisir un titre pour votre news.');
-      return;
-    }
-    if (currentStep === 0 && !categorieId) {
-      toast('warning', 'Champ requis', 'Veuillez choisir une catégorie.');
-      return;
-    }
-    if (currentStep === 1 && !description.trim()) {
-      toast('warning', 'Champ requis', 'Veuillez rédiger une description.');
-      return;
-    }
-    setCurrentStep((prev) => Math.min(WIZARD_STEPS.length - 1, prev + 1));
-  };
-
-  const handlePrev = () => {
-    setCurrentStep((prev) => Math.max(0, prev - 1));
-  };
-
-  const handlePublish = async () => {
-    const categorie = categories.find((c) => c.id === categorieId);
-    if (!categorie) {
-      toast('warning', 'Catégorie requise', 'Veuillez choisir une catégorie avant de publier.');
-      setCurrentStep(0);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      if (isEditMode && existingNewsId) {
-        const updated = await newsService.updateNews(existingNewsId, {
-          titre,
-          type,
-          description,
-          contenu,
-          province,
-          categorie,
-          organisation: organisations.find((o) => o.id === organisationId),
-          etablissement: etablissements.find((e) => e.id === etablissementId),
-        });
-
-        // Un sondage n'est créé que s'il n'en existait pas déjà -- le
-        // modifier n'est pas encore possible depuis cet assistant (voir
-        // hasExistingSondage plus haut).
-        if (addPoll && pollQuestion.trim() && !hasExistingSondage) {
-          try {
-            await sondagesService.creerSondage({
-              newsId: updated.id,
-              titre: pollQuestion,
-              question: pollQuestion,
-              choix: [pollChoice1.trim() || 'Oui', pollChoice2.trim() || 'Non'],
-              dateDebut: new Date(pollDateDebut).toISOString(),
-              dateFin: new Date(pollDateFin).toISOString(),
-            });
-          } catch (pollError) {
-            console.error('Échec de la création du sondage :', pollError);
-            toast('warning', 'News mise à jour, sondage non créé', 'La mise à jour a réussi mais le sondage associé n’a pas pu être créé.');
-          }
-        }
-
-        toast('success', 'News mise à jour avec succès', 'Vos modifications ont bien été enregistrées.');
-        navigate(`/admin/news/${updated.id}`);
-        return;
-      }
-
-      const created = await newsService.createNews({
-        titre,
-        type,
-        description,
-        contenu,
-        province,
-        image: imageFile || undefined,
-        categorie,
-        organisation: organisations.find((o) => o.id === organisationId),
-        etablissement: etablissements.find((e) => e.id === etablissementId),
-        auteur: user || undefined,
-      });
-
-      // Le contenu envoyé ci-dessus peut encore référencer des médias
-      // locaux (aperçus blob:) si l'auteur en a inséré dans l'éditeur
-      // avant que la News n'existe. Maintenant que son id réel est
-      // connu, on les persiste réellement et on réenregistre le
-      // contenu final (URLs définitives) par-dessus.
-      if (richTextEditorRef.current) {
-        try {
-          const { content: finalContenu, failedCount } = await richTextEditorRef.current.publishPendingMedia(created.id);
-          if (finalContenu !== contenu) {
-            await newsService.updateNews(created.id, { contenu: finalContenu });
-          }
-          if (failedCount > 0) {
-            toast(
-              'warning',
-              'Certains médias non importés',
-              `${failedCount} média(s) du contenu détaillé n'ont pas pu être importés. Vous pourrez réessayer en modifiant l'article.`,
-            );
-          }
-        } catch (mediaError) {
-          console.error('Échec de la persistance des médias du contenu :', mediaError);
-          toast('warning', 'News publiée, médias non finalisés', 'La publication a réussi mais certains médias du contenu n’ont pas pu être finalisés.');
-        }
-      }
-
-      // Le sondage n'est PAS un champ de News côté backend : c'est une
-      // ressource à part (sondages/api/v1/), créée séparément une fois
-      // la News existante, et rattachée via son id.
-      if (addPoll && pollQuestion.trim()) {
-        try {
-          await sondagesService.creerSondage({
-            newsId: created.id,
-            titre: pollQuestion,
-            question: pollQuestion,
-            choix: [pollChoice1.trim() || 'Oui', pollChoice2.trim() || 'Non'],
-            dateDebut: new Date(pollDateDebut).toISOString(),
-            dateFin: new Date(pollDateFin).toISOString(),
-          });
-        } catch (pollError) {
-          // La news est déjà publiée : un échec de création du sondage ne
-          // doit pas faire perdre le travail déjà accompli à l'utilisateur.
-          console.error('Échec de la création du sondage :', pollError);
-          toast('warning', 'News publiée, sondage non créé', 'La publication a réussi mais le sondage associé n’a pas pu être créé.');
-        }
-      }
-
-      toast('success', 'News publiée avec succès !', 'Votre actualité est désormais ouverte au débat.');
-      navigate('/news');
-      openNewsDetail(created.slug);
-    } catch (err: any) {
-      toast('error', isEditMode ? 'Erreur de mise à jour' : 'Erreur de publication', err?.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (isEditMode && isLoadingRecord) {
+  if (form.isEditMode && form.isLoadingRecord) {
     return (
       <div className="max-w-3xl mx-auto py-24 flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-[#5B4DFF]" />
@@ -332,391 +60,66 @@ export default function CreerNewsPage() {
     );
   }
 
-  if (isEditMode && loadRecordError) {
+  if (form.isEditMode && form.loadRecordError) {
     return (
       <div className="max-w-3xl mx-auto py-16 text-center space-y-4">
-        <p className="text-sm text-red-600 dark:text-red-400">{loadRecordError}</p>
-        <Button variant="outline" size="md" onClick={() => navigate('/admin/news')}>
-          Retour à la liste
-        </Button>
+        <p className="text-sm text-red-600 dark:text-red-400">{form.loadRecordError}</p>
+      </div>
+    );
+  }
+
+  if (mode === 'avance') {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <AdvancedModePlaceholder onBackToStandard={() => setMode('standard')} />
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 pb-16">
-      <div className="space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white font-display flex items-center gap-3">
-          <FilePlus className="w-8 h-8 text-[#5B4DFF]" />
-          {isEditMode ? 'Assistant de Modification de News / Information' : 'Assistant de Création de News / Information'}
-        </h1>
-        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          {isEditMode
-            ? 'Modifiez votre actualité, projet ou information en 4 étapes guidées.'
-            : 'Publiez votre actualité, projet ou information en 4 étapes guidées.'}
+    <div className="max-w-3xl mx-auto pb-24 space-y-9">
+      {form.isReadOnly && (
+        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3 py-2 inline-block">
+          Consultation seule — vous n'avez pas la permission de modifier cette news.
         </p>
-        {isReadOnly && (
-          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3 py-2 inline-block">
-            Consultation seule — vous n'avez pas la permission de modifier cette news.
-          </p>
-        )}
-      </div>
+      )}
 
-      <Stepper steps={WIZARD_STEPS} currentStepIndex={currentStep} onStepClick={setCurrentStep} />
+      <TitleField value={form.titre} onChange={form.setTitre} disabled={form.isReadOnly} />
 
-      <div className="bg-white dark:bg-[#1A1F4D] rounded-3xl p-6 sm:p-8 border border-gray-100 dark:border-gray-800 shadow-md">
-        {/* Step 1 */}
-        {currentStep === 0 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white font-display">
-              Informations Principales
-            </h3>
-            <Input
-              label="Titre de la news / de la publication *"
-              value={titre}
-              onChange={(e) => setTitre(e.target.value)}
-              placeholder="Ex: Rénovation de la bibliothèque centrale..."
-              disabled={isReadOnly}
-            />
+      <MetaFieldsRow form={form} />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Format de la News
-                </label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value as NewsType)}
-                  disabled={isReadOnly}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
-                >
-                  <option value="consultation">Consultation Publique</option>
-                  <option value="projet">Projet Académique / Associatif</option>
-                  <option value="evenement">Événement & Conférence</option>
-                  <option value="petition">Pétition Citoyenne</option>
-                  <option value="sondage">Sondage Express</option>
-                  <option value="annonce">Annonce Officielle</option>
-                </select>
-              </div>
+      <ContentEditorField
+        ref={form.richTextEditorRef}
+        value={form.contenuJson}
+        onChange={form.setContenuJson}
+        newsId={form.existingNewsId || undefined}
+        disabled={form.isReadOnly}
+      />
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Province d'Impact
-                </label>
-                <select
-                  value={province}
-                  onChange={(e) => setProvince(e.target.value)}
-                  disabled={isReadOnly}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
-                >
-                  {PROVINCES_GABON.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+      <CoverImageField
+        previewUrl={form.coverPreviewUrl}
+        onFileSelected={form.handleImageSelected}
+        onRemove={form.handleRemoveImage}
+        disabled={form.isReadOnly}
+      />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Catégorie *
-                </label>
-                <select
-                  value={categorieId}
-                  onChange={(e) => setCategorieId(e.target.value)}
-                  disabled={isLoadingReferentiels || isReadOnly}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
-                >
-                  {isLoadingReferentiels && <option value="">Chargement…</option>}
-                  {!isLoadingReferentiels && categories.length === 0 && <option value="">Aucune catégorie disponible</option>}
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nom}</option>
-                  ))}
-                </select>
-              </div>
+      <MediaGallerySection
+        galleryItems={form.galleryDisplayItems}
+        documentItems={form.documentDisplayItems}
+        onAddGalleryFiles={form.addGalleryFiles}
+        onRemoveGalleryItem={form.removeGalleryItem}
+        onAddDocumentFiles={form.addDocumentFiles}
+        onRemoveDocumentItem={form.removeDocumentItem}
+        disabled={form.isReadOnly}
+      />
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Organisation (optionnel)
-                </label>
-                <select
-                  value={organisationId}
-                  onChange={(e) => setOrganisationId(e.target.value)}
-                  disabled={isLoadingReferentiels || isReadOnly}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
-                >
-                  <option value="">Aucune</option>
-                  {organisations.map((o) => (
-                    <option key={o.id} value={o.id}>{o.nom}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Établissement (optionnel)
-                </label>
-                <select
-                  value={etablissementId}
-                  onChange={(e) => setEtablissementId(e.target.value)}
-                  disabled={isLoadingReferentiels || isReadOnly}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm disabled:opacity-60"
-                >
-                  <option value="">Aucun</option>
-                  {etablissements.map((e) => (
-                    <option key={e.id} value={e.id}>{e.nom}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2 */}
-        {currentStep === 1 && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white font-display">
-              Contenu & Visuel
-            </h3>
-
-            {/* Description / Summary Field */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                Résumé synthétique (Brève description) *
-              </label>
-              <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
-                <MarkdownToolbar
-                  value={description}
-                  onChange={setDescription}
-                  showPreview={showPreviewDesc}
-                  onTogglePreview={() => setShowPreviewDesc(!showPreviewDesc)}
-                />
-                {showPreviewDesc ? (
-                  <div className="p-4 bg-white dark:bg-gray-900 min-h-[90px]">
-                    <RichTextViewer content={description || '*Aucun contenu à prévisualiser*'} />
-                  </div>
-                ) : (
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={3}
-                    placeholder="Présentez brièvement l'enjeu principal en 2-3 phrases (compatible gras **, italique *, etc.)..."
-                    disabled={isReadOnly}
-                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#5B4DFF] disabled:opacity-60"
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Detailed Content & Objectives Field */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                Texte détaillé & Objectifs (Propositions, contexte, chapitres...)
-              </label>
-              <RichTextEditor
-                ref={richTextEditorRef}
-                value={contenu}
-                onChange={setContenu}
-                // En mode édition, la News existe déjà : tout média inséré
-                // est uploadé immédiatement (pas de file d'attente locale
-                // à publier après coup, contrairement à la création).
-                newsId={isEditMode ? existingNewsId || undefined : undefined}
-                placeholder="Rédigez le corps de votre article : titres, listes, images, vidéos, tableaux, galeries, documents joints..."
-                minHeight="280px"
-                disabled={isReadOnly}
-              />
-            </div>
-
-            {/* Image de couverture */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                Image de couverture (optionnel)
-              </label>
-              {isEditMode ? (
-                <div>
-                  {existingImageUrl ? (
-                    <div className="relative w-full h-48 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                      <img src={existingImageUrl} alt="Image de couverture actuelle" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 text-xs font-semibold">
-                      Aucune image de couverture
-                    </div>
-                  )}
-                  <p className="text-[11px] text-gray-400 mt-1.5">
-                    L'image de couverture n'est pas modifiable pour une News existante (limitation actuelle de l'API).
-                  </p>
-                </div>
-              ) : imagePreviewUrl ? (
-                <div className="relative w-full h-48 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                  <img src={imagePreviewUrl} alt="Prévisualisation" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80"
-                    title="Retirer l'image"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center gap-2 w-full h-32 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 cursor-pointer hover:border-[#5B4DFF] hover:text-[#5B4DFF] transition-colors">
-                  <ImagePlus className="w-6 h-6" />
-                  <span className="text-xs font-semibold">Cliquez pour choisir une image</span>
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                </label>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Step 3 */}
-        {currentStep === 2 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white font-display">
-              Intégration d'un Sondage (Optionnel)
-            </h3>
-            {hasExistingSondage && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3 py-2">
-                Cette news a déjà un sondage associé. Sa modification n'est pas encore possible depuis cet assistant -- les champs ci-dessous sont affichés à titre indicatif.
-              </p>
-            )}
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="addPollCheck"
-                checked={addPoll}
-                onChange={(e) => setAddPoll(e.target.checked)}
-                disabled={hasExistingSondage || isReadOnly}
-                className="w-4 h-4 text-[#5B4DFF] disabled:opacity-60"
-              />
-              <label htmlFor="addPollCheck" className="text-sm font-bold text-gray-800 dark:text-gray-200">
-                Ajouter une question de sondage à cette publication
-              </label>
-            </div>
-
-            {addPoll && (
-              <div className={`p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-3 ${hasExistingSondage || isReadOnly ? 'opacity-60 pointer-events-none' : ''}`}>
-                <Input
-                  label="Question du sondage"
-                  value={pollQuestion}
-                  onChange={(e) => setPollQuestion(e.target.value)}
-                  placeholder="Ex: Êtes-vous favorable à cette mesure ?"
-                  disabled={hasExistingSondage || isReadOnly}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Option 1"
-                    value={pollChoice1}
-                    onChange={(e) => setPollChoice1(e.target.value)}
-                    placeholder="Ex: Pour"
-                    disabled={hasExistingSondage || isReadOnly}
-                  />
-                  <Input
-                    label="Option 2"
-                    value={pollChoice2}
-                    onChange={(e) => setPollChoice2(e.target.value)}
-                    placeholder="Ex: Contre"
-                    disabled={hasExistingSondage || isReadOnly}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <DatePicker label="Ouverture du vote" value={pollDateDebut} onChange={setPollDateDebut} />
-                  <DatePicker label="Clôture du vote" value={pollDateFin} onChange={setPollDateFin} min={pollDateDebut} />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 4 */}
-        {currentStep === 3 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white font-display">
-              Aperçu Général avant Publication
-            </h3>
-            <div className="p-4 sm:p-5 rounded-2xl bg-gray-50 dark:bg-gray-800 space-y-4 text-xs sm:text-sm border border-gray-200 dark:border-gray-700">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pb-3 border-b border-gray-200 dark:border-gray-700">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Titre</span>
-                  <span className="font-extrabold text-gray-900 dark:text-white">{titre || 'Non renseigné'}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Type</span>
-                  <span className="font-bold capitalize text-[#5B4DFF]">{type}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Province</span>
-                  <span className="font-bold">{province}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Catégorie</span>
-                  <span className="font-bold">{categories.find((c) => c.id === categorieId)?.nom || 'Non renseignée'}</span>
-                </div>
-              </div>
-
-              {imagePreviewUrl && (
-                <div>
-                  <span className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Image de couverture</span>
-                  <img src={imagePreviewUrl} alt="Prévisualisation" className="w-full h-40 object-cover rounded-xl border border-gray-200 dark:border-gray-700" />
-                </div>
-              )}
-
-              {description && (
-                <div>
-                  <span className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">
-                    Résumé synthétique
-                  </span>
-                  <div className="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                    <RichTextViewer content={description} compact />
-                  </div>
-                </div>
-              )}
-
-              {contenu && (
-                <div>
-                  <span className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">
-                    Texte Détaillé & Objectifs (Rendu Riche)
-                  </span>
-                  <div className="p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                    <RichContentRenderer content={contenu} />
-                  </div>
-                </div>
-              )}
-
-              {addPoll && pollQuestion && (
-                <div>
-                  <span className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Sondage associé</span>
-                  <div className="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                    <p className="font-bold">{pollQuestion}</p>
-                    <p className="text-gray-500">{pollChoice1 || 'Oui'} / {pollChoice2 || 'Non'}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Navigation CTAs */}
-        <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-100 dark:border-gray-800">
-          <Button variant="outline" size="md" disabled={currentStep === 0} onClick={handlePrev}>
-            <ArrowLeft className="w-4 h-4" /> Précédent
+      {!form.isReadOnly && (
+        <div className="flex justify-end pt-2">
+          <Button variant="primary" size="lg" isLoading={form.isSubmitting} onClick={form.submit}>
+            {form.isEditMode ? 'Enregistrer les modifications' : 'Publier'}
           </Button>
-
-          {currentStep < WIZARD_STEPS.length - 1 ? (
-            <Button variant="primary" size="md" onClick={handleNext}>
-              <span>Suivant</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          ) : isReadOnly ? null : (
-            <Button variant="primary" size="lg" isLoading={isSubmitting} onClick={handlePublish}>
-              <span>{isEditMode ? 'Enregistrer les modifications' : 'Publier la news'}</span>
-              <CheckCircle2 className="w-4 h-4" />
-            </Button>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

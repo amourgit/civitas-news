@@ -94,9 +94,13 @@ export interface EditorToolbarProps {
   onPickGallery: (files: FileList | File[]) => void;
   onPickVideo: (file: File) => void;
   onPickDocument: (file: File) => void;
+  /** 'bare' = aucune bordure/fond/coin arrondi (utilisé par les champs
+   * "espace de saisie libre", voir RichTextEditor `variant`) — flotte
+   * simplement au-dessus du contenu, toujours collante (sticky). */
+  variant?: 'boxed' | 'bare';
 }
 
-export const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onPickImages, onPickGallery, onPickVideo, onPickDocument }) => {
+export const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onPickImages, onPickGallery, onPickVideo, onPickDocument, variant = 'boxed' }) => {
   const [linkOpen, setLinkOpen] = useState(false);
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -118,7 +122,13 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onPickImag
   const activeHeading = HEADING_LEVELS.find((level) => editor.isActive('heading', { level }));
 
   return (
-    <div className="civitas-editor-toolbar sticky top-0 z-20 flex flex-wrap items-center gap-0.5 p-1.5 rounded-t-xl border border-b-0 border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-[#151A42]/95 backdrop-blur-sm">
+    <div
+      className={`civitas-editor-toolbar sticky top-0 z-20 flex flex-wrap items-center gap-0.5 p-1.5 backdrop-blur-sm ${
+        variant === 'bare'
+          ? 'rounded-xl -mx-2 px-2 bg-white/70 dark:bg-[#0F122C]/60'
+          : 'rounded-t-xl border border-b-0 border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-[#151A42]/95'
+      }`}
+    >
       <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Annuler (Ctrl+Z)">
         <Undo2 className="w-4 h-4" />
       </ToolbarButton>

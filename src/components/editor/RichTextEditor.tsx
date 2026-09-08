@@ -63,6 +63,12 @@ export interface RichTextEditorProps {
   minHeight?: string;
   disabled?: boolean;
   className?: string;
+  /** 'boxed' (défaut) = carte bordée classique. 'bare' = aucune bordure,
+   * aucun fond, aucun coin arrondi -- l'éditeur se fond dans la page,
+   * comme un simple "espace de saisie" (voir CreerNewsPage, champ
+   * description). Le rendu WYSIWYG et toutes les fonctionnalités
+   * restent identiques ; seule l'habillage visuel change. */
+  variant?: 'boxed' | 'bare';
 }
 
 function parseInitialContent(value: string): JSONContent | string | undefined {
@@ -81,7 +87,7 @@ function parseInitialContent(value: string): JSONContent | string | undefined {
 }
 
 export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor(
-  { value, onChange, newsId, placeholder, minHeight = '260px', disabled = false, className = '' },
+  { value, onChange, newsId, placeholder, minHeight = '260px', disabled = false, className = '', variant = 'boxed' },
   ref,
 ) {
   const editorRef = useRef<Editor | null>(null);
@@ -238,16 +244,21 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   const wordCount = editor.storage.characterCount?.words?.() ?? 0;
 
   return (
-    <div className={`civitas-rich-text-editor ${className}`}>
+    <div className={`civitas-rich-text-editor ${variant === 'bare' ? 'civitas-rich-text-editor--bare' : ''} ${className}`}>
       <EditorToolbar
         editor={editor}
         onPickImages={handlePickImages}
         onPickGallery={handlePickGallery}
         onPickVideo={handlePickVideo}
         onPickDocument={handlePickDocument}
+        variant={variant}
       />
       <div
-        className="rounded-b-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#151A42] px-4 py-3 overflow-y-auto"
+        className={
+          variant === 'bare'
+            ? 'px-0 py-3 overflow-y-auto'
+            : 'rounded-b-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#151A42] px-4 py-3 overflow-y-auto'
+        }
         style={{ minHeight }}
         onClick={() => editor.chain().focus().run()}
       >
