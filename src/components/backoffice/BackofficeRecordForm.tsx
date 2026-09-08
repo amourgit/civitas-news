@@ -11,6 +11,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { DatePicker } from '../ui/DatePicker';
 import { FkSelectField } from './fields/FkSelectField';
+import { SelectComboboxField } from './fields/SelectComboboxField';
 import { TagsField } from './fields/TagsField';
 import type { FieldDef, ModelDef } from './registry/types';
 import { buildInitialValues } from './utils';
@@ -58,22 +59,14 @@ function FieldRenderer<TRecord extends Record<string, unknown>>({
 
   if (field.type === 'select') {
     return (
-      <div className="flex flex-col gap-1.5 w-full">
-        <label htmlFor={fieldId} className={labelClass}>{field.label}{field.required && <span className="text-red-500">*</span>}</label>
-        <select
-          id={fieldId}
-          value={(value as string) ?? ''}
-          disabled={isReadOnly}
-          required={field.required}
-          onChange={(e) => onChange(e.target.value)}
-          className={inputClass}
-        >
-          <option value="" disabled={field.required}>— Sélectionner —</option>
-          {field.options?.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
+      <SelectComboboxField
+        label={field.label}
+        options={field.options ?? []}
+        value={(value as string) || undefined}
+        onChange={(v) => onChange(v ?? '')}
+        required={field.required}
+        disabled={isReadOnly}
+      />
     );
   }
 
