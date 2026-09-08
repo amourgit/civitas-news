@@ -1,54 +1,42 @@
 // ============================================================
 // src/features/news/creation/components/ShortDescriptionField.tsx
 // Résumé bref -- distinct du contenu détaillé porté par
-// ContentEditorField : alimente News.description (texte simple,
-// obligatoire côté backend, déjà utilisé ailleurs comme chapeau --
-// voir NewsCard.tsx et NewsDetailArticleBody.tsx). Avant ce champ,
-// cette valeur était dérivée en silence du contenu détaillé
-// (extractPlainTextSummary) ; elle redevient une saisie propre de
-// l'auteur, pour ceux qui ne liront que ce résumé.
+// ContentEditorField : alimente News.description (obligatoire côté
+// backend, déjà utilisé ailleurs comme chapeau texte brut -- voir
+// NewsCard.tsx, rendu tel quel sans passer par un moteur de rendu
+// riche). Avant ce champ, cette valeur était dérivée en silence du
+// contenu détaillé (extractPlainTextSummary) ; elle redevient une
+// saisie propre de l'auteur, dans le même éditeur riche (mise en
+// forme, tableaux, symboles...) que le contenu détaillé, pour un
+// confort de rédaction identique.
 //
-// Même esprit visuel que le contenu détaillé au-dessus de lui --
-// aucune bordure/fond au repos, se fond dans la page (voir TitleField
-// pour le même principe de <textarea> auto-agrandissante) -- mais
-// saisie texte simple (pas de WYSIWYG), pour ne jamais se confondre
-// avec le contenu détaillé : les deux valeurs restent deux champs
-// d'état séparés (voir useNewsCreationForm : contenuJson vs
-// descriptionCourte), envoyés séparément au backend (`contenu` vs
-// `description`).
+// Le JSON Tiptap saisi ici n'est PAS enregistré tel quel : à la
+// soumission (voir useNewsCreationForm), il est réduit en texte brut
+// via extractPlainTextSummary avant d'être envoyé comme `description`
+// -- les usages existants de ce champ (chapeau de carte, recherche,
+// fil) affichent la valeur brute sans interprétation Markdown/HTML.
+// Un média inséré ici (image, tableau...) enrichit donc la saisie
+// mais ne survit pas à l'enregistrement ; pas d'upload immédiat/newsId
+// câblé ici pour cette raison (contrairement à ContentEditorField).
 // ============================================================
 
-import React, { useLayoutEffect, useRef } from 'react';
+import React from 'react';
+import { RichTextEditor } from '../../../../components/editor/RichTextEditor';
 
 export interface ShortDescriptionFieldProps {
+  /** Chaîne JSON Tiptap (comme ContentEditorField), pas du texte brut. */
   value: string;
-  onChange: (value: string) => void;
+  onChange: (json: string) => void;
   disabled?: boolean;
 }
 
-export const ShortDescriptionField: React.FC<ShortDescriptionFieldProps> = ({
-  value,
-  onChange,
-  disabled = false,
-}) => {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
-  }, [value]);
-
-  return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Que retenons-nous en bref ?"
-      disabled={disabled}
-      rows={2}
-      className="w-full resize-none overflow-hidden bg-transparent border-0 outline-none ring-0 focus:ring-0 focus:outline-none p-0 text-[15px] leading-[1.75] text-gray-800 dark:text-gray-200 placeholder:text-gray-300 dark:placeholder:text-gray-600 disabled:opacity-60"
-    />
-  );
-};
+export const ShortDescriptionField: React.FC<ShortDescriptionFieldProps> = ({ value, onChange, disabled }) => (
+  <RichTextEditor
+    variant="bare"
+    value={value}
+    onChange={onChange}
+    disabled={disabled}
+    minHeight="52px"
+    placeholder="Que retenons-nous en bref ?"
+  />
+);

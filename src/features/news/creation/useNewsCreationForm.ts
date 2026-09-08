@@ -62,9 +62,10 @@ export function useNewsCreationForm() {
   const [titre, setTitre] = useState('');
   const [type, setType] = useState<NewsType>('information');
   const [contenuJson, setContenuJson] = useState('');
-  // Résumé bref, saisi séparément par l'auteur (News.description) --
-  // distinct du contenu détaillé ci-dessus (voir ShortDescriptionField).
-  const [descriptionCourte, setDescriptionCourte] = useState('');
+  // Résumé bref, saisi séparément par l'auteur dans son propre éditeur
+  // riche (News.description) -- distinct du contenu détaillé ci-dessus
+  // (voir ShortDescriptionField). Réduit en texte brut à la soumission.
+  const [descriptionCourteJson, setDescriptionCourteJson] = useState('');
   const richTextEditorRef = useRef<RichTextEditorHandle>(null);
 
   const [province, setProvince] = useState('Estuaire');
@@ -150,7 +151,7 @@ export function useNewsCreationForm() {
         setTitre(record.titre);
         setType(record.type);
         setContenuJson(record.contenu || '');
-        setDescriptionCourte(record.description || '');
+        setDescriptionCourteJson(record.description || '');
         setProvince(record.province || 'Estuaire');
         setLieu(record.lieu || '');
         setTags(record.tags || []);
@@ -334,12 +335,12 @@ export function useNewsCreationForm() {
       toast('warning', 'Contenu manquant', 'Rédigez le contenu de votre publication avant de continuer.');
       return false;
     }
-    if (!descriptionCourte.trim()) {
+    if (!extractPlainTextSummary(descriptionCourteJson)) {
       toast('warning', 'Résumé manquant', "Dites en bref ce qu'il faut retenir avant de continuer.");
       return false;
     }
     return true;
-  }, [titre, categorieId, contenuJson, descriptionCourte]);
+  }, [titre, categorieId, contenuJson, descriptionCourteJson]);
 
   const submit = useCallback(async () => {
     if (!validate()) return;
@@ -350,7 +351,9 @@ export function useNewsCreationForm() {
     }
     const organisation = organisations.find((o) => o.id === organisationId);
     const etablissement = etablissements.find((e) => e.id === etablissementId);
-    const description = descriptionCourte.trim();
+    // News.description reste un champ texte brut côté backend/affichage
+    // (chapeau NewsCard, recherche, fil) -- voir ShortDescriptionField.
+    const description = extractPlainTextSummary(descriptionCourteJson);
 
     setIsSubmitting(true);
     try {
@@ -469,7 +472,7 @@ export function useNewsCreationForm() {
     }
   }, [
     validate, categories, categorieId, organisations, organisationId, etablissements, etablissementId,
-    contenuJson, descriptionCourte, isEditMode, existingNewsId, titre, type, province, lieu, dateDebut, dateFin, tags, visibilite,
+    contenuJson, descriptionCourteJson, isEditMode, existingNewsId, titre, type, province, lieu, dateDebut, dateFin, tags, visibilite,
     canCreatePoll, addPoll, pollQuestion, pollChoice1, pollChoice2, pollDateDebut, pollDateFin, hasExistingSondage,
     imageFile, user, pendingGalleryItems, pendingDocumentItems, navigate, openNewsDetail,
   ]);
@@ -477,7 +480,7 @@ export function useNewsCreationForm() {
   return {
     isEditMode, isReadOnly, canCreatePoll,
     titre, setTitre, type, setType, contenuJson, setContenuJson, richTextEditorRef,
-    descriptionCourte, setDescriptionCourte,
+    descriptionCourteJson, setDescriptionCourteJson,
     province, setProvince, lieu, setLieu, tags, addTag, removeTag,
     dateDebut, setDateDebut, dateFin, setDateFin, visibilite, setVisibilite,
     categories, organisations, etablissements, categorieId, setCategorieId,

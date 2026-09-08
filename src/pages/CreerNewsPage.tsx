@@ -103,8 +103,8 @@ export default function CreerNewsPage() {
             que les deux contenus ne se confondent jamais visuellement. */}
         <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
           <ShortDescriptionField
-            value={form.descriptionCourte}
-            onChange={form.setDescriptionCourte}
+            value={form.descriptionCourteJson}
+            onChange={form.setDescriptionCourteJson}
             disabled={form.isReadOnly}
           />
         </div>

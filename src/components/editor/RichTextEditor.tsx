@@ -245,14 +245,18 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
 
   return (
     <div className={`civitas-rich-text-editor ${variant === 'bare' ? 'civitas-rich-text-editor--bare' : ''} ${className}`}>
-      <EditorToolbar
-        editor={editor}
-        onPickImages={handlePickImages}
-        onPickGallery={handlePickGallery}
-        onPickVideo={handlePickVideo}
-        onPickDocument={handlePickDocument}
-        variant={variant}
-      />
+      <div className="civitas-editor-toolbar-collapse">
+        <div>
+          <EditorToolbar
+            editor={editor}
+            onPickImages={handlePickImages}
+            onPickGallery={handlePickGallery}
+            onPickVideo={handlePickVideo}
+            onPickDocument={handlePickDocument}
+            variant={variant}
+          />
+        </div>
+      </div>
       <div
         className={
           variant === 'bare'

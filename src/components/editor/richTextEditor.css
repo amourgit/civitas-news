@@ -13,20 +13,40 @@
 }
 
 /* Variante "bare" -- champ de saisie libre sans bordure/fond, voir
-   RichTextEditor `variant="bare"` (page de création de News). La
-   toolbar ne s'affiche qu'au survol/focus du bloc pour ne pas alourdir
-   visuellement un champ censé se fondre dans la page au repos. */
+   RichTextEditor `variant="bare"`. Au repos, la barre d'outils est
+   repliée à hauteur 0 (aucun vide laissé, le contenu remonte pour
+   occuper tout l'espace) ; elle se déploie en glissant dès que le
+   champ est survolé, actif (focus) ou en cours de saisie -- la saisie
+   implique déjà le focus, donc :focus-within couvre les trois cas.
+   La hauteur anime via grid-template-rows (0fr -> 1fr) plutôt que
+   max-height : la transition reste un vrai glissé fluide quel que
+   soit le nombre de lignes d'icônes affichées (repli mobile compris),
+   sans valeur de hauteur à deviner à l'avance. */
+.civitas-editor-toolbar-collapse {
+  display: grid;
+  transition: grid-template-rows 220ms ease;
+}
+.civitas-editor-toolbar-collapse > div {
+  overflow: hidden;
+  min-height: 0;
+}
+.civitas-rich-text-editor--bare .civitas-editor-toolbar-collapse {
+  grid-template-rows: 0fr;
+}
+.civitas-rich-text-editor--bare:hover .civitas-editor-toolbar-collapse,
+.civitas-rich-text-editor--bare:focus-within .civitas-editor-toolbar-collapse {
+  grid-template-rows: 1fr;
+}
 .civitas-rich-text-editor--bare .civitas-editor-toolbar {
   opacity: 0;
-  transform: translateY(-4px);
-  transition: opacity 150ms ease, transform 150ms ease;
   pointer-events: none;
+  transition: opacity 150ms ease;
 }
 .civitas-rich-text-editor--bare:hover .civitas-editor-toolbar,
 .civitas-rich-text-editor--bare:focus-within .civitas-editor-toolbar {
   opacity: 1;
-  transform: translateY(0);
   pointer-events: auto;
+  transition: opacity 200ms ease 60ms;
 }
 
 .civitas-prose.tiptap {
