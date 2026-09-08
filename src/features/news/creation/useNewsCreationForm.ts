@@ -335,7 +335,7 @@ export function useNewsCreationForm() {
       return false;
     }
     if (!descriptionCourte.trim()) {
-      toast('warning', 'Résumé manquant', 'Dites en bref ce qu’il faut retenir avant de continuer.');
+      toast('warning', 'Résumé manquant', "Dites en bref ce qu'il faut retenir avant de continuer.");
       return false;
     }
     return true;
