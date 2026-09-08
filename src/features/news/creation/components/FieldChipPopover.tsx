@@ -128,24 +128,3 @@ export const FieldChipPopover: React.FC<FieldChipPopoverProps> = ({
     </>
   );
 };
-
-/** Ligne d'option standard à l'intérieur d'un panneau (liste de choix simples). */
-export const FieldOptionRow: React.FC<{
-  active?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  swatch?: string;
-}> = ({ active, onClick, children, swatch }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm font-medium transition-colors ${
-      active
-        ? 'bg-[#5B4DFF]/10 text-[#4739E0] dark:text-[#B8AFFF]'
-        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5'
-    }`}
-  >
-    {swatch && <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: swatch }} />}
-    <span className="truncate">{children}</span>
-  </button>
-);

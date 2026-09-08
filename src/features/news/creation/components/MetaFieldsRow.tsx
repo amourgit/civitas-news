@@ -6,15 +6,23 @@
 // organisation, établissement, province) ET tous les champs de
 // saisie manuelle courte (lieu, tags, dates, sondage) -- comme demandé,
 // aucun de ces petits champs n'a de section dédiée à lui seul.
+//
+// Les champs de SÉLECTION (liste fermée d'options) réutilisent
+// SearchableOptionsList -- même réforme/design que le combobox
+// recherchable du backoffice (voir SelectComboboxField) : recherche
+// en tête de panneau, coche sur l'option choisie. Les champs de
+// saisie libre (lieu, tags, dates, sondage) restent inchangés.
 // ============================================================
 
 import React, { useState } from 'react';
 import { Tags, Building2, GraduationCap, MapPin, MapPinned, CalendarRange, ListChecks, X } from 'lucide-react';
-import { FieldChipPopover, FieldOptionRow } from './FieldChipPopover';
+import { FieldChipPopover } from './FieldChipPopover';
+import { SearchableOptionsList } from '../../../../components/ui/SearchableOptionsList';
 import { Input } from '../../../../components/ui/Input';
 import { DatePicker } from '../../../../components/ui/DatePicker';
 import { NEWS_TYPE_OPTIONS, PROVINCES_GABON } from '../../constants/newsFieldOptions';
 import { NEWS_TYPE_ICONS } from '../newsTypeIcons';
+import type { NewsType } from '../../../../types/global.types';
 import type { NewsCreationForm } from '../useNewsCreationForm';
 
 export const MetaFieldsRow: React.FC<{ form: NewsCreationForm }> = ({ form }) => {
@@ -31,24 +39,11 @@ export const MetaFieldsRow: React.FC<{ form: NewsCreationForm }> = ({ form }) =>
       {/* Format */}
       <FieldChipPopover icon={TypeIcon} label="Format" valueLabel={NEWS_TYPE_OPTIONS.find((o) => o.value === form.type)?.label} filled disabled={disabled}>
         {(close) => (
-          <div className="max-h-72 overflow-y-auto space-y-0.5">
-            {NEWS_TYPE_OPTIONS.map((opt) => {
-              const OptIcon = NEWS_TYPE_ICONS[opt.value];
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => { form.setType(opt.value); close(); }}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm font-medium transition-colors ${
-                    form.type === opt.value ? 'bg-[#5B4DFF]/10 text-[#4739E0] dark:text-[#B8AFFF]' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5'
-                  }`}
-                >
-                  <OptIcon className="w-4 h-4 shrink-0 opacity-70" />
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
+          <SearchableOptionsList
+            options={NEWS_TYPE_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label, icon: NEWS_TYPE_ICONS[opt.value] }))}
+            value={form.type}
+            onSelect={(v) => { form.setType(v as NewsType); close(); }}
+          />
         )}
       </FieldChipPopover>
 
@@ -62,13 +57,11 @@ export const MetaFieldsRow: React.FC<{ form: NewsCreationForm }> = ({ form }) =>
         disabled={disabled || form.isLoadingReferentiels}
       >
         {(close) => (
-          <div className="max-h-72 overflow-y-auto space-y-0.5">
-            {form.categories.map((cat) => (
-              <FieldOptionRow key={cat.id} active={form.categorieId === cat.id} swatch={cat.couleur} onClick={() => { form.setCategorieId(cat.id); close(); }}>
-                {cat.nom}
-              </FieldOptionRow>
-            ))}
-          </div>
+          <SearchableOptionsList
+            options={form.categories.map((cat) => ({ value: cat.id, label: cat.nom, swatch: cat.couleur }))}
+            value={form.categorieId}
+            onSelect={(v) => { form.setCategorieId(v); close(); }}
+          />
         )}
       </FieldChipPopover>
 
@@ -81,14 +74,13 @@ export const MetaFieldsRow: React.FC<{ form: NewsCreationForm }> = ({ form }) =>
         disabled={disabled || form.isLoadingReferentiels}
       >
         {(close) => (
-          <div className="max-h-72 overflow-y-auto space-y-0.5">
-            <FieldOptionRow active={!form.organisationId} onClick={() => { form.setOrganisationId(''); close(); }}>Aucune</FieldOptionRow>
-            {form.organisations.map((org) => (
-              <FieldOptionRow key={org.id} active={form.organisationId === org.id} onClick={() => { form.setOrganisationId(org.id); close(); }}>
-                {org.nom}
-              </FieldOptionRow>
-            ))}
-          </div>
+          <SearchableOptionsList
+            options={form.organisations.map((org) => ({ value: org.id, label: org.nom }))}
+            value={form.organisationId}
+            nullableLabel="Aucune"
+            onClear={() => { form.setOrganisationId(''); close(); }}
+            onSelect={(v) => { form.setOrganisationId(v); close(); }}
+          />
         )}
       </FieldChipPopover>
 
@@ -101,25 +93,24 @@ export const MetaFieldsRow: React.FC<{ form: NewsCreationForm }> = ({ form }) =>
         disabled={disabled || form.isLoadingReferentiels}
       >
         {(close) => (
-          <div className="max-h-72 overflow-y-auto space-y-0.5">
-            <FieldOptionRow active={!form.etablissementId} onClick={() => { form.setEtablissementId(''); close(); }}>Aucun</FieldOptionRow>
-            {form.etablissements.map((etab) => (
-              <FieldOptionRow key={etab.id} active={form.etablissementId === etab.id} onClick={() => { form.setEtablissementId(etab.id); close(); }}>
-                {etab.nom}
-              </FieldOptionRow>
-            ))}
-          </div>
+          <SearchableOptionsList
+            options={form.etablissements.map((etab) => ({ value: etab.id, label: etab.nom }))}
+            value={form.etablissementId}
+            nullableLabel="Aucun"
+            onClear={() => { form.setEtablissementId(''); close(); }}
+            onSelect={(v) => { form.setEtablissementId(v); close(); }}
+          />
         )}
       </FieldChipPopover>
 
       {/* Province */}
       <FieldChipPopover icon={MapPin} label="Province" valueLabel={form.province} filled disabled={disabled}>
         {(close) => (
-          <div className="max-h-72 overflow-y-auto space-y-0.5">
-            {PROVINCES_GABON.map((p) => (
-              <FieldOptionRow key={p} active={form.province === p} onClick={() => { form.setProvince(p); close(); }}>{p}</FieldOptionRow>
-            ))}
-          </div>
+          <SearchableOptionsList
+            options={PROVINCES_GABON.map((p) => ({ value: p, label: p }))}
+            value={form.province}
+            onSelect={(v) => { form.setProvince(v); close(); }}
+          />
         )}
       </FieldChipPopover>
 

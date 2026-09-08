@@ -23,6 +23,7 @@ import { AdvancedModePlaceholder } from '../features/news/creation/components/Ad
 import { TitleField } from '../features/news/creation/components/TitleField';
 import { MetaFieldsRow } from '../features/news/creation/components/MetaFieldsRow';
 import { ContentEditorField } from '../features/news/creation/components/ContentEditorField';
+import { ShortDescriptionField } from '../features/news/creation/components/ShortDescriptionField';
 import { CoverImageField } from '../features/news/creation/components/CoverImageField';
 import { MediaGallerySection } from '../features/news/creation/components/MediaGallerySection';
 
@@ -88,13 +89,26 @@ export default function CreerNewsPage() {
 
       <MetaFieldsRow form={form} />
 
-      <ContentEditorField
-        ref={form.richTextEditorRef}
-        value={form.contenuJson}
-        onChange={form.setContenuJson}
-        newsId={form.existingNewsId || undefined}
-        disabled={form.isReadOnly}
-      />
+      <div className="space-y-3">
+        <ContentEditorField
+          ref={form.richTextEditorRef}
+          value={form.contenuJson}
+          onChange={form.setContenuJson}
+          newsId={form.existingNewsId || undefined}
+          disabled={form.isReadOnly}
+        />
+
+        {/* Résumé bref -- champ distinct du contenu détaillé ci-dessus
+            (voir ShortDescriptionField), séparé par un simple filet pour
+            que les deux contenus ne se confondent jamais visuellement. */}
+        <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+          <ShortDescriptionField
+            value={form.descriptionCourte}
+            onChange={form.setDescriptionCourte}
+            disabled={form.isReadOnly}
+          />
+        </div>
+      </div>
 
       <CoverImageField
         previewUrl={form.coverPreviewUrl}
