@@ -313,7 +313,7 @@ export default function ProfilPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {stats.favoris.map((fav) => (
               <Link key={fav.id} to={`/news/${fav.slug}`} className="group block">
-                <div className="relative aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/5">
+                <div className="relative aspect-[2/3] rounded-sm sm:rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/5">
                   {fav.image ? (
                     <img
                       src={fav.image}
