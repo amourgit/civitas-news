@@ -548,7 +548,7 @@ export function NotchNav({
               {hasUpperContent && (
                 <aside
                   aria-label="Contenu additionnel de la page (niveau supérieur)"
-                  className="pointer-events-auto flex w-fit items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
+                  className="pointer-events-auto flex aspect-square items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
                 >
                   {upperContent}
                 </aside>
@@ -557,7 +557,7 @@ export function NotchNav({
               {hasRightContent && (
                 <aside
                   aria-label="User actions notch"
-                  className="pointer-events-auto flex w-fit items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
+                  className="pointer-events-auto flex aspect-square items-center rounded-full bg-[#3B3DD9] px-3 sm:px-3.5 text-white transition-colors duration-200"
                 >
                   {rightContent}
                 </aside>
