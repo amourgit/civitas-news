@@ -547,7 +547,7 @@ export function NotchNav({
               rightContent/rightAction que d'autres écrans peuvent
               cibler visuellement de façon stable. */}
           {(hasUpperContent || hasRightContent || hasRightAction) && (
-            <div className="pointer-events-none flex max-w-[50%] items-stretch justify-end gap-2.5 py-1.5 sm:gap-3">
+            <div className="pointer-events-none flex max-w-[50%] items-stretch justify-end gap-2.5 py-1.5 pr-3 sm:gap-3 sm:pr-4">
               {hasUpperContent && (
                 <aside
                   aria-label="Contenu additionnel de la page (niveau supérieur)"
