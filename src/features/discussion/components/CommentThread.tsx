@@ -7,102 +7,148 @@ import { useAuthStore } from '../../../store/auth.store';
 import { MessageSquare, ArrowUpDown } from 'lucide-react';
 import { EmptyState } from '../../../components/ui/EmptyState';
 
+export interface CommentThreadHandle {
+  /** Envoie un commentaire racine (aucun parent). */
+  submitRoot: (text: string) => Promise<void>;
+  /** Envoie une réponse au commentaire actuellement ciblé (voir replyTarget). */
+  submitReply: (text: string, parentId: string) => Promise<void>;
+  /** Annule la réponse en cours (referme le highlight "Répondre"/"Annuler"). */
+  clearReply: () => void;
+}
+
 export interface CommentThreadProps {
   newsId?: string;
   sujetId?: string;
+  /**
+   * Quand `true` (page détails News, voir NewsDetailPage.tsx) : ce
+   * composant ne rend AUCUN composeur lui-même (ni le composeur racine
+   * statique, ni les composeurs inline par commentaire) -- toute la
+   * saisie est déléguée à un dock externe fixe (NewsCommentDock), piloté
+   * via `ref` (submitRoot/submitReply/clearReply) et `onReplyTargetChange`.
+   * Par défaut `false` : comportement historique 100% inchangé pour tout
+   * autre appelant (ex: NewsDetailContent.tsx, la vue BottomSheet).
+   */
+  hideComposer?: boolean;
+  /** Notifié à chaque changement de cible de réponse (clic "Répondre"/"Annuler"
+   * sur un commentaire, ou reply envoyée avec succès). Sert au dock externe
+   * pour afficher l'indexation animée du commentaire visé. */
+  onReplyTargetChange?: (target: Commentaire | null) => void;
 }
 
-export const CommentThread: React.FC<CommentThreadProps> = ({ newsId, sujetId }) => {
-  const targetId = newsId || sujetId || '';
-  const [tri, setTri] = useState<'recents' | 'populaires' | 'pertinents'>('recents');
-  const [replyTarget, setReplyTarget] = useState<Commentaire | null>(null);
-  const { comments, isLoading, addComment, voteComment, reactComment, togglePin } = useComments(
-    targetId,
-    tri
-  );
-  const { user, isAdmin } = useAuthStore();
+export const CommentThread = React.forwardRef<CommentThreadHandle, CommentThreadProps>(
+  ({ newsId, sujetId, hideComposer = false, onReplyTargetChange }, ref) => {
+    const targetId = newsId || sujetId || '';
+    const [tri, setTri] = useState<'recents' | 'populaires' | 'pertinents'>('recents');
+    const [replyTarget, setReplyTarget] = useState<Commentaire | null>(null);
+    const { comments, isLoading, addComment, voteComment, reactComment, togglePin } = useComments(
+      targetId,
+      tri
+    );
+    const { user, isAdmin } = useAuthStore();
 
-  const handleCreateGeneralComment = async (text: string) => {
-    // Le toast d'erreur éventuel est déjà géré par useComments.ts --
-    // on laisse simplement l'erreur remonter pour que CommentComposer
-    // (voir son handleSubmit) sache ne PAS effacer le texte saisi.
-    await addComment(text, user, undefined);
-  };
+    const setReply = (target: Commentaire | null) => {
+      setReplyTarget(target);
+      onReplyTargetChange?.(target);
+    };
 
-  const handleCreateReplyComment = async (text: string, parentId: string) => {
-    await addComment(text, user, parentId);
-    // Ferme le composer de réponse UNIQUEMENT si l'envoi a réellement
-    // réussi (sinon `await` ci-dessus a déjà levé et cette ligne n'est
-    // jamais atteinte) -- sans quoi un échec silencieux fermerait quand
-    // même la réponse en cours de rédaction.
-    setReplyTarget(null);
-  };
+    const handleCreateGeneralComment = async (text: string) => {
+      // Le toast d'erreur éventuel est déjà géré par useComments.ts --
+      // on laisse simplement l'erreur remonter pour que CommentComposer
+      // (voir son handleSubmit) sache ne PAS effacer le texte saisi.
+      await addComment(text, user, undefined);
+    };
 
-  const handleToggleReply = (comment: Commentaire) => {
-    setReplyTarget((prev) => (prev?.id === comment.id ? null : comment));
-  };
+    const handleCreateReplyComment = async (text: string, parentId: string) => {
+      await addComment(text, user, parentId);
+      // Ferme le composer de réponse UNIQUEMENT si l'envoi a réellement
+      // réussi (sinon `await` ci-dessus a déjà levé et cette ligne n'est
+      // jamais atteinte) -- sans quoi un échec silencieux fermerait quand
+      // même la réponse en cours de rédaction.
+      setReply(null);
+    };
 
-  const topLevelComments = comments.filter((c) => !c.reponseA);
+    const handleToggleReply = (comment: Commentaire) => {
+      setReply(replyTarget?.id === comment.id ? null : comment);
+    };
 
-  return (
-    <div className="space-y-2.5 my-3">
-      {/* Thread Header */}
-      <div className="flex items-center justify-between border-b pb-2 border-gray-200 dark:border-gray-800">
-        <h3 className="text-base font-extrabold text-gray-900 dark:text-white font-display flex items-center gap-1.5">
-          <MessageSquare className="w-4 h-4 text-[#5B4DFF]" />
-          Fil de Discussion ({comments.length})
-        </h3>
+    // Pas de deps figées : addComment/user changent de référence à chaque
+    // rendu de useComments/useAuthStore -- laisser React réévaluer la
+    // factory à chaque rendu garantit que submitRoot/submitReply ne
+    // capturent jamais une closure obsolète (coût négligeable ici).
+    React.useImperativeHandle(ref, () => ({
+      submitRoot: (text: string) => handleCreateGeneralComment(text),
+      submitReply: (text: string, parentId: string) => handleCreateReplyComment(text, parentId),
+      clearReply: () => setReply(null),
+    }));
 
-        {/* Sort Options */}
-        <div className="flex items-center gap-1 text-xs">
-          <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
-          <select
-            value={tri}
-            onChange={(e) => setTri(e.target.value as any)}
-            className="bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-700 rounded-none px-2 py-1 font-semibold text-gray-700 dark:text-gray-200 focus:outline-none text-xs"
-          >
-            <option value="recents">Plus récents</option>
-            <option value="populaires">Plus populaires</option>
-            <option value="pertinents">Plus pertinents</option>
-          </select>
+    const topLevelComments = comments.filter((c) => !c.reponseA);
+
+    return (
+      <div className="space-y-2.5 my-3">
+        {/* Thread Header */}
+        <div className="flex items-center justify-between border-b pb-2 border-gray-200 dark:border-gray-800">
+          <h3 className="text-base font-extrabold text-gray-900 dark:text-white font-display flex items-center gap-1.5">
+            <MessageSquare className="w-4 h-4 text-[#5B4DFF]" />
+            Fil de Discussion ({comments.length})
+          </h3>
+
+          {/* Sort Options */}
+          <div className="flex items-center gap-1 text-xs">
+            <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+            <select
+              value={tri}
+              onChange={(e) => setTri(e.target.value as any)}
+              className="bg-white dark:bg-[#1A1F4D] border border-gray-200 dark:border-gray-700 rounded-none px-2 py-1 font-semibold text-gray-700 dark:text-gray-200 focus:outline-none text-xs"
+            >
+              <option value="recents">Plus récents</option>
+              <option value="populaires">Plus populaires</option>
+              <option value="pertinents">Plus pertinents</option>
+            </select>
+          </div>
         </div>
+
+        {/* Éditeur de base (pour un commentaire général sans réponse à un commentaire) --
+            absent en mode hideComposer : le dock externe fixe s'en charge. */}
+        {!hideComposer && (
+          <CommentComposer
+            onSubmit={handleCreateGeneralComment}
+            placeholder="Partagez votre point de vue..."
+          />
+        )}
+
+        {/* List */}
+        {isLoading ? (
+          <div className="text-center py-8 text-xs text-gray-400">Chargement des interventions...</div>
+        ) : !comments.length ? (
+          <EmptyState
+            icon={<MessageSquare className="w-8 h-8" />}
+            title="Aucun commentaire pour le moment"
+            description="Soyez la première personne à exprimer votre avis de manière constructive."
+          />
+        ) : (
+          <div className="space-y-2 sm:space-y-2.5">
+            {topLevelComments.map((parent) => (
+              <CommentNode
+                key={parent.id}
+                comment={parent}
+                allComments={comments}
+                onReply={handleToggleReply}
+                onVote={voteComment}
+                onReact={reactComment}
+                onTogglePin={togglePin}
+                canPin={isAdmin}
+                depth={0}
+                replyTargetId={replyTarget?.id || null}
+                onSubmitReply={handleCreateReplyComment}
+                onCancelReply={() => setReply(null)}
+                showInlineComposer={!hideComposer}
+              />
+            ))}
+          </div>
+        )}
       </div>
+    );
+  }
+);
 
-      {/* Éditeur de base (pour un commentaire général sans réponse à un commentaire) */}
-      <CommentComposer
-        onSubmit={handleCreateGeneralComment}
-        placeholder="Partagez votre point de vue..."
-      />
-
-      {/* List */}
-      {isLoading ? (
-        <div className="text-center py-8 text-xs text-gray-400">Chargement des interventions...</div>
-      ) : !comments.length ? (
-        <EmptyState
-          icon={<MessageSquare className="w-8 h-8" />}
-          title="Aucun commentaire pour le moment"
-          description="Soyez la première personne à exprimer votre avis de manière constructive."
-        />
-      ) : (
-        <div className="space-y-2 sm:space-y-2.5">
-          {topLevelComments.map((parent) => (
-            <CommentNode
-              key={parent.id}
-              comment={parent}
-              allComments={comments}
-              onReply={handleToggleReply}
-              onVote={voteComment}
-              onReact={reactComment}
-              onTogglePin={togglePin}
-              canPin={isAdmin}
-              depth={0}
-              replyTargetId={replyTarget?.id || null}
-              onSubmitReply={handleCreateReplyComment}
-              onCancelReply={() => setReplyTarget(null)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+CommentThread.displayName = 'CommentThread';

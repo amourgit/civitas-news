@@ -18,6 +18,14 @@ export interface CommentNodeProps {
   replyTargetId?: string | null;
   onSubmitReply?: (text: string, parentId: string) => void | Promise<void>;
   onCancelReply?: () => void;
+  /** Faux uniquement depuis CommentThread en mode `hideComposer` (page
+   * détails News) : un dock externe fixe gère seul la saisie -- on
+   * garde `replyTargetId` intact (pour le highlight "Annuler"/couleur
+   * active de CommentBubble) mais on retire le composer inline
+   * ci-dessous. Par défaut `true` : tout autre appelant (ex: le tiroir
+   * de commentaires sur la card, NewsCardCommentsDrawer) garde le
+   * comportement historique inchangé. */
+  showInlineComposer?: boolean;
 }
 
 export const CommentNode: React.FC<CommentNodeProps> = ({
@@ -33,6 +41,7 @@ export const CommentNode: React.FC<CommentNodeProps> = ({
   replyTargetId,
   onSubmitReply,
   onCancelReply,
+  showInlineComposer = true,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -63,7 +72,7 @@ export const CommentNode: React.FC<CommentNodeProps> = ({
 
       {/* Inline Reply Composer with Opening Animation and Indentation */}
       <AnimatePresence>
-        {isReplying && (
+        {isReplying && showInlineComposer && (
           <motion.div
             initial={{ height: 0, opacity: 0, y: -6 }}
             animate={{ height: 'auto', opacity: 1, y: 0 }}
@@ -147,6 +156,7 @@ export const CommentNode: React.FC<CommentNodeProps> = ({
                   replyTargetId={replyTargetId}
                   onSubmitReply={onSubmitReply}
                   onCancelReply={onCancelReply}
+                  showInlineComposer={showInlineComposer}
                 />
               ))}
             </div>

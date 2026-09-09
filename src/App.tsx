@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Header } from './components/layout/Header';
 import { MobileDock } from './components/layout/MobileDock';
 import { SideContent } from './components/layout/SideContent';
@@ -43,6 +43,24 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 // compatible React.lazy sans enrobage supplémentaire) et composant
 // léger (garde de permission + <Outlet/>), le découper en chunk séparé
 // n'aurait apporté aucun bénéfice perceptible.
+
+/**
+ * Masque le dock de navigation mobile sur la page détails d'une News/Sujet
+ * (/news/:slug ou /sujets/:slug) : cette page affiche à la place son propre
+ * dock fixe (NewsCommentDock, voir NewsDetailPage.tsx), qui occupe le même
+ * espace en bas d'écran sur mobile. Exclut explicitement les segments
+ * littéraux "creer" (/news/creer, /sujets/creer -- pas des pages détails)
+ * pour ne pas les faire matcher par erreur.
+ */
+function MobileDockGate() {
+  const location = useLocation();
+  const segments = location.pathname.split('/').filter(Boolean);
+  const isNewsDetailRoute =
+    segments.length === 2 && (segments[0] === 'news' || segments[0] === 'sujets') && segments[1] !== 'creer';
+
+  if (isNewsDetailRoute) return null;
+  return <MobileDock />;
+}
 
 export function App() {
   return (
@@ -124,7 +142,7 @@ export function App() {
                 </div>
                 </div>
               </Header>
-              <MobileDock />
+              <MobileDockGate />
             </div>
             <LoginModal />
             <ToastContainer />

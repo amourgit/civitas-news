@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNews } from '../features/news/hooks/useNews';
 import { useNewsList } from '../features/news/hooks/useNewsList';
@@ -9,7 +9,9 @@ import { NewsDetailSidebar } from '../features/news/components/detail/NewsDetail
 import { NewsMediaGallery } from '../features/news/components/NewsMediaGallery';
 import { NewsDocuments } from '../features/news/components/NewsDocuments';
 import { SondageCard } from '../features/sondages/components/SondageCard';
-import { CommentThread } from '../features/discussion/components/CommentThread';
+import { CommentThread, CommentThreadHandle } from '../features/discussion/components/CommentThread';
+import { NewsCommentDock } from '../features/discussion/components/NewsCommentDock';
+import { Commentaire } from '../types/global.types';
 import { Skeleton } from '../components/ui/Skeleton';
 import NotFoundPage from './NotFoundPage';
 
@@ -49,6 +51,8 @@ export default function NewsDetailPage() {
   const { news, setNews, isLoading, error } = useNews(slug);
   const { newsList } = useNewsList();
   const commentsRef = useRef<HTMLDivElement>(null);
+  const commentThreadRef = useRef<CommentThreadHandle>(null);
+  const [replyTarget, setReplyTarget] = useState<Commentaire | null>(null);
 
   useEffect(() => {
     if (news) document.title = `${news.titre} · CIVITAS NEWS`;
@@ -70,7 +74,7 @@ export default function NewsDetailPage() {
   }
 
   return (
-    <div className="w-full pb-16 max-w-6xl mx-auto px-1 sm:px-2">
+    <div className="w-full pb-28 sm:pb-24 max-w-6xl mx-auto px-1 sm:px-2">
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-8 lg:gap-10 items-start">
         <main className="min-w-0 space-y-7 sm:space-y-8 lg:h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1 no-scrollbar">
           <NewsDetailHero news={news} onUpdate={setNews} onScrollToComments={scrollToComments} />
@@ -110,12 +114,29 @@ export default function NewsDetailPage() {
           <NewsDocuments documents={news.documents} />
 
           <div ref={commentsRef} className="scroll-mt-24">
-            <CommentThread sujetId={news.id} newsId={news.id} />
+            <CommentThread
+              ref={commentThreadRef}
+              sujetId={news.id}
+              newsId={news.id}
+              hideComposer
+              onReplyTargetChange={setReplyTarget}
+            />
           </div>
         </main>
 
         <NewsDetailSidebar news={news} allNews={newsList} onUpdate={setNews} onScrollToComments={scrollToComments} />
       </div>
+
+      {/* Dock de commentaires fixé en bas -- remplace le dock de
+          navigation mobile sur cette page (voir App.tsx). Saisie
+          racine ET réponses, toutes deux pilotées via commentThreadRef
+          (voir CommentThread.tsx, mode hideComposer). */}
+      <NewsCommentDock
+        replyTarget={replyTarget}
+        onCancelReply={() => commentThreadRef.current?.clearReply()}
+        onSubmitRoot={(text) => commentThreadRef.current?.submitRoot(text) ?? Promise.resolve()}
+        onSubmitReply={(text, parentId) => commentThreadRef.current?.submitReply(text, parentId) ?? Promise.resolve()}
+      />
     </div>
   );
 }
