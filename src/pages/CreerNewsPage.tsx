@@ -14,7 +14,6 @@
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSetTopbarContent } from '../context/TopbarSlotsContext';
-import { Button } from '../components/ui/Button';
 import { useNewsCreationForm } from '../features/news/creation/useNewsCreationForm';
 import type { CreationMode } from '../features/news/creation/types';
 import { ModeToggle } from '../features/news/creation/components/ModeToggle';
@@ -26,6 +25,7 @@ import { ContentEditorField } from '../features/news/creation/components/Content
 import { ShortDescriptionField } from '../features/news/creation/components/ShortDescriptionField';
 import { CoverImageField } from '../features/news/creation/components/CoverImageField';
 import { MediaGallerySection } from '../features/news/creation/components/MediaGallerySection';
+import { NewsCreationDock } from '../features/news/creation/components/NewsCreationDock';
 
 export default function CreerNewsPage() {
   const [mode, setMode] = useState<CreationMode>('standard');
@@ -78,7 +78,7 @@ export default function CreerNewsPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto pb-24 space-y-9">
+    <div className="max-w-3xl mx-auto pb-28 space-y-9">
       {form.isReadOnly && (
         <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3 py-2 inline-block">
           Consultation seule — vous n'avez pas la permission de modifier cette news.
@@ -128,11 +128,14 @@ export default function CreerNewsPage() {
       />
 
       {!form.isReadOnly && (
-        <div className="flex justify-end pt-2">
-          <Button variant="primary" size="lg" isLoading={form.isSubmitting} onClick={form.submit}>
-            {form.isEditMode ? 'Enregistrer les modifications' : 'Publier'}
-          </Button>
-        </div>
+        <NewsCreationDock
+          isEditMode={form.isEditMode}
+          isSubmitting={form.isSubmitting}
+          submittingAction={form.submittingAction}
+          onSaveAndStay={form.saveAndStay}
+          onSaveAndQuit={form.saveAndQuit}
+          onPreview={form.saveAndPreview}
+        />
       )}
     </div>
   );

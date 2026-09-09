@@ -45,20 +45,28 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 // n'aurait apporté aucun bénéfice perceptible.
 
 /**
- * Masque le dock de navigation mobile sur la page détails d'une News/Sujet
- * (/news/:slug ou /sujets/:slug) : cette page affiche à la place son propre
- * dock fixe (NewsCommentDock, voir NewsDetailPage.tsx), qui occupe le même
- * espace en bas d'écran sur mobile. Exclut explicitement les segments
- * littéraux "creer" (/news/creer, /sujets/creer -- pas des pages détails)
- * pour ne pas les faire matcher par erreur.
+ * Routes qui affichent leur PROPRE dock fixe en bas d'écran (voir
+ * NewsCommentDock/NewsCreationDock) et qui n'ont donc plus besoin --
+ * ni la place -- pour le dock de navigation mobile par-dessus :
+ * - /news/:slug, /sujets/:slug (page détails -- NewsCommentDock,
+ *   NewsDetailPage.tsx), en excluant explicitement le segment littéral
+ *   "creer" pour ne pas le faire matcher par erreur.
+ * - /news/creer, /sujets/creer, /news/modifier/:id (assistant de
+ *   création/édition -- NewsCreationDock, CreerNewsPage.tsx), dock
+ *   affiché quelle que soit la taille d'écran (pas juste mobile).
  */
+const ROUTES_WITH_OWN_DOCK: Array<(segments: string[]) => boolean> = [
+  (s) => s.length === 2 && (s[0] === 'news' || s[0] === 'sujets') && s[1] !== 'creer',
+  (s) => s.length === 2 && (s[0] === 'news' || s[0] === 'sujets') && s[1] === 'creer',
+  (s) => s.length === 3 && s[0] === 'news' && s[1] === 'modifier',
+];
+
 function MobileDockGate() {
   const location = useLocation();
   const segments = location.pathname.split('/').filter(Boolean);
-  const isNewsDetailRoute =
-    segments.length === 2 && (segments[0] === 'news' || segments[0] === 'sujets') && segments[1] !== 'creer';
+  const hasOwnFixedDock = ROUTES_WITH_OWN_DOCK.some((matches) => matches(segments));
 
-  if (isNewsDetailRoute) return null;
+  if (hasOwnFixedDock) return null;
   return <MobileDock />;
 }
 

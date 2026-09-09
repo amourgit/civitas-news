@@ -104,6 +104,12 @@ export function useNewsCreationForm() {
   const [pendingDocumentItems, setPendingDocumentItems] = useState<PendingDocumentItem[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Quel bouton du dock d'actions (voir NewsCreationDock.tsx) est
+  // actuellement en vol -- permet de n'afficher le spinner QUE sur le
+  // bouton réellement cliqué (les deux autres restent juste désactivés
+  // par `isSubmitting`, sans faux spinner sur une action qui n'a pas
+  // été demandée).
+  const [submittingAction, setSubmittingAction] = useState<'stay' | 'quit' | 'preview' | null>(null);
   const [isLoadingRecord, setIsLoadingRecord] = useState(isEditMode);
   const [loadRecordError, setLoadRecordError] = useState<string | null>(null);
   const [existingNewsId, setExistingNewsId] = useState<string | null>(null);
@@ -342,12 +348,27 @@ export function useNewsCreationForm() {
     return true;
   }, [titre, categorieId, contenuJson, descriptionCourteJson]);
 
-  const submit = useCallback(async () => {
-    if (!validate()) return;
+  // --- Enregistrement -------------------------------------------------
+  // `performSave` fait le travail réel (création OU mise à jour selon
+  // `existingNewsId`, puis finalisation commune aux deux cas : médias
+  // en attente dans le contenu riche, galerie/documents en attente,
+  // sondage) et retourne l'id/slug résultants -- ou `null` en cas
+  // d'échec (déjà notifié par toast). Les trois actions du dock
+  // (NewsCreationDock.tsx) s'appuient dessus, chacune ajoutant juste ce
+  // qu'elle fait EN PLUS d'enregistrer (rester, quitter, prévisualiser).
+  //
+  // Une fois `existingNewsId` posé (première sauvegarde réussie en mode
+  // création), addGalleryFiles/addDocumentFiles (voir plus haut) basculent
+  // déjà eux-mêmes sur l'upload immédiat plutôt que la file d'attente --
+  // donc tout ajout de média APRÈS ce point n'a plus besoin de repasser
+  // par cette fonction pour être persisté. Elle ne finalise ici que ce
+  // qui a pu s'accumuler AVANT (file d'attente pré-existence de la News).
+  const performSave = useCallback(async (): Promise<{ id: string; slug: string } | null> => {
+    if (!validate()) return null;
     const categorie = categories.find((c) => c.id === categorieId);
     if (!categorie) {
       toast('warning', 'Catégorie requise', 'Choisissez une catégorie avant de continuer.');
-      return;
+      return null;
     }
     const organisation = organisations.find((o) => o.id === organisationId);
     const etablissement = etablissements.find((e) => e.id === etablissementId);
@@ -357,7 +378,10 @@ export function useNewsCreationForm() {
 
     setIsSubmitting(true);
     try {
-      if (isEditMode && existingNewsId) {
+      let recordId: string;
+      let recordSlug: string;
+
+      if (existingNewsId) {
         const updated = await newsService.updateNews(existingNewsId, {
           titre,
           type,
@@ -373,109 +397,158 @@ export function useNewsCreationForm() {
           tags,
           visibilite,
         });
-
-        if (canCreatePoll && addPoll && pollQuestion.trim() && !hasExistingSondage) {
-          try {
-            await sondagesService.creerSondage({
-              newsId: updated.id,
-              titre: pollQuestion,
-              question: pollQuestion,
-              choix: [pollChoice1.trim() || 'Oui', pollChoice2.trim() || 'Non'],
-              dateDebut: new Date(pollDateDebut).toISOString(),
-              dateFin: new Date(pollDateFin).toISOString(),
-            });
-          } catch (pollError) {
-            console.error('Échec de la création du sondage :', pollError);
-            toast('warning', 'News mise à jour, sondage non créé', "La mise à jour a réussi mais le sondage associé n'a pas pu être créé.");
-          }
-        }
-
-        toast('success', 'News mise à jour avec succès', 'Vos modifications ont bien été enregistrées.');
-        navigate(`/admin/news/${updated.id}`);
-        return;
+        recordId = updated.id;
+        recordSlug = updated.slug;
+      } else {
+        const created = await newsService.createNews({
+          titre,
+          type,
+          description,
+          contenu: contenuJson,
+          province,
+          lieu: lieu || undefined,
+          dateDebut: dateDebut ? new Date(dateDebut).toISOString() : undefined,
+          dateFin: dateFin ? new Date(dateFin).toISOString() : undefined,
+          image: imageFile || undefined,
+          categorie,
+          organisation,
+          etablissement,
+          tags,
+          visibilite,
+          auteur: user || undefined,
+        });
+        recordId = created.id;
+        recordSlug = created.slug;
+        // Posé IMMÉDIATEMENT (avant toute finalisation ci-dessous) :
+        // addGalleryFiles/addDocumentFiles s'en servent pour décider
+        // d'uploader tout de suite un futur ajout plutôt que de le
+        // mettre en attente -- sans attendre la fin de cette fonction.
+        setExistingNewsId(recordId);
       }
-
-      const created = await newsService.createNews({
-        titre,
-        type,
-        description,
-        contenu: contenuJson,
-        province,
-        lieu: lieu || undefined,
-        dateDebut: dateDebut ? new Date(dateDebut).toISOString() : undefined,
-        dateFin: dateFin ? new Date(dateFin).toISOString() : undefined,
-        image: imageFile || undefined,
-        categorie,
-        organisation,
-        etablissement,
-        tags,
-        visibilite,
-        auteur: user || undefined,
-      });
 
       // Le contenu peut encore référencer des médias locaux (blob:) si
       // l'auteur en a inséré avant que la News n'existe -- son id étant
       // désormais connu, on les persiste et réenregistre le contenu final.
       if (richTextEditorRef.current) {
         try {
-          const { content: finalContenu, failedCount } = await richTextEditorRef.current.publishPendingMedia(created.id);
+          const { content: finalContenu, failedCount } = await richTextEditorRef.current.publishPendingMedia(recordId);
           if (finalContenu !== contenuJson) {
-            await newsService.updateNews(created.id, { contenu: finalContenu });
+            await newsService.updateNews(recordId, { contenu: finalContenu });
+            setContenuJson(finalContenu);
           }
           if (failedCount > 0) {
             toast('warning', 'Certains médias non importés', `${failedCount} média(s) du contenu n'ont pas pu être importés. Modifiez l'article pour réessayer.`);
           }
         } catch (mediaError) {
           console.error('Échec de la persistance des médias du contenu :', mediaError);
-          toast('warning', 'News publiée, médias non finalisés', "La publication a réussi mais certains médias n'ont pas pu être finalisés.");
+          toast('warning', 'Médias du contenu non finalisés', "L'enregistrement a réussi mais certains médias n'ont pas pu être finalisés.");
         }
       }
 
-      // Galerie/documents en attente -- mêmes principes de tolérance aux échecs.
-      const galleryResults = await Promise.allSettled(
-        pendingGalleryItems.map((item) => newsGalerieRepository.create(created.id, item.file, item.legende || undefined)),
-      );
-      const documentResults = await Promise.allSettled(
-        pendingDocumentItems.map((item) => newsDocumentsRepository.create(created.id, item.file, item.nom)),
-      );
-      pendingGalleryItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
-      const failedAssets = [...galleryResults, ...documentResults].filter((r) => r.status === 'rejected').length;
-      if (failedAssets > 0) {
-        toast('warning', 'Certains fichiers non importés', `${failedAssets} élément(s) de la galerie/documents n'ont pas pu être importés.`);
+      // Galerie/documents en attente (accumulés avant que la News
+      // n'existe) -- mêmes principes de tolérance aux échecs ; les
+      // éléments réussis rejoignent la liste "existante" pour ne pas
+      // disparaître visuellement une fois la file d'attente vidée.
+      if (pendingGalleryItems.length > 0 || pendingDocumentItems.length > 0) {
+        const galleryResults = await Promise.allSettled(
+          pendingGalleryItems.map((item) => newsGalerieRepository.create(recordId, item.file, item.legende || undefined)),
+        );
+        const documentResults = await Promise.allSettled(
+          pendingDocumentItems.map((item) => newsDocumentsRepository.create(recordId, item.file, item.nom)),
+        );
+        const newGalleryItems = galleryResults
+          .filter((r): r is PromiseFulfilledResult<NewsImageGalerieItem> => r.status === 'fulfilled')
+          .map((r) => r.value);
+        const newDocumentItems = documentResults
+          .filter((r): r is PromiseFulfilledResult<DocumentJoint> => r.status === 'fulfilled')
+          .map((r) => r.value);
+        if (newGalleryItems.length > 0) setExistingGalleryItems((prev) => [...prev, ...newGalleryItems]);
+        if (newDocumentItems.length > 0) setExistingDocumentItems((prev) => [...prev, ...newDocumentItems]);
+        pendingGalleryItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+        setPendingGalleryItems([]);
+        setPendingDocumentItems([]);
+
+        const failedAssets = [...galleryResults, ...documentResults].filter((r) => r.status === 'rejected').length;
+        if (failedAssets > 0) {
+          toast('warning', 'Certains fichiers non importés', `${failedAssets} élément(s) de la galerie/documents n'ont pas pu être importés.`);
+        }
       }
 
       // Le sondage n'est pas un champ de News côté backend : ressource à
-      // part, créée séparément une fois la News existante.
-      if (canCreatePoll && addPoll && pollQuestion.trim()) {
+      // part, créée séparément une fois la News existante -- au plus
+      // une fois (voir hasExistingSondage, posé juste après création).
+      if (canCreatePoll && addPoll && pollQuestion.trim() && !hasExistingSondage) {
         try {
           await sondagesService.creerSondage({
-            newsId: created.id,
+            newsId: recordId,
             titre: pollQuestion,
             question: pollQuestion,
             choix: [pollChoice1.trim() || 'Oui', pollChoice2.trim() || 'Non'],
             dateDebut: new Date(pollDateDebut).toISOString(),
             dateFin: new Date(pollDateFin).toISOString(),
           });
+          setHasExistingSondage(true);
         } catch (pollError) {
           console.error('Échec de la création du sondage :', pollError);
-          toast('warning', 'News publiée, sondage non créé', "La publication a réussi mais le sondage associé n'a pas pu être créé.");
+          toast('warning', 'Sondage non créé', "L'enregistrement a réussi mais le sondage associé n'a pas pu être créé.");
         }
       }
 
-      toast('success', 'News publiée avec succès !', 'Votre actualité est désormais ouverte au débat.');
-      navigate('/news');
-      openNewsDetail(created.slug);
+      return { id: recordId, slug: recordSlug };
     } catch (err) {
-      toast('error', isEditMode ? 'Erreur de mise à jour' : 'Erreur de publication', err instanceof Error ? err.message : undefined);
+      toast('error', existingNewsId ? 'Erreur de mise à jour' : 'Erreur de publication', err instanceof Error ? err.message : undefined);
+      return null;
     } finally {
       setIsSubmitting(false);
     }
   }, [
     validate, categories, categorieId, organisations, organisationId, etablissements, etablissementId,
-    contenuJson, descriptionCourteJson, isEditMode, existingNewsId, titre, type, province, lieu, dateDebut, dateFin, tags, visibilite,
+    contenuJson, descriptionCourteJson, existingNewsId, titre, type, province, lieu, dateDebut, dateFin, tags, visibilite,
     canCreatePoll, addPoll, pollQuestion, pollChoice1, pollChoice2, pollDateDebut, pollDateFin, hasExistingSondage,
-    imageFile, user, pendingGalleryItems, pendingDocumentItems, navigate, openNewsDetail,
+    imageFile, user, pendingGalleryItems, pendingDocumentItems,
   ]);
+
+  /** "Enregistrer" (création) / "Modifier" (édition) -- reste sur la page. */
+  const saveAndStay = useCallback(async () => {
+    setSubmittingAction('stay');
+    try {
+      const result = await performSave();
+      if (result) {
+        toast('success', isEditMode ? 'Modifications enregistrées' : 'News enregistrée', 'Vous pouvez continuer à la modifier.');
+      }
+    } finally {
+      setSubmittingAction(null);
+    }
+  }, [performSave, isEditMode]);
+
+  /** "Enregistrer et quitter" -- enregistre puis quitte l'assistant. */
+  const saveAndQuit = useCallback(async () => {
+    setSubmittingAction('quit');
+    try {
+      const result = await performSave();
+      if (!result) return;
+      if (isEditMode) {
+        toast('success', 'News mise à jour avec succès', 'Vos modifications ont bien été enregistrées.');
+        navigate(`/admin/news/${result.id}`);
+      } else {
+        toast('success', 'News publiée avec succès !', 'Votre actualité est désormais ouverte au débat.');
+        navigate('/news');
+      }
+    } finally {
+      setSubmittingAction(null);
+    }
+  }, [performSave, isEditMode, navigate]);
+
+  /** "Visualiser" -- enregistre puis ouvre l'aperçu (BottomSheet) SANS quitter l'assistant. */
+  const saveAndPreview = useCallback(async () => {
+    setSubmittingAction('preview');
+    try {
+      const result = await performSave();
+      if (result) openNewsDetail(result.slug);
+    } finally {
+      setSubmittingAction(null);
+    }
+  }, [performSave, openNewsDetail]);
 
   return {
     isEditMode, isReadOnly, canCreatePoll,
@@ -490,8 +563,8 @@ export function useNewsCreationForm() {
     pollChoice2, setPollChoice2, pollDateDebut, setPollDateDebut, pollDateFin, setPollDateFin, hasExistingSondage,
     galleryDisplayItems, addGalleryFiles, removeGalleryItem,
     documentDisplayItems, addDocumentFiles, removeDocumentItem,
-    isSubmitting, isLoadingRecord, loadRecordError,
-    existingNewsId, user, submit,
+    isSubmitting, submittingAction, isLoadingRecord, loadRecordError,
+    existingNewsId, user, saveAndStay, saveAndQuit, saveAndPreview,
   };
 }
 
