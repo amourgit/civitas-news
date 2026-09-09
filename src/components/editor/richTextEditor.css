@@ -21,21 +21,39 @@
    La hauteur anime via grid-template-rows (0fr -> 1fr) plutôt que
    max-height : la transition reste un vrai glissé fluide quel que
    soit le nombre de lignes d'icônes affichées (repli mobile compris),
-   sans valeur de hauteur à deviner à l'avance. */
+   sans valeur de hauteur à deviner à l'avance.
+
+   `overflow: hidden` sur le conteneur interne n'est nécessaire QUE
+   pendant le repli (sans lui, un contenu de hauteur non nulle dans
+   une ligne de grille à 0fr resterait visible malgré tout, et le
+   repli n'aurait plus aucun effet). Une fois déployée, cette
+   contrainte n'a plus lieu d'être et devient un problème : les
+   popovers de la toolbar (couleurs, format de titre, encadré,
+   insertion de tableau, symboles...) sont positionnés en `absolute`
+   et débordent volontairement sous la barre -- avec overflow:hidden
+   permanent, ils se retrouvaient rognés, en grande partie invisibles.
+   On repasse donc explicitement en overflow:visible dès que la barre
+   est déployée (mêmes déclencheurs hover/focus-within que le repli). */
 .civitas-editor-toolbar-collapse {
   display: grid;
   transition: grid-template-rows 220ms ease;
 }
 .civitas-editor-toolbar-collapse > div {
-  overflow: hidden;
   min-height: 0;
 }
 .civitas-rich-text-editor--bare .civitas-editor-toolbar-collapse {
   grid-template-rows: 0fr;
 }
+.civitas-rich-text-editor--bare .civitas-editor-toolbar-collapse > div {
+  overflow: hidden;
+}
 .civitas-rich-text-editor--bare:hover .civitas-editor-toolbar-collapse,
 .civitas-rich-text-editor--bare:focus-within .civitas-editor-toolbar-collapse {
   grid-template-rows: 1fr;
+}
+.civitas-rich-text-editor--bare:hover .civitas-editor-toolbar-collapse > div,
+.civitas-rich-text-editor--bare:focus-within .civitas-editor-toolbar-collapse > div {
+  overflow: visible;
 }
 .civitas-rich-text-editor--bare .civitas-editor-toolbar {
   opacity: 0;
