@@ -17,6 +17,12 @@ import type { Utilisateur } from '../types/models/user.types';
 import { authRepository, type RegisterPayload } from '../services/api/repositories/auth.repository';
 import { usersRepository } from '../services/api/repositories/users.repository';
 import { tokenStore } from '../services/api/token/tokenStore';
+import {
+  startTokenLifecycle,
+  subscribeToTokenLifecycle,
+  getTokenLifecycleStatus,
+  type TokenLifecycleStatus,
+} from '../services/api/token/tokenLifecycle';
 import { hasPermission, hasAnyPermission, canOnResource } from '../lib/permissions/hasPermission';
 import type { Permission } from '../lib/permissions/permissions.catalog';
 
@@ -92,13 +98,24 @@ tokenStore.subscribe((accessToken) => {
 
 export function useAuthStore() {
   const [, forceRender] = useState(0);
+  // Reflète en direct l'état du refresh proactif (voir tokenLifecycle.ts)
+  // -- notamment pour que la topbar (montée en permanence, voir
+  // Header.tsx) puisse afficher un signe visuel pendant un renouvellement
+  // de token, plutôt que de rester silencieuse jusqu'au prochain échec.
+  const [tokenStatus, setTokenStatus] = useState<TokenLifecycleStatus>(getTokenLifecycleStatus());
 
   useEffect(() => {
     const handleChange = () => forceRender((n) => n + 1);
     listeners.add(handleChange);
     void hydrate();
+    // Idempotent -- peu importe combien de composants montent
+    // useAuthStore() (Header, LoginModal, ProfileDropdown...), un seul
+    // gestionnaire de cycle de vie tourne réellement pour toute l'app.
+    startTokenLifecycle();
+    const unsubscribeTokenStatus = subscribeToTokenLifecycle(setTokenStatus);
     return () => {
       listeners.delete(handleChange);
+      unsubscribeTokenStatus();
     };
   }, []);
 
@@ -169,6 +186,10 @@ export function useAuthStore() {
     isAuthenticated: user.role !== 'anonyme',
     isAnonymous: user.role === 'anonyme',
     isAdmin: user.role === 'administrateur' || user.role === 'moderateur',
+    /** Statut du refresh proactif en arrière-plan -- voir tokenLifecycle.ts. */
+    tokenStatus,
+    /** Raccourci pour l'indicateur visuel de la topbar. */
+    isSyncingToken: tokenStatus === 'refreshing',
     login,
     register,
     loginWithGoogle,

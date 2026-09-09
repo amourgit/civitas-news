@@ -50,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   // uniquement ici à savoir QUOI afficher dans ce coin de la topbar
   // (avatar si connecté, bouton "Se connecter" sinon) -- jamais à
   // bloquer l'accès à quoi que ce soit.
-  const { isAuthenticated, isHydrating, isAdmin } = useAuthStore();
+  const { isAuthenticated, isHydrating, isAdmin, isSyncingToken } = useAuthStore();
   const { can } = usePermissions();
   // Contenu des deux niveaux de la topbar, entièrement décidé par la
   // page active (voir context/TopbarSlotsContext.tsx et
@@ -129,8 +129,20 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
           aria-hidden="true"
         />
       ) : isAuthenticated ? (
-        <div className="shrink-0 [&:not(:first-child)]:-ml-1.5">
+        <div className="relative shrink-0 [&:not(:first-child)]:-ml-1.5">
           <ProfileDropdown />
+          {/* Renouvellement de token en arrière-plan (voir
+              services/api/token/tokenLifecycle.ts) -- avant ce correctif,
+              rien ne distinguait visuellement une session active d'une
+              session en cours de resynchronisation ou sur le point
+              d'expirer, la topbar restait silencieuse dans tous les cas. */}
+          {isSyncingToken && (
+            <span
+              className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-[#3B3DD9] animate-pulse"
+              title="Synchronisation de la session…"
+              aria-hidden="true"
+            />
+          )}
         </div>
       ) : (
         <button

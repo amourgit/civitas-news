@@ -28,13 +28,24 @@
 // ============================================================
 
 import { tokenStore } from './tokenStore';
+import { toast } from '../../../hooks/useToast';
 
 let installed = false;
 let originalFetch: typeof window.fetch | null = null;
+let currentApiBaseUrl: string | null = null;
+let currentTenantHost: string | null = null;
 
 // Dédupliqué entre appels concurrents : si 3 requêtes échouent en 401
-// en même temps, un seul refresh est déclenché, les 3 l'attendent.
+// en même temps (ou si un refresh RÉACTIF sur 401 et un refresh PROACTIF
+// planifié par tokenLifecycle.ts se chevauchent), un seul refresh réseau
+// est déclenché, tous les appelants attendent la même promesse.
 let refreshPromise: Promise<string | null> | null = null;
+
+// Un refresh qui ne répond jamais (réseau capricieux) ne doit ni bloquer
+// indéfiniment l'appelant ni laisser un `refreshPromise` fantôme empêcher
+// toute nouvelle tentative -- le `finally` sur refreshPromise s'en charge,
+// ce timeout garantit juste que ce `finally` arrive dans un délai borné.
+const REFRESH_TIMEOUT_MS = 10000;
 
 function isOwnApiRequest(input: RequestInfo | URL, apiBaseUrl: string): boolean {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -55,31 +66,56 @@ function isRefreshEndpoint(input: RequestInfo | URL): boolean {
 
 async function performRefresh(apiBaseUrl: string, tenantHost: string | null): Promise<string | null> {
   const refreshToken = tokenStore.getRefreshToken();
-  if (!refreshToken || !originalFetch) return null;
+  // originalFetch n'est capturé qu'à l'installation (main.tsx, avant le
+  // rendu de l'app) -- en pratique toujours prêt ici, mais on retombe sur
+  // window.fetch pour rester utilisable même appelé avant installation
+  // (ex: futurs tests unitaires de tokenLifecycle.ts en isolation).
+  const doFetch = originalFetch ?? (typeof window !== 'undefined' ? window.fetch.bind(window) : null);
+  if (!refreshToken || !doFetch) return null;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
   try {
-    const response = await originalFetch(`${apiBaseUrl}/token/v1/refresh/`, {
+    const response = await doFetch(`${apiBaseUrl}/token/v1/refresh/`, {
       method: 'POST',
       headers: withTenantHeader({ 'Content-Type': 'application/json' }, tenantHost),
       body: JSON.stringify({ refresh: refreshToken }),
+      signal: controller.signal,
     });
     if (!response.ok) {
       tokenStore.clear();
+      notifySessionExpired();
       return null;
     }
     const data = (await response.json()) as { access?: string; refresh?: string };
     if (!data.access) {
       tokenStore.clear();
+      notifySessionExpired();
       return null;
     }
     tokenStore.setTokens({ access: data.access, refresh: data.refresh });
     return data.access;
   } catch {
-    // Erreur réseau pendant le refresh : on ne vide PAS la session
-    // (elle est peut-être encore valide, c'est juste le réseau qui a
-    // un problème passager) — on échoue juste cette tentative.
+    // Erreur réseau OU timeout pendant le refresh : on ne vide PAS la
+    // session (elle est peut-être encore valide, c'est juste le réseau
+    // qui a un problème passager) — on échoue juste cette tentative.
+    // tokenLifecycle.ts retente ensuite avec backoff sur le chemin
+    // proactif ; le chemin réactif (401) laisse simplement remonter le
+    // 401 d'origine à l'appelant, qui peut retenter sa propre requête.
     return null;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+// Avant ce correctif, une session terminée (refresh token expiré/rejeté)
+// ne se voyait qu'au silence : l'utilisateur retombait anonyme sans aucune
+// explication, la topbar changeant d'état sans un mot. Ce toast comble ce
+// vide -- ne se déclenche QUE depuis un refresh réellement REJETÉ par le
+// serveur (jamais sur une déconnexion manuelle, qui ne passe jamais par
+// performRefresh).
+function notifySessionExpired(): void {
+  toast('warning', 'Session expirée', 'Veuillez vous reconnecter pour continuer.');
 }
 
 function withTenantHeader(headers: HeadersInit | undefined, tenantHost: string | null): Headers {
@@ -97,10 +133,32 @@ function withAuthorization(init: RequestInit | undefined, accessToken: string, t
 }
 
 /**
- * Installe l'intercepteur. Idempotent — un second appel ne fait rien.
+ * Déclenche un refresh du token d'accès, dédupliqué avec tout refresh déjà
+ * en cours (qu'il vienne du 401 réactif ci-dessous ou du refresh PROACTIF
+ * planifié par tokenLifecycle.ts). Utilise l'apiBaseUrl/tenantHost fournis
+ * à `installAuthFetchInterceptor` -- ne fait rien si appelé avant (ne
+ * devrait jamais arriver en pratique : installé tout en haut de main.tsx).
+ */
+export function refreshAccessToken(): Promise<string | null> {
+  if (!currentApiBaseUrl) return Promise.resolve(null);
+  if (!refreshPromise) {
+    refreshPromise = performRefresh(currentApiBaseUrl, currentTenantHost).finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+/**
+ * Installe l'intercepteur. Idempotent pour le remplacement de
+ * `window.fetch` (un second appel ne le patche pas deux fois), mais
+ * `apiBaseUrl`/`tenantHost` sont toujours mémorisés pour `refreshAccessToken`.
  * `apiBaseUrl`/`tenantHost` doivent être `env.apiBaseUrl`/`env.tenantHost`.
  */
 export function installAuthFetchInterceptor(apiBaseUrl: string, tenantHost: string | null): void {
+  currentApiBaseUrl = apiBaseUrl;
+  currentTenantHost = tenantHost;
+
   if (installed || typeof window === 'undefined') return;
   installed = true;
   originalFetch = window.fetch.bind(window);
@@ -120,12 +178,7 @@ export function installAuthFetchInterceptor(apiBaseUrl: string, tenantHost: stri
 
     if (!eligible) return response;
 
-    if (!refreshPromise) {
-      refreshPromise = performRefresh(apiBaseUrl, tenantHost).finally(() => {
-        refreshPromise = null;
-      });
-    }
-    const newAccessToken = await refreshPromise;
+    const newAccessToken = await refreshAccessToken();
     if (!newAccessToken) return response; // refresh échoué -> on propage le 401 d'origine
 
     return baseFetch(input, withAuthorization(requestInit, newAccessToken, tenantHost));
