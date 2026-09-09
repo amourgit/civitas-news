@@ -26,11 +26,16 @@ import { ShortDescriptionField } from '../features/news/creation/components/Shor
 import { CoverImageField } from '../features/news/creation/components/CoverImageField';
 import { MediaGallerySection } from '../features/news/creation/components/MediaGallerySection';
 import { NewsCreationDock } from '../features/news/creation/components/NewsCreationDock';
+import { NewsPreviewModal } from '../features/news/creation/components/NewsPreviewModal';
+import { buildPreviewNews } from '../features/news/creation/buildPreviewNews';
 
 export default function CreerNewsPage() {
   const [mode, setMode] = useState<CreationMode>('standard');
   const form = useNewsCreationForm();
   const selectedOrganisation = form.organisations.find((o) => o.id === form.organisationId);
+  // "Visualiser" (voir NewsCreationDock) : simple ouverture locale, sans
+  // aucun enregistrement -- voir NewsPreviewModal.tsx / buildPreviewNews.ts.
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Niveau 1 (droite de la topbar) : bascule de mode -- toujours
   // affichée, y compris pendant le chargement, pour ne jamais faire
@@ -79,53 +84,61 @@ export default function CreerNewsPage() {
 
   return (
     <div className="max-w-3xl mx-auto pb-28 space-y-9">
-      {form.isReadOnly && (
-        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3 py-2 inline-block">
-          Consultation seule — vous n'avez pas la permission de modifier cette news.
-        </p>
-      )}
+      {/* `key={form.formResetKey}` : remonte tout le bloc éditable après
+          une création réussie via "Enregistrer" (voir resetForNewCreation
+          dans useNewsCreationForm) -- nécessaire pour les éditeurs riches
+          et le champ de couverture, dont l'état interne ne se resynchronise
+          pas seul depuis `value`/`onChange` après montage. Ne s'applique
+          jamais en mode édition (formResetKey n'y bouge jamais). */}
+      <React.Fragment key={form.formResetKey}>
+        {form.isReadOnly && (
+          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3 py-2 inline-block">
+            Consultation seule — vous n'avez pas la permission de modifier cette news.
+          </p>
+        )}
 
-      <TitleField value={form.titre} onChange={form.setTitre} disabled={form.isReadOnly} />
+        <TitleField value={form.titre} onChange={form.setTitre} disabled={form.isReadOnly} />
 
-      <MetaFieldsRow form={form} />
+        <MetaFieldsRow form={form} />
 
-      <div className="space-y-3">
-        <ContentEditorField
-          ref={form.richTextEditorRef}
-          value={form.contenuJson}
-          onChange={form.setContenuJson}
-          newsId={form.existingNewsId || undefined}
+        <div className="space-y-3">
+          <ContentEditorField
+            ref={form.richTextEditorRef}
+            value={form.contenuJson}
+            onChange={form.setContenuJson}
+            newsId={form.existingNewsId || undefined}
+            disabled={form.isReadOnly}
+          />
+
+          {/* Résumé bref -- champ distinct du contenu détaillé ci-dessus
+              (voir ShortDescriptionField), séparé par un simple filet pour
+              que les deux contenus ne se confondent jamais visuellement. */}
+          <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+            <ShortDescriptionField
+              value={form.descriptionCourteJson}
+              onChange={form.setDescriptionCourteJson}
+              disabled={form.isReadOnly}
+            />
+          </div>
+        </div>
+
+        <CoverImageField
+          previewUrl={form.coverPreviewUrl}
+          onFileSelected={form.handleImageSelected}
+          onRemove={form.handleRemoveImage}
           disabled={form.isReadOnly}
         />
 
-        {/* Résumé bref -- champ distinct du contenu détaillé ci-dessus
-            (voir ShortDescriptionField), séparé par un simple filet pour
-            que les deux contenus ne se confondent jamais visuellement. */}
-        <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
-          <ShortDescriptionField
-            value={form.descriptionCourteJson}
-            onChange={form.setDescriptionCourteJson}
-            disabled={form.isReadOnly}
-          />
-        </div>
-      </div>
-
-      <CoverImageField
-        previewUrl={form.coverPreviewUrl}
-        onFileSelected={form.handleImageSelected}
-        onRemove={form.handleRemoveImage}
-        disabled={form.isReadOnly}
-      />
-
-      <MediaGallerySection
-        galleryItems={form.galleryDisplayItems}
-        documentItems={form.documentDisplayItems}
-        onAddGalleryFiles={form.addGalleryFiles}
-        onRemoveGalleryItem={form.removeGalleryItem}
-        onAddDocumentFiles={form.addDocumentFiles}
-        onRemoveDocumentItem={form.removeDocumentItem}
-        disabled={form.isReadOnly}
-      />
+        <MediaGallerySection
+          galleryItems={form.galleryDisplayItems}
+          documentItems={form.documentDisplayItems}
+          onAddGalleryFiles={form.addGalleryFiles}
+          onRemoveGalleryItem={form.removeGalleryItem}
+          onAddDocumentFiles={form.addDocumentFiles}
+          onRemoveDocumentItem={form.removeDocumentItem}
+          disabled={form.isReadOnly}
+        />
+      </React.Fragment>
 
       {!form.isReadOnly && (
         <NewsCreationDock
@@ -134,9 +147,18 @@ export default function CreerNewsPage() {
           submittingAction={form.submittingAction}
           onSaveAndStay={form.saveAndStay}
           onSaveAndQuit={form.saveAndQuit}
-          onPreview={form.saveAndPreview}
+          onPreview={() => setIsPreviewOpen(true)}
+          onCancel={form.cancel}
         />
       )}
+
+      {/* "Visualiser" -- aperçu 100% local (voir buildPreviewNews.ts),
+          n'enregistre rien : ce n'est pas son travail. */}
+      <NewsPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        news={buildPreviewNews(form)}
+      />
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { useOpenNewsDetail } from '../hooks/useOpenNewsDetail';
 import { NewsCardCommentsDrawer } from './NewsCardCommentsDrawer';
 import { NewsCardCornerMenu } from './NewsCardCornerMenu';
 import { NewsCardAuthorBadge } from './NewsCardAuthorBadge';
-import { AlertCircle, ChevronUp } from 'lucide-react';
+import { AlertCircle, ChevronUp, Heart } from 'lucide-react';
 
 export interface NewsCardProps {
   news?: News;
@@ -34,6 +34,17 @@ export interface NewsCardProps {
    * sa propre liste. La card se masque de toute façon localement même
    * sans ce callback (voir `isRemoved` ci-dessous). */
   onDelete?: (newsId: string) => void;
+  /**
+   * Rendu en aperçu (voir NewsCreationDock -> "Visualiser",
+   * NewsPreviewModal.tsx) : la News affichée peut être un brouillon pas
+   * encore enregistré, ou en cours de modification (donc avec un `id`
+   * bien réel) -- dans les deux cas, aucune action pouvant lire/écrire
+   * côté serveur au nom de cette News ne doit être déclenchable depuis
+   * l'aperçu. Masque le menu contextuel (édition/suppression) et le
+   * tiroir de commentaires, remplace la réaction cœur interactive par
+   * un simple indicateur visuel inerte.
+   */
+  isPreview?: boolean;
 }
 
 /**
@@ -51,6 +62,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   onCardClick = 'navigate',
   className = '',
   onDelete,
+  isPreview = false,
 }) => {
   const newsItem = news || sujet!;
   const navigate = useNavigate();
@@ -131,21 +143,25 @@ export const NewsCard: React.FC<NewsCardProps> = ({
       <NewsCardAuthorBadge news={newsItem} />
 
       {/* Coin haut-droit : menu contextuel flottant -- verre dépoli,
-          petite taille (40px fermé) pour ne pas gêner le média. */}
-      <div
-        className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-30"
-        onClick={(e) => e.stopPropagation()}
-        data-no-card-click
-      >
-        <NewsCardCornerMenu
-          news={newsItem}
-          onUpdate={onUpdate}
-          onDelete={(id) => {
-            setIsRemoved(true);
-            onDelete?.(id);
-          }}
-        />
-      </div>
+          petite taille (40px fermé) pour ne pas gêner le média. Masqué
+          en aperçu (isPreview) : édition/suppression n'ont aucun sens
+          sur un brouillon pas encore enregistré. */}
+      {!isPreview && (
+        <div
+          className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-30"
+          onClick={(e) => e.stopPropagation()}
+          data-no-card-click
+        >
+          <NewsCardCornerMenu
+            news={newsItem}
+            onUpdate={onUpdate}
+            onDelete={(id) => {
+              setIsRemoved(true);
+              onDelete?.(id);
+            }}
+          />
+        </div>
+      )}
 
       {/* Panneau verre dépoli : titre + description, ancré en bas */}
       <div className="relative z-10 mt-auto p-3 sm:p-4 backdrop-blur-md bg-black/25">
@@ -165,33 +181,44 @@ export const NewsCard: React.FC<NewsCardProps> = ({
             elle disparaît sous le tiroir (z-20 > panneau z-10) une fois
             celui-ci ouvert -- impossible de refermer sans elle. */}
         <div className="mt-2 flex items-center justify-between gap-2">
-          {/* GAUCHE : réaction cœur + pile d'avatars animée des réacteurs */}
+          {/* GAUCHE : réaction cœur + pile d'avatars animée des réacteurs
+              -- en aperçu (isPreview), simple indicateur visuel inerte :
+              pas de News persistée pour recevoir une vraie réaction. */}
           <div className="flex items-center gap-1.5 shrink-0" data-no-card-click>
-            <TikTokHeartButton
-              newsId={newsItem.id}
-              initialCount={newsItem.stats?.reactions?.coeur || 0}
-              userReaction={newsItem.userReaction}
-              onUpdate={onUpdate}
-              iconOnly
-            />
-            {newsItem.reacteursRecents && newsItem.reacteursRecents.length > 0 && (
-              <AvatarGroup
-                items={newsItem.reacteursRecents.map((reacteur) => ({
-                  id: reacteur.id,
-                  name: reacteur.nomAffiche,
-                  designation:
-                    reacteur.role === 'administrateur'
-                      ? 'Administrateur'
-                      : reacteur.role === 'moderateur'
-                      ? 'Modérateur'
-                      : reacteur.role === 'etudiant'
-                      ? 'Étudiant'
-                      : 'Citoyen',
-                  image: reacteur.avatar,
-                }))}
-                size="xs"
-                maxVisible={4}
-              />
+            {isPreview ? (
+              <div className="flex items-center gap-1 text-white/80">
+                <Heart className="w-4 h-4" />
+                <span className="text-xs font-semibold">0</span>
+              </div>
+            ) : (
+              <>
+                <TikTokHeartButton
+                  newsId={newsItem.id}
+                  initialCount={newsItem.stats?.reactions?.coeur || 0}
+                  userReaction={newsItem.userReaction}
+                  onUpdate={onUpdate}
+                  iconOnly
+                />
+                {newsItem.reacteursRecents && newsItem.reacteursRecents.length > 0 && (
+                  <AvatarGroup
+                    items={newsItem.reacteursRecents.map((reacteur) => ({
+                      id: reacteur.id,
+                      name: reacteur.nomAffiche,
+                      designation:
+                        reacteur.role === 'administrateur'
+                          ? 'Administrateur'
+                          : reacteur.role === 'moderateur'
+                          ? 'Modérateur'
+                          : reacteur.role === 'etudiant'
+                          ? 'Étudiant'
+                          : 'Citoyen',
+                      image: reacteur.avatar,
+                    }))}
+                    size="xs"
+                    maxVisible={4}
+                  />
+                )}
+              </>
             )}
           </div>
 
@@ -215,7 +242,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
           saisie. La fermeture reste possible via la flèche dédiée en
           haut à droite du tiroir (voir NewsCardCommentsDrawer.tsx). */}
       <AnimatePresence>
-        {!isCommentsOpen && (
+        {!isPreview && !isCommentsOpen && (
           <motion.button
             key="comments-toggle"
             onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }}
@@ -243,7 +270,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
           ancré en bas) -- et ça arrondit gratuitement ses coins bas
           carrés sur la forme arrondie de la card. */}
       <AnimatePresence>
-        {isCommentsOpen && (
+        {!isPreview && isCommentsOpen && (
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}

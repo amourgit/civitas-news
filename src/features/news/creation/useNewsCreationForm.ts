@@ -26,7 +26,6 @@ import { useAuthStore } from '../../../store/auth.store';
 import { usePermissions } from '../../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../../lib/permissions/permissions.catalog';
 import { toast } from '../../../hooks/useToast';
-import { useOpenNewsDetail } from '../hooks/useOpenNewsDetail';
 import type { RichTextEditorHandle } from '../../../components/editor/RichTextEditor';
 import { extractPlainTextSummary } from './components/ContentEditorField';
 import type { PendingGalleryItem, PendingDocumentItem } from './types';
@@ -43,7 +42,6 @@ function makeTempId(): string {
 
 export function useNewsCreationForm() {
   const navigate = useNavigate();
-  const openNewsDetail = useOpenNewsDetail();
   const { user } = useAuthStore();
   const { can } = usePermissions();
   const { id } = useParams<{ id?: string }>();
@@ -106,13 +104,23 @@ export function useNewsCreationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Quel bouton du dock d'actions (voir NewsCreationDock.tsx) est
   // actuellement en vol -- permet de n'afficher le spinner QUE sur le
-  // bouton réellement cliqué (les deux autres restent juste désactivés
-  // par `isSubmitting`, sans faux spinner sur une action qui n'a pas
-  // été demandée).
-  const [submittingAction, setSubmittingAction] = useState<'stay' | 'quit' | 'preview' | null>(null);
+  // bouton réellement cliqué (l'autre reste juste désactivé par
+  // `isSubmitting`, sans faux spinner sur une action qui n'a pas été
+  // demandée). "Visualiser" n'enregistre plus rien (voir
+  // buildPreviewNews.ts) : plus besoin d'état de soumission pour lui.
+  const [submittingAction, setSubmittingAction] = useState<'stay' | 'quit' | null>(null);
   const [isLoadingRecord, setIsLoadingRecord] = useState(isEditMode);
   const [loadRecordError, setLoadRecordError] = useState<string | null>(null);
   const [existingNewsId, setExistingNewsId] = useState<string | null>(null);
+  // Incrémenté à chaque remise à blanc du formulaire après une création
+  // réussie (voir resetForNewCreation ci-dessous) -- posé en `key` sur
+  // les sous-composants à état interne non contrôlé (éditeurs riches,
+  // champ fichier de couverture, voir CreerNewsPage.tsx) pour forcer
+  // leur réinitialisation visuelle : `value`/`onChange` seuls n'y
+  // suffisent pas après montage (voir RichTextEditor.tsx -- `content`
+  // n'est lu qu'à la création de l'éditeur Tiptap, jamais resynchronisé
+  // depuis `value` ensuite).
+  const [formResetKey, setFormResetKey] = useState(0);
 
   // --- Chargement des référentiels ---------------------------------
   useEffect(() => {
@@ -508,18 +516,64 @@ export function useNewsCreationForm() {
     imageFile, user, pendingGalleryItems, pendingDocumentItems,
   ]);
 
-  /** "Enregistrer" (création) / "Modifier" (édition) -- reste sur la page. */
+  /** Remet le formulaire à blanc après une création réussie (voir
+   * saveAndStay ci-dessous) -- UNIQUEMENT en mode création : accueille
+   * une nouvelle publication sans quitter l'assistant. Ne s'applique
+   * jamais en mode édition (isEditMode), où le contenu doit au
+   * contraire rester affiché tel quel après "Modifier". */
+  const resetForNewCreation = useCallback(() => {
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    pendingGalleryItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+
+    setTitre('');
+    setType('information');
+    setContenuJson('');
+    setDescriptionCourteJson('');
+    setProvince('Estuaire');
+    setLieu('');
+    setTags([]);
+    setDateDebut('');
+    setDateFin('');
+    setVisibilite('public');
+    setCategorieId(categories[0]?.id || '');
+    setOrganisationId('');
+    setEtablissementId('');
+    setImageFile(null);
+    setImagePreviewUrl(null);
+    setExistingImageUrl(null);
+    setAddPoll(false);
+    setPollQuestion('');
+    setPollChoice1('');
+    setPollChoice2('');
+    setPollDateDebut(toDatetimeLocalValue(new Date()));
+    setPollDateFin(toDatetimeLocalValue(new Date(Date.now() + 30 * 86400 * 1000)));
+    setHasExistingSondage(false);
+    setExistingGalleryItems([]);
+    setPendingGalleryItems([]);
+    setExistingDocumentItems([]);
+    setPendingDocumentItems([]);
+    setExistingNewsId(null);
+    setFormResetKey((k) => k + 1);
+  }, [imagePreviewUrl, pendingGalleryItems, categories]);
+
+  /** "Enregistrer" (création) -- enregistre PUIS vide le formulaire pour
+   * accueillir une nouvelle publication. "Modifier" (édition) --
+   * enregistre et reste sur la page, contenu inchangé. */
   const saveAndStay = useCallback(async () => {
     setSubmittingAction('stay');
     try {
       const result = await performSave();
-      if (result) {
-        toast('success', isEditMode ? 'Modifications enregistrées' : 'News enregistrée', 'Vous pouvez continuer à la modifier.');
+      if (!result) return;
+      if (isEditMode) {
+        toast('success', 'Modifications enregistrées', 'Vous pouvez continuer à la modifier.');
+      } else {
+        toast('success', 'News enregistrée', 'Le formulaire est prêt pour une nouvelle publication.');
+        resetForNewCreation();
       }
     } finally {
       setSubmittingAction(null);
     }
-  }, [performSave, isEditMode]);
+  }, [performSave, isEditMode, resetForNewCreation]);
 
   /** "Enregistrer et quitter" -- enregistre puis quitte l'assistant. */
   const saveAndQuit = useCallback(async () => {
@@ -539,16 +593,14 @@ export function useNewsCreationForm() {
     }
   }, [performSave, isEditMode, navigate]);
 
-  /** "Visualiser" -- enregistre puis ouvre l'aperçu (BottomSheet) SANS quitter l'assistant. */
-  const saveAndPreview = useCallback(async () => {
-    setSubmittingAction('preview');
-    try {
-      const result = await performSave();
-      if (result) openNewsDetail(result.slug);
-    } finally {
-      setSubmittingAction(null);
+  /** "Annuler" -- quitte l'assistant SANS rien enregistrer. */
+  const cancel = useCallback(() => {
+    if (isEditMode && existingNewsId) {
+      navigate(`/admin/news/${existingNewsId}`);
+    } else {
+      navigate('/news');
     }
-  }, [performSave, openNewsDetail]);
+  }, [isEditMode, existingNewsId, navigate]);
 
   return {
     isEditMode, isReadOnly, canCreatePoll,
@@ -564,7 +616,7 @@ export function useNewsCreationForm() {
     galleryDisplayItems, addGalleryFiles, removeGalleryItem,
     documentDisplayItems, addDocumentFiles, removeDocumentItem,
     isSubmitting, submittingAction, isLoadingRecord, loadRecordError,
-    existingNewsId, user, saveAndStay, saveAndQuit, saveAndPreview,
+    existingNewsId, user, saveAndStay, saveAndQuit, cancel, formResetKey,
   };
 }
 
