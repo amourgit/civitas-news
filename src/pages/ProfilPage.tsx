@@ -214,7 +214,7 @@ export default function ProfilPage() {
     );
   }
 
-  const sousTitre = [user.role !== 'anonyme' ? ROLE_LABELS[user.role] : null, user.etablissement]
+  const sousTitre = [user.role && user.role !== 'anonyme' ? ROLE_LABELS[user.role] : null, user.etablissement]
     .filter(Boolean)
     .join(' · ');
 

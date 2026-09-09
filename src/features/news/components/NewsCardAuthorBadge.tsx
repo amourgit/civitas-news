@@ -90,7 +90,9 @@ export const NewsCardAuthorBadge: React.FC<NewsCardAuthorBadgeProps> = ({ news }
 
   if (!auteur) return null;
 
-  const roleLabel = ROLE_LABELS[auteur.role] || auteur.role;
+  // `auteur.role` est nullable (voir UtilisateurSchema) : un compte sans
+  // adhésion dans ce tenant n'a simplement pas de rôle applicatif ici.
+  const roleLabel = auteur.role ? ROLE_LABELS[auteur.role] || auteur.role : 'Membre';
   const orgTypeLabel = organisation
     ? TYPE_ORGANISATION_LABELS[organisation.type] || organisation.type
     : undefined;
