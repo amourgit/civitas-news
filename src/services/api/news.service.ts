@@ -312,6 +312,12 @@ export const newsService = {
     etablissement: Etablissement;
     tags: string[];
     visibilite: 'public' | 'prive' | 'limite';
+    /** Changement de cycle de vie (publier/archiver/dépublier) — voir
+     * NewsCardCornerMenu.tsx, qui l'utilise pour les actions "Publier" et
+     * "Archiver/Republier", disponibles uniquement à l'auteur ou à un
+     * modérateur/administrateur (mêmes règles que l'édition des autres
+     * champs, voir NewsPermission.has_object_permission côté backend). */
+    statut: 'brouillon' | 'publie' | 'archive' | 'signale';
   }>): Promise<News> => {
     if (env.useMockData) {
       // `image` (File) n'a pas d'équivalent en mode mock (pas d'upload réel) --
@@ -335,6 +341,19 @@ export const newsService = {
     });
     newsMemory = newsMemory.map((n) => (n.id === updated.id ? updated : n));
     return updated;
+  },
+
+  /** DELETE (suppression logique côté backend, voir SocleModelViewSet) —
+   * réservée à l'auteur ou à un modérateur/administrateur, voir
+   * NewsPermission.has_object_permission. Consommée par
+   * NewsCardCornerMenu.tsx (action "Supprimer"). */
+  deleteNews: async (id: string): Promise<void> => {
+    if (env.useMockData) {
+      newsMemory = newsMemory.filter((n) => n.id !== id);
+      return;
+    }
+    await newsRepository.remove(id);
+    newsMemory = newsMemory.filter((n) => n.id !== id);
   },
 };
 

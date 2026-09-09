@@ -73,6 +73,19 @@ export const TYPE_ORGANISATION_LABELS: Record<TypeOrganisation, string> = {
   autre: 'Autre',
 };
 
+/**
+ * Plateformes de réseaux sociaux RECONNUES côté frontend (voir
+ * ORGANISATION_SOCIAL_ICONS, NewsCardAuthorBadge.tsx) — le backend, lui,
+ * n'impose aucune contrainte de clé sur `reseaux_sociaux` (simple
+ * JSONField libre, voir referentiels/models.py:Organisation) : une clé
+ * non reconnue ici est simplement ignorée à l'affichage plutôt que de
+ * faire échouer la validation Zod de toute la News/Organisation.
+ */
+export const RESEAU_SOCIAL_PLATEFORMES = [
+  'facebook', 'instagram', 'twitter', 'x', 'linkedin', 'youtube', 'whatsapp', 'tiktok',
+] as const;
+export type ReseauSocialPlateforme = (typeof RESEAU_SOCIAL_PLATEFORMES)[number];
+
 export const OrganisationSchema = z.object({
   id: z.string(),
   nom: z.string(),
@@ -80,6 +93,13 @@ export const OrganisationSchema = z.object({
   logo: z.string().nullable().optional(),
   type: z.string(),
   description: z.string().optional(),
+  // URLField(blank=True) côté backend -> chaîne vide plutôt que null/absente.
+  siteWeb: z.string().optional(),
+  // JSONField(default=dict) -> objet libre {plateforme: url}, jamais null.
+  // `z.record(z.string())` plutôt que `Partial<Record<ReseauSocialPlateforme, string>>`
+  // typé strictement : le backend n'imposant aucune contrainte de clé,
+  // une plateforme non reconnue ne doit pas faire échouer le schéma.
+  reseauxSociaux: z.record(z.string(), z.string()).optional(),
 }).extend(SocleTracabiliteSchema.shape);
 export type Organisation = z.infer<typeof OrganisationSchema>;
 
@@ -89,6 +109,8 @@ export interface OrganisationEcriturePayload {
   nom: string;
   type?: TypeOrganisation;
   description?: string;
+  siteWeb?: string;
+  reseauxSociaux?: Record<string, string>;
   statut?: StatutCycleVie;
 }
 

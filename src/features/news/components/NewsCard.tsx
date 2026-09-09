@@ -28,6 +28,12 @@ export interface NewsCardProps {
   /** Classes de span de grille (bento) fournies par NewsGrid.tsx --
    * NewsCard ne connaît pas sa propre position dans la grille. */
   className?: string;
+  /** Appelé après une suppression réussie depuis le menu contextuel
+   * (voir NewsCardCornerMenu) -- permet à un parent listant plusieurs
+   * News (grille, "mes publications"...) de retirer cet identifiant de
+   * sa propre liste. La card se masque de toute façon localement même
+   * sans ce callback (voir `isRemoved` ci-dessous). */
+  onDelete?: (newsId: string) => void;
 }
 
 /**
@@ -44,11 +50,18 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   onOpenDetail,
   onCardClick = 'navigate',
   className = '',
+  onDelete,
 }) => {
   const newsItem = news || sujet!;
   const navigate = useNavigate();
   const openNewsDetailGlobal = useOpenNewsDetail();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  // Suppression via le menu contextuel (coin haut-droit, voir
+  // NewsCardCornerMenu) -- masquage optimiste local : l'appel DELETE a
+  // déjà réussi côté serveur à ce stade, la card n'a plus lieu d'être
+  // affichée quel que soit le parent qui la rend.
+  const [isRemoved, setIsRemoved] = useState(false);
+  if (isRemoved) return null;
 
   const heroMedia = newsItem.image || newsItem.galerie?.[0]?.url || null;
   const heroIsVideo = !!heroMedia && (heroMedia.endsWith('.mp4') || heroMedia.endsWith('.webm') || heroMedia.includes('video'));
@@ -124,7 +137,14 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         onClick={(e) => e.stopPropagation()}
         data-no-card-click
       >
-        <NewsCardCornerMenu />
+        <NewsCardCornerMenu
+          news={newsItem}
+          onUpdate={onUpdate}
+          onDelete={(id) => {
+            setIsRemoved(true);
+            onDelete?.(id);
+          }}
+        />
       </div>
 
       {/* Panneau verre dépoli : titre + description, ancré en bas */}

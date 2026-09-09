@@ -2,7 +2,10 @@
 
 import * as React from 'react';
 import { cn } from '../../../lib/utils';
-import { Settings, CreditCard, FileText, LogOut, User } from 'lucide-react';
+import {
+  Building2, Globe, Link2, Facebook, Instagram, Twitter, Linkedin, Youtube,
+  MessageCircle, Music2, MapPin, Award,
+} from 'lucide-react';
 import { News } from '../../../types/global.types';
 import {
   DropdownMenu,
@@ -12,12 +15,6 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
 import './NewsCardAuthorBadge.css';
-
-interface MenuItem {
-  label: string;
-  value?: string;
-  icon: React.ReactNode;
-}
 
 const ROLE_LABELS: Record<string, string> = {
   administrateur: 'Administrateur',
@@ -35,41 +32,56 @@ const TYPE_ORGANISATION_LABELS: Record<string, string> = {
   autre: 'Organisation',
 };
 
+/**
+ * Icônes des plateformes reconnues sur `Organisation.reseauxSociaux`
+ * (dictionnaire libre côté backend — voir referentiels/models.py, aucune
+ * contrainte de clé). Une clé absente de cette table est simplement
+ * ignorée à l'affichage plutôt que de casser le rendu -- voir
+ * RESEAU_SOCIAL_PLATEFORMES dans types/models/user.types.ts pour la
+ * liste canonique. 'x' est un alias moderne de 'twitter' ; whatsapp/tiktok
+ * n'ayant pas d'icône dédiée dans lucide-react, on retombe sur une icône
+ * générique proche (MessageCircle / Music2).
+ */
+const SOCIAL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  facebook: Facebook,
+  instagram: Instagram,
+  twitter: Twitter,
+  x: Twitter,
+  linkedin: Linkedin,
+  youtube: Youtube,
+  whatsapp: MessageCircle,
+  tiktok: Music2,
+};
+
+function hoteDeUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 export interface NewsCardAuthorBadgeProps {
   news: News;
 }
 
 /**
- * Réplique fidèle du composant "ProfileDropdown" fourni : même
- * structure (trigger avatar en anneau dégradé + nom + ligne
- * secondaire, flèche "bending line" qui réagit au survol/à l'ouverture,
- * DropdownMenuContent en lignes icône+label+pastille de valeur,
- * séparateur, bouton d'action rouge en bas), même logique isOpen --
- * copiées à l'identique depuis la source. L'animation d'ouverture du
- * panneau, elle, a depuis été remplacée (voir plus bas) par un rebond
- * sur-mesure : ce n'est plus la classe `animate-in` d'origine.
- *
- * Adaptations strictement nécessaires (la source vient d'un projet
- * Next.js ; ce projet est Vite + react-router-dom) :
- *  - `next/image` -> `<img>`, `next/link` -> `<a>` (ces deux modules
- *    n'existent pas hors Next.js, le build cassait sinon) ;
- *  - `@/components/ui/dropdown-menu` (Radix) créé car absent du
- *    projet -- `@radix-ui/react-dropdown-menu` ajouté en dépendance ;
- *  - le logo "Gemini" (marque tierce, alimentait un champ "Model" sans
- *    rapport avec ce contexte) remplacé par une icône neutre.
- *
- * Adaptations demandées explicitement : fond verre dépoli PARTOUT
- * (fermé et ouvert) et EN PERMANENCE, quel que soit l'état (plus
- * d'opacité réduite au repos rétablie au survol/focus -- l'ancien
- * comportement scintillait entre "quasi transparent" et "plein verre"
- * selon le survol de la card). Le panneau qui s'ouvre au clic
- * (DropdownMenuContent) anime son entrée avec 3 rebonds explicites
- * avant stabilisation (voir NewsCardAuthorBadge.css), à la place des
- * classes `animate-in`/`zoom-in-95` par défaut du wrapper -- retirées
- * de components/ui/dropdown-menu.tsx, dont ce composant est l'unique
- * consommateur. Les données injectées sont celles de la news :
- * auteur (nom/avatar) et tenant/organisation, déjà exposées par l'API
- * (NewsListSerializer), aucun changement backend requis.
+ * Badge auteur -- coin haut-gauche de la news card. Structure/animation
+ * inchangées (voir NewsCardAuthorBadge.css : 3 rebonds à l'ouverture) ;
+ * seul le CONTENU du panneau change désormais par rapport à la version
+ * précédente (qui affichait des libellés de démonstration type "Profile
+ * / Model / Subscription / Settings / Sign Out") : il présente
+ * maintenant les VRAIES données de la News --
+ *  - en haut : l'organisation publiante (logo, nom, type, description,
+ *    site web, réseaux sociaux) quand la News en a une, sinon
+ *    l'établissement de l'auteur en repli ;
+ *  - en bas : l'auteur à l'origine de la publication (avatar, nom,
+ *    rôle, badges, statistiques de contribution).
+ * Toutes ces données sont déjà exposées par NewsListSerializer côté
+ * backend (auteur = UtilisateurPublicSerializer, organisation =
+ * OrganisationNesteeSerializer), aucun appel réseau supplémentaire
+ * n'est nécessaire ici. Contenu volontairement compact (textes 9-11px,
+ * paddings serrés) pour tenir dans la largeur fixe du panneau (w-64).
  */
 export const NewsCardAuthorBadge: React.FC<NewsCardAuthorBadgeProps> = ({ news }) => {
   const auteur = news.auteur;
@@ -84,30 +96,10 @@ export const NewsCardAuthorBadge: React.FC<NewsCardAuthorBadgeProps> = ({ news }
     : undefined;
   const secondaryLine = organisation?.nom || auteur.etablissement || undefined;
 
-  const menuItems: MenuItem[] = [
-    {
-      label: 'Profile',
-      icon: <User className="w-4 h-4" />,
-    },
-    {
-      label: 'Model',
-      value: roleLabel,
-      icon: <CreditCard className="w-4 h-4" />,
-    },
-    ...(organisation
-      ? [
-          {
-            label: 'Subscription',
-            value: orgTypeLabel,
-            icon: <FileText className="w-4 h-4" />,
-          },
-        ]
-      : []),
-    {
-      label: 'Settings',
-      icon: <Settings className="w-4 h-4" />,
-    },
-  ];
+  const liensReseauxSociaux = Object.entries(organisation?.reseauxSociaux || {}).filter(
+    ([plateforme, url]) => !!url && !!SOCIAL_ICONS[plateforme.toLowerCase()]
+  );
+  const siteWeb = organisation?.siteWeb || '';
 
   return (
     <div
@@ -185,55 +177,132 @@ export const NewsCardAuthorBadge: React.FC<NewsCardAuthorBadgeProps> = ({ news }
           <DropdownMenuContent
             align="start"
             sideOffset={4}
-            className="news-card-author-badge-panel w-64 p-2 bg-white/10 backdrop-blur-2xl border border-white/25 rounded-2xl shadow-xl shadow-black/30"
+            className="news-card-author-badge-panel w-64 max-h-[70vh] overflow-y-auto p-2.5 bg-white/10 backdrop-blur-2xl border border-white/25 rounded-2xl shadow-xl shadow-black/30"
           >
-            <div className="space-y-1">
-              {menuItems.map((item, i) => (
-                <DropdownMenuItem key={item.label} asChild>
-                  <a
-                    href="#"
-                    onClick={(e) => e.preventDefault()}
-                    className="flex items-center p-3 hover:bg-white/15 rounded-xl transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-white/20"
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className="text-white/80">{item.icon}</span>
-                      <span className="text-sm font-medium text-white tracking-tight leading-tight whitespace-nowrap transition-colors">
-                        {item.label}
-                      </span>
+            {/* --- Organisation publiante (ou établissement en repli) --- */}
+            {organisation ? (
+              <div className="px-0.5 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10 border border-white/20 shrink-0 flex items-center justify-center">
+                    {organisation.logo ? (
+                      <img src={organisation.logo} alt={organisation.nom} className="w-full h-full object-cover" />
+                    ) : (
+                      <Building2 className="w-4 h-4 text-white/70" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white truncate leading-tight">
+                      {organisation.nom}
                     </div>
-                    <div className="flex-shrink-0 ml-auto">
-                      {item.value && (
-                        <span
-                          className={cn(
-                            'text-xs font-medium rounded-md py-1 px-2 tracking-tight border',
-                            i === 1
-                              ? 'text-blue-200 bg-blue-500/15 border-blue-400/20'
-                              : 'text-purple-200 bg-purple-500/15 border-purple-400/20'
-                          )}
+                    {orgTypeLabel && (
+                      <div className="text-[10px] text-white/60 truncate leading-tight">{orgTypeLabel}</div>
+                    )}
+                  </div>
+                </div>
+
+                {organisation.description && (
+                  <p className="mt-1.5 text-[10.5px] text-white/70 leading-snug line-clamp-2">
+                    {organisation.description}
+                  </p>
+                )}
+
+                {(siteWeb || liensReseauxSociaux.length > 0) && (
+                  <div className="mt-2 flex items-center flex-wrap gap-1.5">
+                    {siteWeb && (
+                      <DropdownMenuItem asChild>
+                        <a
+                          href={siteWeb}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-[10px] text-white/80 transition-colors"
                         >
-                          {item.value}
-                        </span>
-                      )}
+                          <Globe className="w-3 h-3 shrink-0" />
+                          <span className="truncate max-w-[7rem]">{hoteDeUrl(siteWeb)}</span>
+                        </a>
+                      </DropdownMenuItem>
+                    )}
+                    {liensReseauxSociaux.map(([plateforme, url]) => {
+                      const Icon = SOCIAL_ICONS[plateforme.toLowerCase()] || Link2;
+                      return (
+                        <DropdownMenuItem key={plateforme} asChild>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={plateforme}
+                            title={plateforme}
+                            className="flex items-center justify-center w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-white/80 transition-colors"
+                          >
+                            <Icon className="w-3 h-3" />
+                          </a>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : auteur.etablissement ? (
+              <div className="px-0.5 pb-2 flex items-center gap-1.5 text-[10.5px] text-white/70">
+                <MapPin className="w-3 h-3 shrink-0" />
+                <span className="truncate">{auteur.etablissement}</span>
+              </div>
+            ) : null}
+
+            <DropdownMenuSeparator className="my-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
+            {/* --- Auteur à l'origine de la publication --- */}
+            <div className="flex items-center gap-2 px-0.5 py-1">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-0.5 shrink-0">
+                <div className="w-full h-full rounded-full overflow-hidden bg-white/10">
+                  {auteur.avatar ? (
+                    <img
+                      src={auteur.avatar}
+                      alt={auteur.nomAffiche}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-white">
+                      {auteur.nomAffiche?.[0]?.toUpperCase() || '?'}
                     </div>
-                  </a>
-                </DropdownMenuItem>
-              ))}
+                  )}
+                </div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-medium text-white truncate leading-tight">
+                  {auteur.nomAffiche}
+                </div>
+                <div className="text-[9.5px] text-white/60 truncate leading-tight">
+                  {roleLabel}
+                  {organisation && auteur.etablissement ? ` · ${auteur.etablissement}` : ''}
+                </div>
+              </div>
+              {auteur.badges && auteur.badges.length > 0 && (
+                <div
+                  className="flex items-center gap-0.5 shrink-0"
+                  title={auteur.badges.map((b) => b.nom).join(', ')}
+                >
+                  <Award className="w-3 h-3 text-amber-300" />
+                  <span className="text-[9.5px] text-amber-200 font-semibold">{auteur.badges.length}</span>
+                </div>
+              )}
             </div>
 
-            <DropdownMenuSeparator className="my-3 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-
-            <DropdownMenuItem asChild>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="w-full flex items-center gap-3 p-3 duration-200 bg-red-500/10 rounded-xl hover:bg-red-500/20 cursor-pointer border border-transparent hover:border-red-500/30 hover:shadow-sm transition-all group"
-              >
-                <LogOut className="w-4 h-4 text-red-400 group-hover:text-red-300" />
-                <span className="text-sm font-medium text-red-400 group-hover:text-red-300">
-                  Sign Out
-                </span>
-              </button>
-            </DropdownMenuItem>
+            {auteur.stats && (
+              <div className="mt-1.5 grid grid-cols-3 gap-1 px-0.5">
+                <div className="text-center rounded-lg bg-white/5 py-1">
+                  <div className="text-[11px] font-bold text-white leading-none">{auteur.stats.contributions}</div>
+                  <div className="text-[8.5px] text-white/50 mt-0.5">Contrib.</div>
+                </div>
+                <div className="text-center rounded-lg bg-white/5 py-1">
+                  <div className="text-[11px] font-bold text-white leading-none">{auteur.stats.commentaires}</div>
+                  <div className="text-[8.5px] text-white/50 mt-0.5">Comment.</div>
+                </div>
+                <div className="text-center rounded-lg bg-white/5 py-1">
+                  <div className="text-[11px] font-bold text-white leading-none">{auteur.stats.votes}</div>
+                  <div className="text-[8.5px] text-white/50 mt-0.5">Votes</div>
+                </div>
+              </div>
+            )}
           </DropdownMenuContent>
         </div>
       </DropdownMenu>
