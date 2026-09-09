@@ -16,22 +16,11 @@ import { SymbolPicker } from './SymbolPicker';
 import { InsertLinkDialog } from './dialogs/InsertLinkDialog';
 import { InsertYoutubeDialog } from './dialogs/InsertYoutubeDialog';
 import { FONT_SIZE_PRESETS } from './extensions/FontSize';
+import { useClickOutside } from '../../hooks/useClickOutside';
 import type { CalloutVariant } from './types';
 
 const TEXT_COLORS = ['#1A1F4D', '#5B4DFF', '#EF4444', '#F59E0B', '#10B981', '#0EA5E9', '#EC4899', '#6B7280'];
 const HIGHLIGHT_COLORS = ['#FEF08A', '#BBF7D0', '#BFDBFE', '#FBCFE8', '#FED7AA'];
-
-function useClickOutside(onOutside: () => void) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onOutside();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onOutside]);
-  return ref;
-}
 
 const ToolbarButton: React.FC<{
   onClick: () => void;
@@ -77,6 +66,55 @@ const Dropdown: React.FC<{ trigger: React.ReactNode; title: string; children: (c
         </div>
       )}
     </div>
+  );
+};
+
+const TABLE_GRID_MAX = 8;
+
+/** Sélecteur de taille de tableau façon Word/Sheets : une grille survolable
+ * (jusqu'à 8×8) qui affiche la dimension choisie et insère le tableau
+ * exact au clic -- remplace l'ancienne insertion fixe (3×3 imposé). */
+const InsertTableGrid: React.FC<{ editor: Editor }> = ({ editor }) => {
+  const [hover, setHover] = useState<{ row: number; col: number } | null>(null);
+  return (
+    <Dropdown title="Insérer un tableau" trigger={<TableIcon className="w-4 h-4" />}>
+      {(close) => (
+        <div className="p-2.5">
+          <div
+            className="grid gap-0.5 w-max"
+            style={{ gridTemplateColumns: `repeat(${TABLE_GRID_MAX}, 16px)` }}
+            onMouseLeave={() => setHover(null)}
+          >
+            {Array.from({ length: TABLE_GRID_MAX * TABLE_GRID_MAX }, (_, i) => {
+              const row = Math.floor(i / TABLE_GRID_MAX);
+              const col = i % TABLE_GRID_MAX;
+              const active = !!hover && row <= hover.row && col <= hover.col;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setHover({ row, col })}
+                  onClick={() => {
+                    editor.chain().focus().insertTable({ rows: row + 1, cols: col + 1, withHeaderRow: true }).run();
+                    setHover(null);
+                    close();
+                  }}
+                  className={`w-4 h-4 rounded-sm border transition-colors ${
+                    active
+                      ? 'bg-[#5B4DFF] border-[#5B4DFF]'
+                      : 'bg-gray-50 dark:bg-gray-700/60 border-gray-200 dark:border-gray-600'
+                  }`}
+                />
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-center text-xs text-gray-500 dark:text-gray-400">
+            {hover ? `${hover.row + 1} × ${hover.col + 1}` : 'Choisissez une taille'}
+          </p>
+        </div>
+      )}
+    </Dropdown>
   );
 };
 
@@ -364,12 +402,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onPickImag
         onChange={(e) => { if (e.target.files?.[0]) onPickDocument(e.target.files[0]); e.target.value = ''; }}
       />
 
-      <ToolbarButton
-        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-        title="Insérer un tableau (3×3)"
-      >
-        <TableIcon className="w-4 h-4" />
-      </ToolbarButton>
+      <InsertTableGrid editor={editor} />
 
       <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Ligne de séparation">
         <Minus className="w-4 h-4" />

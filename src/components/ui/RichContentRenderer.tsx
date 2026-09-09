@@ -30,6 +30,7 @@ import { GalleryBlock } from '../editor/extensions/GalleryBlock';
 import { YoutubeEmbed } from '../editor/extensions/YoutubeEmbed';
 import { Callout } from '../editor/extensions/Callout';
 import { FontSize } from '../editor/extensions/FontSize';
+import { TableCellBackground } from '../editor/extensions/TableCellBackground';
 import '../editor/richTextEditor.css';
 import { RichTextViewer } from './RichTextViewer';
 
@@ -67,6 +68,7 @@ const TiptapReadOnlyView: React.FC<{ doc: JSONContent; articleSize?: boolean }> 
         Highlight.configure({ multicolor: true }),
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
         TableKit,
+        TableCellBackground,
         TaskList,
         TaskItem.configure({ nested: true }),
         Subscript,

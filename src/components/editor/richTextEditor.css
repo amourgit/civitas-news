@@ -145,6 +145,44 @@
   background: rgba(91, 77, 255, 0.12);
 }
 
+/* Contrôles flottants du tableau (TableFloatingControls) -- discrets :
+   petits, neutres au repos, n'apparaissent que si le curseur est dans
+   un tableau (le composant ne se rend pas sinon). */
+.civitas-table-control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #fff;
+  color: rgb(107 114 128);
+  border: 1px solid rgba(107, 114, 128, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, transform 120ms ease, opacity 120ms ease;
+}
+.dark .civitas-table-control-btn {
+  background: rgb(31 41 55);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgb(209 213 219);
+}
+.civitas-table-control-btn:hover {
+  background: #5B4DFF;
+  color: #fff;
+  border-color: #5B4DFF;
+  transform: scale(1.1);
+}
+/* Points d'insertion entre/autour des colonnes ou lignes -- plus discrets
+   que les boutons de suppression, pour ne pas surcharger visuellement
+   une grille dense de petites colonnes. */
+.civitas-table-control-btn--seam {
+  opacity: 0.5;
+}
+.civitas-table-control-btn--seam:hover {
+  opacity: 1;
+}
+
 .civitas-prose.tiptap mark {
   border-radius: 0.2em;
   padding: 0 0.1em;

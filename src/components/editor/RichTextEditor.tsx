@@ -39,6 +39,8 @@ import { GalleryBlock } from './extensions/GalleryBlock';
 import { YoutubeEmbed } from './extensions/YoutubeEmbed';
 import { Callout } from './extensions/Callout';
 import { FontSize } from './extensions/FontSize';
+import { TableCellBackground } from './extensions/TableCellBackground';
+import { TableFloatingControls } from './TableFloatingControls';
 import { PendingMediaRegistry } from './pendingMediaRegistry';
 import { persistPendingByTempId, flushPendingMedia, setPendingByTempId } from './mediaPersistence';
 import type { GalleryItem } from './types';
@@ -141,6 +143,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
       CharacterCount,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       TableKit.configure({ table: { resizable: true } }),
+      TableCellBackground,
       TaskList,
       TaskItem.configure({ nested: true }),
       Subscript,
@@ -267,6 +270,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         onClick={() => editor.chain().focus().run()}
       >
         <EditorContent editor={editor} />
+        <TableFloatingControls editor={editor} />
       </div>
       <div className="flex items-center justify-between px-1 pt-1.5 text-[11px] text-gray-400">
         <span>
