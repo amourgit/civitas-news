@@ -49,6 +49,14 @@ export const USERS_ENDPOINTS = {
 
 export const TENANTS_ENDPOINTS = {
   create: '/tenants/v1/',
+  /**
+   * GET -> tenants dont l'utilisateur authentifié courant est membre
+   * (adhesions.MembreTenant, tous schémas confondus).
+   * ⚠️ Contrat PROPOSÉ côté frontend, pas encore implémenté côté
+   * backend — voir services/api/repositories/tenants.repository.ts
+   * (listMine) et store/tenants.store.ts.
+   */
+  mine: '/tenants/v1/mine/',
 } as const;
 
 export const DOMAIN_ENDPOINTS = {

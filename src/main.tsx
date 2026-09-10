@@ -4,6 +4,7 @@ import App from './App.tsx';
 import './index.css';
 import { installAuthFetchInterceptor } from './services/api/token/authFetchInterceptor';
 import { env } from './config/env';
+import { getTenantHeaderValue } from './store/tenants.store';
 
 if (typeof window !== 'undefined') {
   try {
@@ -35,8 +36,10 @@ if (typeof window !== 'undefined') {
 }
 
 // Refresh automatique et transparent des tokens expirés, + en-tête
-// X-Tenant-Domain sur chaque requête — voir authFetchInterceptor.ts.
-installAuthFetchInterceptor(env.apiBaseUrl, env.tenantHost);
+// X-Tenant-Domain sur chaque requête (liste CSV des tenants activés,
+// repli sur le tenant unique historique si aucun ne l'est) — voir
+// authFetchInterceptor.ts et store/tenants.store.ts.
+installAuthFetchInterceptor(env.apiBaseUrl, getTenantHeaderValue);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

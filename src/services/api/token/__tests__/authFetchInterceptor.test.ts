@@ -12,6 +12,16 @@ import { tokenStore } from '../tokenStore';
  * Ce test vérifie qu'il est bien posé, à la base, sur CHAQUE requête
  * vers notre API -- pas seulement certaines.
  *
+ * Depuis le chantier multi-tenant (voir store/tenants.store.ts),
+ * `installAuthFetchInterceptor` prend un GETTER (`() => string | null`)
+ * plutôt qu'une chaîne figée à l'installation -- il est réévalué à
+ * CHAQUE requête, pour refléter immédiatement une activation/
+ * désactivation de tenant faite entretemps par l'utilisateur, sans
+ * jamais avoir besoin de réinstaller l'intercepteur. En pratique ce
+ * getter est `store/tenants.store.ts::getTenantHeaderValue` (CSV des
+ * tenants activés, ou repli sur le tenant unique historique) -- ici on
+ * le simule avec un simple `vi.fn()` pour rester isolé du store.
+ *
  * Note technique : installAuthFetchInterceptor REMPLACE `window.fetch`
  * par son propre wrapper (pas un vi.fn) -- on garde donc une référence
  * au mock stubbé par `vi.stubGlobal` (capturé par l'intercepteur comme
@@ -37,16 +47,16 @@ describe('installAuthFetchInterceptor — en-tête X-Tenant-Domain', () => {
     vi.unstubAllGlobals();
     // installAuthFetchInterceptor est idempotent par design (un seul
     // `window.fetch` remplacé pour toute la durée de vie de l'app) --
-    // ça veut aussi dire que le premier appel dans ce fichier "gèle" son
-    // `originalFetch` pour tous les tests suivants. On force un module
-    // frais (non installé) avant chaque test via resetModules + import
-    // dynamique dans le corps de chaque test.
+    // ça veut aussi dire que le premier appel dans ce fichier "gèle"
+    // son `originalFetch` pour tous les tests suivants. On force un
+    // module frais (non installé) avant chaque test via resetModules +
+    // import dynamique dans le corps de chaque test.
     vi.resetModules();
   });
 
   it('ajoute X-Tenant-Domain sur une requête vers notre API (via les 4 services HTTP)', async () => {
     const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
-    install(API_BASE_URL, TENANT_HOST);
+    install(API_BASE_URL, () => TENANT_HOST);
 
     const service = new GetService(API_BASE_URL);
     await service.get({ endpoint: '/sondages/v1/sondages/', requireAuth: false });
@@ -58,7 +68,7 @@ describe('installAuthFetchInterceptor — en-tête X-Tenant-Domain', () => {
 
   it('ajoute aussi X-Tenant-Domain sur un fetch direct (pas seulement via GetService/PostService)', async () => {
     const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
-    install(API_BASE_URL, TENANT_HOST);
+    install(API_BASE_URL, () => TENANT_HOST);
 
     await fetch(`${API_BASE_URL}/token/v1/login/`, { method: 'POST', body: '{}' });
 
@@ -69,7 +79,7 @@ describe('installAuthFetchInterceptor — en-tête X-Tenant-Domain', () => {
 
   it("n'ajoute PAS X-Tenant-Domain sur une requête vers une origine externe (ex: Google Identity)", async () => {
     const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
-    install(API_BASE_URL, TENANT_HOST);
+    install(API_BASE_URL, () => TENANT_HOST);
 
     await fetch('https://accounts.google.com/gsi/client', { method: 'GET' });
 
@@ -78,9 +88,9 @@ describe('installAuthFetchInterceptor — en-tête X-Tenant-Domain', () => {
     expect(headers.get('X-Tenant-Domain')).toBeNull();
   });
 
-  it('ne pose rien si tenantHost est null (rendu hors navigateur / non résolu)', async () => {
+  it('ne pose rien si le getter renvoie null (aucun tenant résolu)', async () => {
     const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
-    install(API_BASE_URL, null);
+    install(API_BASE_URL, () => null);
 
     const service = new GetService(API_BASE_URL);
     await service.get({ endpoint: '/sondages/v1/sondages/', requireAuth: false });
@@ -92,7 +102,7 @@ describe('installAuthFetchInterceptor — en-tête X-Tenant-Domain', () => {
 
   it("ne remplace pas un X-Tenant-Domain déjà posé explicitement par l'appelant", async () => {
     const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
-    install(API_BASE_URL, TENANT_HOST);
+    install(API_BASE_URL, () => TENANT_HOST);
 
     await fetch(`${API_BASE_URL}/sondages/v1/sondages/`, {
       headers: { 'X-Tenant-Domain': 'autretenant.vercel.app' },
@@ -101,5 +111,31 @@ describe('installAuthFetchInterceptor — en-tête X-Tenant-Domain', () => {
     const call = mockFetch.mock.calls[0];
     const headers = new Headers(call[1]?.headers as HeadersInit);
     expect(headers.get('X-Tenant-Domain')).toBe('autretenant.vercel.app');
+  });
+
+  it('pose une liste CSV quand le getter renvoie plusieurs tenants activés', async () => {
+    const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
+    install(API_BASE_URL, () => 'civitas,moncampus');
+
+    await fetch(`${API_BASE_URL}/sondages/v1/sondages/`);
+
+    const call = mockFetch.mock.calls[0];
+    const headers = new Headers(call[1]?.headers as HeadersInit);
+    expect(headers.get('X-Tenant-Domain')).toBe('civitas,moncampus');
+  });
+
+  it('réévalue le getter à CHAQUE requête (reflète une activation faite entretemps, sans réinstaller)', async () => {
+    const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
+    let active: string | null = null;
+    install(API_BASE_URL, () => active);
+
+    await fetch(`${API_BASE_URL}/sondages/v1/sondages/`);
+    expect(new Headers(mockFetch.mock.calls[0][1]?.headers as HeadersInit).get('X-Tenant-Domain')).toBeNull();
+
+    // L'utilisateur active un tenant entre les deux requêtes -- pas de
+    // second appel à install(), le store le ferait juste via notify().
+    active = 'civitas';
+    await fetch(`${API_BASE_URL}/sondages/v1/sondages/`);
+    expect(new Headers(mockFetch.mock.calls[1][1]?.headers as HeadersInit).get('X-Tenant-Domain')).toBe('civitas');
   });
 });

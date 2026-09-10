@@ -12,16 +12,22 @@
 //     reconnecter manuellement même si sa session (refresh token) est
 //     encore valide.
 //
-//  2. En-tête X-Tenant-Domain sur chaque requête vers notre API,
-//     portant le hostname RÉELLEMENT affiché dans le navigateur (voir
-//     config/tenantHost.ts). Mécanisme alternatif au sous-domaine
-//     porté par le Host HTTP standard — le backend
-//     (config/fonction.py:resolve_request_hostname) le préfère quand
-//     présent. Utile même quand apiBaseUrl cible une origine fixe
-//     (VITE_API_BASE_URL explicite) : dans ce cas le Host effectivement
-//     reçu par Django serait celui de cette URL fixe, pas celui du
-//     navigateur — l'en-tête reste alors la seule façon fiable de
-//     faire remonter le vrai sous-domaine tenant.
+//  2. En-tête X-Tenant-Domain sur chaque requête vers notre API.
+//     Valeur résolue DYNAMIQUEMENT via un getter fourni par l'appelant
+//     (voir installAuthFetchInterceptor ci-dessous) — PLUS une chaîne
+//     figée à l'installation : le getter passé depuis main.tsx
+//     (store/tenants.store.ts::getTenantHeaderValue) porte soit la
+//     liste CSV des tenants explicitement ACTIVÉS par l'utilisateur,
+//     soit, si aucun n'est activé, le repli HISTORIQUE à un seul
+//     tenant (sous-domaine du navigateur ou VITE_TENANT_HOST — voir
+//     config/env.ts / config/tenantHost.ts). Le backend
+//     (config/fonction.py:resolve_request_hostname côté tenant unique,
+//     futur middleware multi-tenant côté liste CSV) le préfère au Host
+//     HTTP standard quand présent. Utile même quand apiBaseUrl cible
+//     une origine fixe (VITE_API_BASE_URL explicite) : dans ce cas le
+//     Host effectivement reçu par Django serait celui de cette URL
+//     fixe, pas celui du navigateur — l'en-tête reste alors la seule
+//     façon fiable de faire remonter le(s) vrai(s) tenant(s).
 //
 // `window.fetch` est remplacé UNE SEULE FOIS, au démarrage de l'app
 // (voir installAuthFetchInterceptor(), appelé depuis main.tsx).
@@ -33,7 +39,11 @@ import { toast } from '../../../hooks/useToast';
 let installed = false;
 let originalFetch: typeof window.fetch | null = null;
 let currentApiBaseUrl: string | null = null;
-let currentTenantHost: string | null = null;
+// Getter (pas une valeur figée) : appelé à CHAQUE requête pour refléter
+// en temps réel l'activation/désactivation de tenants par l'utilisateur
+// (voir store/tenants.store.ts::getTenantHeaderValue), sans jamais
+// avoir besoin de réinstaller l'intercepteur.
+let getTenantHeaderValueFn: (() => string | null) | null = null;
 
 // Dédupliqué entre appels concurrents : si 3 requêtes échouent en 401
 // en même temps (ou si un refresh RÉACTIF sur 401 et un refresh PROACTIF
@@ -142,7 +152,8 @@ function withAuthorization(init: RequestInit | undefined, accessToken: string, t
 export function refreshAccessToken(): Promise<string | null> {
   if (!currentApiBaseUrl) return Promise.resolve(null);
   if (!refreshPromise) {
-    refreshPromise = performRefresh(currentApiBaseUrl, currentTenantHost).finally(() => {
+    const tenantHost = getTenantHeaderValueFn ? getTenantHeaderValueFn() : null;
+    refreshPromise = performRefresh(currentApiBaseUrl, tenantHost).finally(() => {
       refreshPromise = null;
     });
   }
@@ -152,12 +163,15 @@ export function refreshAccessToken(): Promise<string | null> {
 /**
  * Installe l'intercepteur. Idempotent pour le remplacement de
  * `window.fetch` (un second appel ne le patche pas deux fois), mais
- * `apiBaseUrl`/`tenantHost` sont toujours mémorisés pour `refreshAccessToken`.
- * `apiBaseUrl`/`tenantHost` doivent être `env.apiBaseUrl`/`env.tenantHost`.
+ * `apiBaseUrl`/`getTenantHeaderValue` sont toujours mémorisés (utilisés
+ * par `refreshAccessToken` et, surtout, RE-APPELÉS à chaque requête —
+ * voir plus bas — pour rester à jour même sans réinstallation).
+ * `apiBaseUrl` doit être `env.apiBaseUrl` ; `getTenantHeaderValue` doit
+ * être `store/tenants.store.ts::getTenantHeaderValue` (voir main.tsx).
  */
-export function installAuthFetchInterceptor(apiBaseUrl: string, tenantHost: string | null): void {
+export function installAuthFetchInterceptor(apiBaseUrl: string, getTenantHeaderValue: () => string | null): void {
   currentApiBaseUrl = apiBaseUrl;
-  currentTenantHost = tenantHost;
+  getTenantHeaderValueFn = getTenantHeaderValue;
 
   if (installed || typeof window === 'undefined') return;
   installed = true;
@@ -166,6 +180,10 @@ export function installAuthFetchInterceptor(apiBaseUrl: string, tenantHost: stri
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const isOwn = isOwnApiRequest(input, apiBaseUrl);
+    // Résolu ICI, à chaque requête -- pas une seule fois à l'installation
+    // -- pour refléter immédiatement une activation/désactivation de
+    // tenant faite entretemps par l'utilisateur (store/tenants.store.ts).
+    const tenantHost = isOwn && getTenantHeaderValueFn ? getTenantHeaderValueFn() : null;
     const requestInit = isOwn ? { ...init, headers: withTenantHeader(init?.headers, tenantHost) } : init;
 
     const response = await baseFetch(input, requestInit);
