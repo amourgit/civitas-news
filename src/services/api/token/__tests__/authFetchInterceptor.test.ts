@@ -12,15 +12,14 @@ import { tokenStore } from '../tokenStore';
  * Ce test vérifie qu'il est bien posé, à la base, sur CHAQUE requête
  * vers notre API -- pas seulement certaines.
  *
- * Depuis le chantier multi-tenant (voir store/tenants.store.ts),
  * `installAuthFetchInterceptor` prend un GETTER (`() => string | null`)
  * plutôt qu'une chaîne figée à l'installation -- il est réévalué à
- * CHAQUE requête, pour refléter immédiatement une activation/
- * désactivation de tenant faite entretemps par l'utilisateur, sans
- * jamais avoir besoin de réinstaller l'intercepteur. En pratique ce
- * getter est `store/tenants.store.ts::getTenantHeaderValue` (CSV des
- * tenants activés, ou repli sur le tenant unique historique) -- ici on
- * le simule avec un simple `vi.fn()` pour rester isolé du store.
+ * CHAQUE requête, pour refléter immédiatement un changement de tenant
+ * courant fait entretemps par l'utilisateur, sans jamais avoir besoin
+ * de réinstaller l'intercepteur. En pratique ce getter est
+ * `store/tenants.store.ts::getTenantHeaderValue` (le tenant COURANT de
+ * la session, un seul à la fois) -- ici on le simule avec un simple
+ * `vi.fn()` pour rester isolé du store.
  *
  * Note technique : installAuthFetchInterceptor REMPLACE `window.fetch`
  * par son propre wrapper (pas un vi.fn) -- on garde donc une référence
@@ -113,15 +112,16 @@ describe('installAuthFetchInterceptor — en-tête X-Tenant-Domain', () => {
     expect(headers.get('X-Tenant-Domain')).toBe('autretenant.vercel.app');
   });
 
-  it('pose une liste CSV quand le getter renvoie plusieurs tenants activés', async () => {
+  it('pose exactement la valeur renvoyée par le getter -- jamais plus d\'un tenant à la fois', async () => {
     const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
-    install(API_BASE_URL, () => 'civitas,moncampus');
+    install(API_BASE_URL, () => 'civitas');
 
     await fetch(`${API_BASE_URL}/sondages/v1/sondages/`);
 
     const call = mockFetch.mock.calls[0];
     const headers = new Headers(call[1]?.headers as HeadersInit);
-    expect(headers.get('X-Tenant-Domain')).toBe('civitas,moncampus');
+    expect(headers.get('X-Tenant-Domain')).toBe('civitas');
+    expect(headers.get('X-Tenant-Domain')).not.toContain(',');
   });
 
   it('réévalue le getter à CHAQUE requête (reflète une activation faite entretemps, sans réinstaller)', async () => {

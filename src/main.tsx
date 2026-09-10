@@ -36,9 +36,8 @@ if (typeof window !== 'undefined') {
 }
 
 // Refresh automatique et transparent des tokens expirés, + en-tête
-// X-Tenant-Domain sur chaque requête (liste CSV des tenants activés,
-// repli sur le tenant unique historique si aucun ne l'est) — voir
-// authFetchInterceptor.ts et store/tenants.store.ts.
+// X-Tenant-Domain sur chaque requête (tenant COURANT de la session, un
+// seul à la fois — voir authFetchInterceptor.ts et store/tenants.store.ts).
 installAuthFetchInterceptor(env.apiBaseUrl, getTenantHeaderValue);
 
 createRoot(document.getElementById('root')!).render(

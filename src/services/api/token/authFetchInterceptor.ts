@@ -16,18 +16,15 @@
 //     Valeur résolue DYNAMIQUEMENT via un getter fourni par l'appelant
 //     (voir installAuthFetchInterceptor ci-dessous) — PLUS une chaîne
 //     figée à l'installation : le getter passé depuis main.tsx
-//     (store/tenants.store.ts::getTenantHeaderValue) porte soit la
-//     liste CSV des tenants explicitement ACTIVÉS par l'utilisateur,
-//     soit, si aucun n'est activé, le repli HISTORIQUE à un seul
-//     tenant (sous-domaine du navigateur ou VITE_TENANT_HOST — voir
-//     config/env.ts / config/tenantHost.ts). Le backend
-//     (config/fonction.py:resolve_request_hostname côté tenant unique,
-//     futur middleware multi-tenant côté liste CSV) le préfère au Host
-//     HTTP standard quand présent. Utile même quand apiBaseUrl cible
-//     une origine fixe (VITE_API_BASE_URL explicite) : dans ce cas le
-//     Host effectivement reçu par Django serait celui de cette URL
-//     fixe, pas celui du navigateur — l'en-tête reste alors la seule
-//     façon fiable de faire remonter le(s) vrai(s) tenant(s).
+//     (store/tenants.store.ts::getTenantHeaderValue) porte le tenant
+//     COURANT de la session (un seul à la fois, jamais une liste —
+//     voir store/tenants.store.ts), ou `null` si aucun tenant courant
+//     n'est encore connu. Le backend (tenants/middleware.py) le
+//     préfère au Host HTTP standard quand présent. Utile même quand
+//     apiBaseUrl cible une origine fixe (VITE_API_BASE_URL explicite) :
+//     dans ce cas le Host effectivement reçu par Django serait celui
+//     de cette URL fixe, pas celui du navigateur — l'en-tête reste
+//     alors la seule façon fiable de faire remonter le vrai tenant.
 //
 // `window.fetch` est remplacé UNE SEULE FOIS, au démarrage de l'app
 // (voir installAuthFetchInterceptor(), appelé depuis main.tsx).

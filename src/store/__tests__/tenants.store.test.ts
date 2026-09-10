@@ -8,21 +8,8 @@
 // ============================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import type { TenantMembership } from '../../services/api/repositories/tenants.repository';
-
-const { authState, listMineMock } = vi.hoisted(() => ({
-  authState: { user: { id: 'user-1' }, isAuthenticated: true },
-  listMineMock: vi.fn(),
-}));
-
-vi.mock('../auth.store', () => ({
-  useAuthStore: () => authState,
-}));
-
-vi.mock('../../services/api/repositories/tenants.repository', () => ({
-  tenantsRepository: { listMine: listMineMock },
-}));
+import { renderHook, act } from '@testing-library/react';
+import type { TenantRef } from '../tenants.store';
 
 // Repli HISTORIQUE simulé (voir config/env.ts) -- une valeur fixe, comme
 // si le navigateur affichait "civitasnews.vercel.app" (ou VITE_TENANT_HOST).
@@ -30,26 +17,8 @@ vi.mock('../../config/env', () => ({
   env: { tenantHost: 'civitasnews.vercel.app' },
 }));
 
-const TENANT_A: TenantMembership = {
-  id: 1,
-  name: 'Civitas',
-  sousDomaine: 'civitas',
-  domainHeaderValue: 'civitas',
-  logo: null,
-  role: 'administrateur',
-  statutAdhesion: 'acceptee',
-  isActive: true,
-};
-const TENANT_B: TenantMembership = {
-  id: 2,
-  name: 'Mon Campus',
-  sousDomaine: 'moncampus',
-  domainHeaderValue: 'moncampus',
-  logo: null,
-  role: 'etudiant',
-  statutAdhesion: 'acceptee',
-  isActive: true,
-};
+const TENANT_A: TenantRef = { domainHeaderValue: 'civitas', name: 'Civitas' };
+const TENANT_B: TenantRef = { domainHeaderValue: 'moncampus', name: 'Mon Campus' };
 
 async function importFreshStore() {
   vi.resetModules();
@@ -59,107 +28,84 @@ async function importFreshStore() {
 describe('tenants.store', () => {
   beforeEach(() => {
     localStorage.clear();
-    listMineMock.mockReset();
-    authState.user = { id: 'user-1' };
-    authState.isAuthenticated = true;
   });
 
   afterEach(() => {
     vi.resetModules();
   });
 
-  it("charge les tenants dont l'utilisateur est membre, sans rien activer par défaut", async () => {
-    listMineMock.mockResolvedValue([TENANT_A, TENANT_B]);
-    const { useTenantsStore } = await importFreshStore();
+  it("retombe sur le repli historique (env.tenantHost) tant qu'aucun tenant n'a été ouvert sur cet appareil", async () => {
+    const { getTenantHeaderValue, getCurrentTenant } = await importFreshStore();
 
-    const { result } = renderHook(() => useTenantsStore());
-    await waitFor(() => expect(result.current.status).toBe('ready'));
-
-    expect(result.current.memberTenants).toEqual([TENANT_A, TENANT_B]);
-    expect(result.current.activeTenants).toEqual([]);
-  });
-
-  it('active puis désactive des tenants, et met à jour la valeur CSV en temps réel', async () => {
-    listMineMock.mockResolvedValue([TENANT_A, TENANT_B]);
-    const { useTenantsStore, getActiveTenantHeaderValue } = await importFreshStore();
-
-    const { result } = renderHook(() => useTenantsStore());
-    await waitFor(() => expect(result.current.status).toBe('ready'));
-    expect(getActiveTenantHeaderValue()).toBeNull();
-
-    act(() => result.current.activate(1));
-    expect(getActiveTenantHeaderValue()).toBe('civitas');
-
-    act(() => result.current.activate(2));
-    expect(getActiveTenantHeaderValue()).toBe('civitas,moncampus');
-
-    act(() => result.current.deactivate(1));
-    expect(getActiveTenantHeaderValue()).toBe('moncampus');
-  });
-
-  it("ignore l'activation d'un tenant dont l'utilisateur n'est PAS membre", async () => {
-    listMineMock.mockResolvedValue([TENANT_A]);
-    const { useTenantsStore } = await importFreshStore();
-
-    const { result } = renderHook(() => useTenantsStore());
-    await waitFor(() => expect(result.current.status).toBe('ready'));
-
-    act(() => result.current.activate(999));
-    expect(result.current.activeTenants).toEqual([]);
-  });
-
-  it('persiste les tenants activés PAR UTILISATEUR et les restaure au remontage (ex: rechargement de page)', async () => {
-    listMineMock.mockResolvedValue([TENANT_A, TENANT_B]);
-    const { useTenantsStore } = await importFreshStore();
-
-    const first = renderHook(() => useTenantsStore());
-    await waitFor(() => expect(first.result.current.status).toBe('ready'));
-    act(() => first.result.current.activate(2));
-    first.unmount();
-
-    const { useTenantsStore: useTenantsStoreAgain } = await importFreshStore();
-    const second = renderHook(() => useTenantsStoreAgain());
-    await waitFor(() => expect(second.result.current.status).toBe('ready'));
-
-    expect(second.result.current.activeTenants.map((t) => t.id)).toEqual([2]);
-  });
-
-  it("retombe sur le repli historique (env.tenantHost) tant qu'aucun tenant n'est activé", async () => {
-    listMineMock.mockResolvedValue([TENANT_A]);
-    const { useTenantsStore, getTenantHeaderValue } = await importFreshStore();
-
-    const { result } = renderHook(() => useTenantsStore());
-    await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(getTenantHeaderValue()).toBe('civitasnews.vercel.app');
+    expect(getCurrentTenant()).toEqual({ domainHeaderValue: 'civitasnews.vercel.app', name: 'civitasnews.vercel.app' });
+  });
 
-    act(() => result.current.activate(1));
+  it('switchTenant remplace intégralement le tenant courant (jamais une addition)', async () => {
+    const { switchTenant, getTenantHeaderValue, getCurrentTenant } = await importFreshStore();
+
+    switchTenant(TENANT_A);
     expect(getTenantHeaderValue()).toBe('civitas');
+    expect(getCurrentTenant()).toEqual(TENANT_A);
+
+    switchTenant(TENANT_B);
+    expect(getTenantHeaderValue()).toBe('moncampus');
+    expect(getCurrentTenant()).toEqual(TENANT_B);
   });
 
-  it("réinitialise tout (pas de fuite entre comptes) quand l'utilisateur redevient anonyme", async () => {
-    listMineMock.mockResolvedValue([TENANT_A]);
-    const { useTenantsStore, getActiveTenantHeaderValue } = await importFreshStore();
+  it('ne construit jamais une liste -- une seule valeur de tenant à la fois dans le header', async () => {
+    const { switchTenant, getTenantHeaderValue } = await importFreshStore();
 
-    const { result, rerender } = renderHook(() => useTenantsStore());
-    await waitFor(() => expect(result.current.status).toBe('ready'));
-    act(() => result.current.activate(1));
+    switchTenant(TENANT_A);
+    switchTenant(TENANT_B);
 
-    authState.isAuthenticated = false;
-    rerender();
-    await waitFor(() => expect(result.current.status).toBe('idle'));
-
-    expect(result.current.memberTenants).toEqual([]);
-    expect(getActiveTenantHeaderValue()).toBeNull();
+    const value = getTenantHeaderValue();
+    expect(value).toBe('moncampus');
+    expect(value).not.toContain(',');
   });
 
-  it("endpoint pas encore branché côté backend (échec) -> aucun crash, repli complet sur l'historique", async () => {
-    listMineMock.mockRejectedValue(new Error('404 Not Found'));
-    const { useTenantsStore, getTenantHeaderValue } = await importFreshStore();
+  it('mémorise les tenants ouverts localement pour le switch rapide, sans doublon, le plus récent en tête', async () => {
+    const { switchTenant, getRecentTenants } = await importFreshStore();
 
+    switchTenant(TENANT_A);
+    switchTenant(TENANT_B);
+    switchTenant(TENANT_A); // ré-ouvre A -> remonte en tête, pas de doublon
+
+    expect(getRecentTenants()).toEqual([TENANT_A, TENANT_B]);
+  });
+
+  it('restaure le dernier tenant ouvert au remontage (ex: rechargement de page)', async () => {
+    const { switchTenant } = await importFreshStore();
+    switchTenant(TENANT_A);
+    switchTenant(TENANT_B);
+
+    const { getCurrentTenant, getRecentTenants } = await importFreshStore();
+    expect(getCurrentTenant()).toEqual(TENANT_B);
+    expect(getRecentTenants()).toEqual([TENANT_B, TENANT_A]);
+  });
+
+  it("la mémoire locale des tenants visités n'accorde aucun accès -- ce n'est qu'un raccourci de navigation", async () => {
+    const { switchTenant, forgetRecentTenant, getRecentTenants, getCurrentTenant } = await importFreshStore();
+
+    switchTenant(TENANT_A);
+    switchTenant(TENANT_B);
+    // Retirer un tenant de l'historique local ne fait qu'un ménage
+    // d'UI : ça ne révoque rien côté backend, et si ce n'est pas le
+    // tenant courant, currentTenant n'est même pas affecté.
+    forgetRecentTenant(TENANT_A.domainHeaderValue);
+
+    expect(getRecentTenants()).toEqual([TENANT_B]);
+    expect(getCurrentTenant()).toEqual(TENANT_B);
+  });
+
+  it('useTenantsStore notifie les composants montés quand le tenant courant change', async () => {
+    const { useTenantsStore, switchTenant } = await importFreshStore();
     const { result } = renderHook(() => useTenantsStore());
-    await waitFor(() => expect(result.current.status).toBe('error'));
 
-    expect(result.current.memberTenants).toEqual([]);
-    expect(getTenantHeaderValue()).toBe('civitasnews.vercel.app');
+    expect(result.current.currentTenant?.domainHeaderValue).toBe('civitasnews.vercel.app');
+
+    act(() => switchTenant(TENANT_A));
+    expect(result.current.currentTenant).toEqual(TENANT_A);
+    expect(result.current.recentTenants).toEqual([TENANT_A]);
   });
 });

@@ -1,142 +1,185 @@
 // ============================================================
 // src/store/tenants.store.ts
-// Store des tenants — remplace la notion d'"un seul tenant fixe pour
-// tout le déploiement" (voir config/tenantHost.ts / config/env.ts,
-// conservés comme REPLI, jamais supprimés) par une liste explicite :
+// Store du tenant COURANT — une session applicative travaille TOUJOURS
+// dans un seul tenant à la fois (voir tenants/middleware.py côté
+// backend, qui résout un seul tenant par requête depuis
+// X-Tenant-Domain / Host). Il n'existe plus de notion de "tenants
+// actifs" multiples : ce fichier remplace intégralement l'ancienne
+// version qui posait une liste CSV de tenants activés dans l'en-tête.
 //
-//  - memberTenants : tous les tenants dont l'utilisateur COURANT est
-//    membre (adhesions.MembreTenant côté backend), qu'ils soient
-//    activés ou non.
-//  - tenants ACTIVÉS : sous-ensemble de memberTenants explicitement
-//    choisi par l'utilisateur (persisté PAR UTILISATEUR en
-//    localStorage) — ce sont eux, et EUX SEULS, que
-//    getActiveTenantHeaderValue() expose pour l'en-tête
-//    X-Tenant-Domain (voir services/api/token/authFetchInterceptor.ts).
+// Chaque tenant a ses propres utilisateurs et sa propre authentification
+// (schema Postgres dédié, users.User local — voir users/models.py,
+// token_manager/api/v1/views.py côté backend). Il n'existe AUCUNE
+// identité globale reliant les comptes de deux tenants entre eux :
+// changer de tenant, c'est changer de contexte d'authentification, pas
+// choisir dans une liste de "mes organisations" adossée à un compte
+// global. Voir switchTenant() ci-dessous.
 //
-// ⚠️ Contrat backend ATTENDU mais PAS ENCORE IMPLÉMENTÉ au moment
-// d'écrire ce fichier (voir tenantsRepository.listMine et le
-// commentaire de contrat dans tenants.repository.ts). Tant que
-// GET /tenants/v1/mine/ n'existe pas côté backend, ensureMembershipLoaded
-// échoue silencieusement (log console, memberTenants reste vide) et
-// getTenantHeaderValue() retombe intégralement sur le mécanisme
-// HISTORIQUE (env.tenantHost, un seul tenant) — ce fichier n'introduit
-// donc AUCUNE régression tant que le backend n'est pas branché.
+// Deux notions bien séparées :
+//  - currentTenant : LE tenant dans lequel la session travaille en ce
+//    moment. C'est lui, et lui seul, qui alimente l'en-tête
+//    X-Tenant-Domain (voir getTenantHeaderValue, consommé par
+//    services/api/token/authFetchInterceptor.ts).
+//  - recentTenants : simple historique LOCAL (localStorage, propre à cet
+//    appareil/navigateur) des tenants déjà ouverts, pour proposer un
+//    switch rapide dans l'UI. N'accorde AUCUN accès : ce n'est qu'un
+//    raccourci de navigation. La présence d'un tenant dans cet
+//    historique ne prouve rien côté sécurité — l'authentification (et
+//    donc l'autorisation) reste entièrement à la charge du backend au
+//    moment où l'on rebascule dessus. Voir switchTenant().
 //
-// Même pattern "store maison" que les autres stores de ce dossier
+// Pattern "store maison" identique aux autres stores de ce dossier
 // (état de module + Set de listeners notifiés via useState/useEffect) —
-// pas de lib externe (zustand/redux), voir auth.store.ts /
-// notifications.store.ts.
+// voir auth.store.ts / notifications.store.ts.
 // ============================================================
 
 import { useEffect, useState } from 'react';
-import { useAuthStore } from './auth.store';
-import { tenantsRepository, type TenantMembership } from '../services/api/repositories/tenants.repository';
 import { env } from '../config/env';
 
-export type { TenantMembership };
+/**
+ * Un tenant tel que connu du frontend — juste assez d'informations pour
+ * réafficher un sélecteur de switch rapide et reconstruire l'en-tête
+ * X-Tenant-Domain. `domainHeaderValue` est la valeur EXACTE à poser
+ * dans cet en-tête (sous-domaine ou domaine explicitement enregistré
+ * côté backend, voir domain.Domain) — ne jamais tenter de la
+ * recalculer ailleurs à partir d'un autre champ.
+ */
+export interface TenantRef {
+  domainHeaderValue: string;
+  name: string;
+}
 
-export type MembershipStatus = 'idle' | 'loading' | 'ready' | 'error';
+const RECENT_TENANTS_STORAGE_KEY = 'civitas_recent_tenants';
+const MAX_RECENT_TENANTS = 8;
 
-let memberTenants: TenantMembership[] = [];
-let activeTenantIds: Set<number> = new Set();
-let membershipStatus: MembershipStatus = 'idle';
-// Utilisateur pour lequel memberTenants/activeTenantIds sont valides —
-// évite de recharger à chaque rendu ET de garder la liste d'un ancien
-// utilisateur affichée après un changement de compte sur le même poste.
-let loadedForUserId: string | null = null;
+let currentTenant: TenantRef | null = null;
+let recentTenants: TenantRef[] = [];
+let hydrated = false;
 const listeners = new Set<() => void>();
 
 function notify(): void {
   listeners.forEach((listener) => listener());
 }
 
-function storageKey(userId: string): string {
-  return `civitas_active_tenants_${userId}`;
+function isTenantRef(value: unknown): value is TenantRef {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as TenantRef).domainHeaderValue === 'string' &&
+    typeof (value as TenantRef).name === 'string'
+  );
 }
 
-/** Ne restaure que les ids encore réellement membres (une adhésion a pu être retirée entretemps). */
-function loadPersistedActiveIds(userId: string, tenants: TenantMembership[]): Set<number> {
-  if (typeof window === 'undefined') return new Set();
+function readRecentTenants(): TenantRef[] {
+  if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(storageKey(userId));
-    if (!raw) return new Set();
+    const raw = localStorage.getItem(RECENT_TENANTS_STORAGE_KEY);
+    if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set();
-    const validIds = new Set(tenants.map((t) => t.id));
-    return new Set(parsed.filter((id): id is number => typeof id === 'number' && validIds.has(id)));
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isTenantRef);
   } catch {
-    return new Set();
+    return [];
   }
 }
 
-function persistActiveIds(userId: string, ids: Set<number>): void {
+function persistRecentTenants(tenants: TenantRef[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(storageKey(userId), JSON.stringify(Array.from(ids)));
+    localStorage.setItem(RECENT_TENANTS_STORAGE_KEY, JSON.stringify(tenants));
   } catch {
-    // Stockage indisponible (navigation privée, quota) — l'activation
-    // reste effective pour la session en cours, seulement non persistée.
+    // Stockage indisponible (navigation privée, quota) — le switch
+    // rapide est simplement absent cette session, sans impact
+    // fonctionnel sur le tenant courant lui-même.
   }
-}
-
-/** Charge (une seule fois par utilisateur, tant qu'on ne force pas via refresh()) la liste de ses adhésions. */
-async function ensureMembershipLoaded(userId: string): Promise<void> {
-  if (loadedForUserId === userId) return;
-  loadedForUserId = userId;
-  membershipStatus = 'loading';
-  notify();
-  try {
-    memberTenants = await tenantsRepository.listMine();
-    activeTenantIds = loadPersistedActiveIds(userId, memberTenants);
-    membershipStatus = 'ready';
-  } catch (error) {
-    // Endpoint pas encore branché côté backend (voir en-tête de fichier)
-    // OU erreur réseau réelle — dans les deux cas on retombe simplement
-    // sur "aucun tenant activé", jamais un plantage de l'app.
-    console.error('Échec du chargement de mes tenants:', error);
-    memberTenants = [];
-    activeTenantIds = new Set();
-    membershipStatus = 'error';
-  }
-  notify();
-}
-
-function resetMembership(): void {
-  loadedForUserId = null;
-  memberTenants = [];
-  activeTenantIds = new Set();
-  membershipStatus = 'idle';
-  notify();
 }
 
 /**
- * Valeur à poser dans l'en-tête X-Tenant-Domain, SANS dépendre de
- * React — appelée directement par authFetchInterceptor.ts (installé
- * hors de l'arbre de composants, voir main.tsx). CSV des tenants
- * ACTIVÉS s'il y en a au moins un, sinon `null` (voir
- * getTenantHeaderValue ci-dessous pour le repli).
+ * Initialise currentTenant au tout premier accès : le tenant le plus
+ * récemment ouvert sur cet appareil, sinon repli sur le mécanisme
+ * historique (sous-domaine affiché par le navigateur, ou
+ * VITE_TENANT_HOST pour un déploiement figé sur un tenant précis — voir
+ * config/env.ts / config/tenantHost.ts).
+ *
+ * Ce n'est qu'une VALEUR DE DÉPART, jamais une constante figée pour
+ * toute la session : dès que switchTenant() est appelé, currentTenant
+ * change et toutes les requêtes suivantes utilisent la nouvelle valeur.
  */
-export function getActiveTenantHeaderValue(): string | null {
-  if (activeTenantIds.size === 0) return null;
-  const values = memberTenants.filter((t) => activeTenantIds.has(t.id)).map((t) => t.domainHeaderValue);
-  return values.length > 0 ? values.join(',') : null;
+function ensureHydrated(): void {
+  if (hydrated) return;
+  hydrated = true;
+  recentTenants = readRecentTenants();
+  if (recentTenants.length > 0) {
+    currentTenant = recentTenants[0];
+  } else if (env.tenantHost) {
+    currentTenant = { domainHeaderValue: env.tenantHost, name: env.tenantHost };
+  } else {
+    currentTenant = null;
+  }
 }
 
 /**
- * Composition complète à passer à installAuthFetchInterceptor (voir
- * main.tsx) : tenants activés (CSV) si l'utilisateur en a
- * explicitement choisi, SINON repli sur le mécanisme HISTORIQUE (un
- * seul tenant, sous-domaine du navigateur ou VITE_TENANT_HOST — voir
- * config/env.ts). Garantit qu'un visiteur anonyme ou un utilisateur
- * qui n'a encore rien activé continue de fonctionner EXACTEMENT comme
- * avant ce chantier.
+ * Valeur à poser dans l'en-tête X-Tenant-Domain pour la requête EN
+ * COURS — appelée par authFetchInterceptor.ts À CHAQUE fetch, jamais
+ * mémorisée une seule fois. `null` = aucun tenant courant connu ; le
+ * backend retombe alors sur la résolution par Host HTTP standard.
  */
 export function getTenantHeaderValue(): string | null {
-  return getActiveTenantHeaderValue() ?? env.tenantHost;
+  ensureHydrated();
+  return currentTenant?.domainHeaderValue ?? null;
+}
+
+export function getCurrentTenant(): TenantRef | null {
+  ensureHydrated();
+  return currentTenant;
+}
+
+export function getRecentTenants(): TenantRef[] {
+  ensureHydrated();
+  return recentTenants;
+}
+
+/**
+ * Bascule la session sur un AUTRE tenant. Remplace intégralement le
+ * contexte courant — jamais d'ajout à une liste de tenants actifs, voir
+ * l'en-tête de ce fichier — et enregistre ce tenant dans l'historique
+ * local de switch rapide (dédupliqué, le plus récent en tête).
+ *
+ * N'authentifie PAS : chaque tenant ayant ses propres comptes
+ * utilisateur, la session d'authentification du tenant précédent n'a
+ * aucun sens dans le nouveau. C'est à l'appelant (l'écran de switch)
+ * de déclencher ensuite authStore.logout() puis, si nécessaire, un
+ * nouveau login dans le tenant cible.
+ */
+export function switchTenant(tenant: TenantRef): void {
+  ensureHydrated();
+  currentTenant = tenant;
+  const withoutDuplicate = recentTenants.filter((t) => t.domainHeaderValue !== tenant.domainHeaderValue);
+  recentTenants = [tenant, ...withoutDuplicate].slice(0, MAX_RECENT_TENANTS);
+  persistRecentTenants(recentTenants);
+  notify();
+}
+
+/**
+ * Retire un tenant de l'historique local de switch rapide (ex: devenu
+ * invalide, ou nettoyage explicite demandé par l'utilisateur). N'a
+ * aucun effet sur currentTenant si ce n'est pas le tenant retiré —
+ * conforme à la règle "le stockage local n'est jamais une preuve
+ * d'autorisation" : le supprimer ne révoque rien côté backend, il
+ * disparaît juste du sélecteur de switch rapide.
+ */
+export function forgetRecentTenant(domainHeaderValue: string): void {
+  ensureHydrated();
+  recentTenants = recentTenants.filter((t) => t.domainHeaderValue !== domainHeaderValue);
+  if (currentTenant?.domainHeaderValue === domainHeaderValue) {
+    currentTenant = recentTenants[0] ?? null;
+  }
+  persistRecentTenants(recentTenants);
+  notify();
 }
 
 export function useTenantsStore() {
-  const { user, isAuthenticated } = useAuthStore();
+  ensureHydrated();
   const [, forceRender] = useState(0);
 
   useEffect(() => {
@@ -147,55 +190,10 @@ export function useTenantsStore() {
     };
   }, []);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      void ensureMembershipLoaded(user.id);
-    } else {
-      resetMembership();
-    }
-  }, [isAuthenticated, user.id]);
-
-  const activeTenants = memberTenants.filter((t) => activeTenantIds.has(t.id));
-
-  const isActive = (tenantId: number): boolean => activeTenantIds.has(tenantId);
-
-  const activate = (tenantId: number): void => {
-    if (!isAuthenticated) return;
-    if (!memberTenants.some((t) => t.id === tenantId) || activeTenantIds.has(tenantId)) return;
-    activeTenantIds = new Set(activeTenantIds).add(tenantId);
-    persistActiveIds(user.id, activeTenantIds);
-    notify();
-  };
-
-  const deactivate = (tenantId: number): void => {
-    if (!isAuthenticated || !activeTenantIds.has(tenantId)) return;
-    const next = new Set(activeTenantIds);
-    next.delete(tenantId);
-    activeTenantIds = next;
-    persistActiveIds(user.id, activeTenantIds);
-    notify();
-  };
-
-  const toggle = (tenantId: number): void => {
-    if (activeTenantIds.has(tenantId)) deactivate(tenantId);
-    else activate(tenantId);
-  };
-
-  /** Force un rechargement (ex: après acceptation d'une nouvelle adhésion pendant la session). */
-  const refresh = (): Promise<void> => {
-    loadedForUserId = null;
-    return ensureMembershipLoaded(user.id);
-  };
-
   return {
-    status: membershipStatus,
-    isLoading: membershipStatus === 'loading',
-    memberTenants,
-    activeTenants,
-    isActive,
-    activate,
-    deactivate,
-    toggle,
-    refresh,
+    currentTenant,
+    recentTenants,
+    switchTenant,
+    forgetRecentTenant,
   };
 }
