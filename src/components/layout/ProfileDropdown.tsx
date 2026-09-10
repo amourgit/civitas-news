@@ -234,9 +234,7 @@ export const ProfileDropdown: React.FC = () => {
     }
   };
 
-  // `user.role` est nullable (voir UtilisateurSchema) : un compte sans
-  // adhésion dans ce tenant n'a simplement pas de rôle applicatif ici.
-  const roleLabel = user.role ? (ROLE_LABELS[user.role] ?? user.role) : 'Membre';
+  const roleLabel = ROLE_LABELS[user.role] ?? user.role;
 
   return (
     <>

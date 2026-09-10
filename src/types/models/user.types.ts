@@ -47,16 +47,7 @@ export const UtilisateurSchema = z.object({
   // get_avatar renvoie None si pas de profile_picture -> null JSON, pas
   // une clé absente : nullable ET optional (pas juste optional).
   avatar: z.string().nullable().optional(),
-  // Depuis la réforme identité globale / adhésion tenant (Backend-Core-Base,
-  // commit e72cf35) : role/etablissement/badges sont résolus via
-  // adhesions.MembreTenant DANS LE TENANT COURANT, plus via un champ direct
-  // de User. get_role() renvoie None si aucune adhésion n'existe pour cet
-  // utilisateur dans ce tenant (compte créé avant la réforme et pas encore
-  // migré, ou compte global sans adhésion à cet espace) -> nullable
-  // obligatoire ici, sinon UNE SEULE news dont l'auteur n'a pas encore
-  // d'adhésion fait échouer le .parse() Zod de TOUTE la page (voir
-  // paginatedSchema en amont) et vide tout le fil de news côté UI.
-  role: RoleUtilisateurSchema.nullable(),
+  role: RoleUtilisateurSchema,
   // CharField(source='etablissement.nom', default=None) -> null JSON si
   // l'utilisateur n'a pas d'établissement.
   etablissement: z.string().nullable().optional(),
