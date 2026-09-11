@@ -6,6 +6,15 @@ import { RequestSanitizer } from "./utils/sanitizer";
 import { UrlBuilder } from "./utils/urlBuilder";
 import { ApiError, ValidationError, NetworkError } from "./errors";
 import { z } from "zod";
+// Nécessaire UNIQUEMENT pour le chemin XMLHttpRequest ci-dessous (upload
+// avec suivi de progression) : ce chemin n'appelle jamais `fetch`, donc
+// n'est jamais vu par l'intercepteur global (voir
+// token/authFetchInterceptor.ts) qui injecte normalement X-Tenant-Domain
+// sur toute requête vers notre API. Sans cet import, un upload avec
+// progression partirait sans le tenant courant -- exception silencieuse
+// au contrat "toute requête tenantisée porte le tenant courant, sans
+// exception" (voir store/tenants.store.ts).
+import { getTenantHeaderValue } from "../../store/tenants.store";
 
 
 export class PostService extends BaseHttpService {
@@ -364,7 +373,17 @@ export class PostService extends BaseHttpService {
           xhr.ontimeout = () => reject(new NetworkError('Upload timeout'));
           
           xhr.open('POST', url);
-          Object.entries(headers as Record<string, string>).forEach(([key, value]) => {
+          // XMLHttpRequest ne passe jamais par `fetch` -> jamais par
+          // l'intercepteur global. On réplique ici, à l'identique, la
+          // même règle que `withTenantHeader()` (authFetchInterceptor.ts) :
+          // le tenant COURANT (un seul, jamais une liste), et on ne
+          // l'ajoute que si l'appelant n'a pas déjà fixé la valeur.
+          const xhrHeaders: Record<string, string> = { ...(headers as Record<string, string>) };
+          const tenantHost = getTenantHeaderValue();
+          if (tenantHost && !('X-Tenant-Domain' in xhrHeaders)) {
+            xhrHeaders['X-Tenant-Domain'] = tenantHost;
+          }
+          Object.entries(xhrHeaders).forEach(([key, value]) => {
             xhr.setRequestHeader(key, value);
           });
           
