@@ -34,6 +34,7 @@ const ReelsDirectsPage = lazy(() => import('./pages/ReelsDirectsPage'));
 const StatistiquesPage = lazy(() => import('./pages/StatistiquesPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const ProfilPage = lazy(() => import('./pages/ProfilPage'));
+const CreerOrganisationPage = lazy(() => import('./pages/CreerOrganisationPage'));
 const ParametresPage = lazy(() => import('./pages/ParametresPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 const BackofficeListPage = lazy(() => import('./pages/admin/BackofficeListPage'));
@@ -123,6 +124,7 @@ export function App() {
                       <Route path="/statistiques" element={<StatistiquesPage />} />
                       <Route path="/notifications" element={<NotificationsPage />} />
                       <Route path="/profil" element={<ProfilPage />} />
+                      <Route path="/organisations/creer" element={<CreerOrganisationPage />} />
                       <Route path="/parametres" element={<ParametresPage />} />
                       {/* Backoffice « à la Django admin » — voir
                           src/components/backoffice/. Une seule paire de
