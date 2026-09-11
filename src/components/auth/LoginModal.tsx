@@ -49,7 +49,9 @@ import { toast } from '../../hooks/useToast';
 import { ApiError } from '../../services/api/errors';
 import GoogleSignInButton from './GoogleSignInButton';
 import ComingSoonProviderButton from './ComingSoonProviderButton';
+import { TenantSelectButton } from './TenantSelectButton';
 import { AuthGlassStyles, AuthGradientBackground, GlassButton, BlurFade, TextLoop, MiniConfetti, type MiniConfettiHandle } from './AuthGlassKit';
+import { getCurrentTenant, switchTenant, type TenantRef } from '../../store/tenants.store';
 
 type Mode = 'login' | 'register';
 type Step = 'identifiant' | 'password';
@@ -83,6 +85,15 @@ export default function LoginModal() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [accountNotFound, setAccountNotFound] = useState(false);
 
+  // Organisation (tenant) ciblée par CETTE tentative de connexion ou
+  // d'inscription -- jamais deviné, toujours un choix explicite (voir
+  // TenantSelectButton.tsx). Pré-rempli avec le tenant courant connu du
+  // store (dernier visité sur cet appareil, ou repli historique) pour
+  // ne pas pénaliser un utilisateur qui revient, mais reste soumis à la
+  // même validation que n'importe quel autre champ requis ci-dessous.
+  const [selectedTenant, setSelectedTenant] = useState<TenantRef | null>(() => getCurrentTenant());
+  const [tenantError, setTenantError] = useState(false);
+
   // --- État purement visuel (étapes du popup, visibilité du mot de
   // passe, message de succès affiché pendant la pause+confettis avant
   // fermeture) -- ne change jamais la façon dont une connexion, une
@@ -108,6 +119,10 @@ export default function LoginModal() {
       setStep('identifiant');
       setShowPassword(false);
       setSuccessMessage(null);
+      // Resynchronise sur le tenant courant réel : il a pu changer
+      // ailleurs (switch rapide) pendant que ce popup était fermé.
+      setSelectedTenant(getCurrentTenant());
+      setTenantError(false);
     }
   }, [loginModalOpen]);
 
@@ -142,8 +157,24 @@ export default function LoginModal() {
   const isIdentifiantFilled = identifiant.trim().length > 0;
 
   const goToPasswordStep = () => {
+    if (!selectedTenant) {
+      setTenantError(true);
+      return;
+    }
     if (!isIdentifiantFilled || submitting) return;
     setStep('password');
+  };
+
+  /**
+   * Injection IMMÉDIATE dans tenants.store, dès le clic -- pas
+   * seulement à la soumission du formulaire (voir en-tête de
+   * TenantSelectButton.tsx) : GoogleSignInButton peut être cliqué
+   * juste après, avant tout envoi de identifiant/password.
+   */
+  const handleTenantSelect = (tenant: TenantRef) => {
+    setSelectedTenant(tenant);
+    setTenantError(false);
+    switchTenant(tenant);
   };
 
   const goBackToIdentifiantStep = () => {
@@ -180,6 +211,11 @@ export default function LoginModal() {
     setFormError(null);
     setFieldErrors({});
     setAccountNotFound(false);
+    if (!selectedTenant) {
+      setTenantError(true);
+      setFormError('Choisissez une organisation avant de continuer.');
+      return;
+    }
     if (!identifiant.trim() || !password) {
       setFormError('Identifiant (email ou téléphone) et mot de passe sont requis.');
       return;
@@ -205,6 +241,11 @@ export default function LoginModal() {
     e.preventDefault();
     setFormError(null);
     setFieldErrors({});
+    if (!selectedTenant) {
+      setTenantError(true);
+      setFormError('Choisissez une organisation avant de continuer.');
+      return;
+    }
     if (!identifiant.trim()) {
       setFieldErrors({ identifiant: 'Entrez un email ou un numéro de téléphone.' });
       return;
@@ -240,6 +281,11 @@ export default function LoginModal() {
   /** Confirmation de la proposition "aucun compte trouvé -> en créer un". */
   const handleCreateAccount = async () => {
     setFormError(null);
+    if (!selectedTenant) {
+      setTenantError(true);
+      setFormError('Choisissez une organisation avant de continuer.');
+      return;
+    }
     setSubmitting(true);
     try {
       const profile = await register({ identifiant: identifiant.trim(), password });
@@ -260,6 +306,11 @@ export default function LoginModal() {
   const handleGoogleCredential = async (credential: string) => {
     setFormError(null);
     setAccountNotFound(false);
+    if (!selectedTenant) {
+      setTenantError(true);
+      setFormError('Choisissez une organisation avant de continuer.');
+      return;
+    }
     setSubmitting(true);
     try {
       const profile = await loginWithGoogle(credential);
@@ -320,6 +371,16 @@ export default function LoginModal() {
             <p className="mt-1.5 text-[12.5px] text-gray-500 dark:text-gray-400">{subtitle}</p>
           </BlurFade>
 
+          <BlurFade delay={0.03} className="w-full pt-4">
+            <TenantSelectButton
+              value={selectedTenant}
+              onSelect={handleTenantSelect}
+              disabled={blocked}
+              hasError={tenantError}
+            />
+            {tenantError && <p className="mt-1 text-xs font-medium text-red-500">Choisissez une organisation pour continuer.</p>}
+          </BlurFade>
+
           <AnimatePresence initial={false}>
             {step === 'identifiant' && (
               <motion.div
@@ -334,7 +395,7 @@ export default function LoginModal() {
                   <div className="civ-auth-glass-static rounded-2xl p-1">
                     <GoogleSignInButton
                       onCredential={handleGoogleCredential}
-                      disabled={blocked}
+                      disabled={blocked || !selectedTenant}
                       text={mode === 'login' ? 'signin_with' : 'signup_with'}
                     />
                   </div>

@@ -26,6 +26,16 @@ export interface InlineCellPopoverProps {
   /** Largeur minimale du panneau (défaut : largeur du déclencheur). */
   panelMinWidth?: number;
   panelClassName?: string;
+  /**
+   * Style inline additionnel fusionné APRÈS le positionnement calculé
+   * (top/left/transform) -- utile pour un z-index ponctuel plus fiable
+   * qu'une classe Tailwind (dont l'ordre de priorité face au `z-40`
+   * ci-dessous dépend de l'ordre de génération du CSS, pas de l'ordre
+   * des classes dans l'attribut). Ex : un consommateur monté à
+   * l'intérieur d'une autre superposition en z-[100] (LoginModal) doit
+   * pouvoir garantir de passer AU-DESSUS.
+   */
+  panelStyle?: React.CSSProperties;
   children: React.ReactNode;
 }
 
@@ -44,6 +54,7 @@ export const InlineCellPopover: React.FC<InlineCellPopoverProps> = ({
   onOpenChange,
   panelMinWidth,
   panelClassName,
+  panelStyle,
   children,
 }) => {
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -116,6 +127,7 @@ export const InlineCellPopover: React.FC<InlineCellPopoverProps> = ({
               left: coords.left,
               minWidth: coords.width,
               transform: coords.openUpward ? 'translateY(-100%)' : undefined,
+              ...panelStyle,
             }}
             className={`z-40 rounded-xl bg-white dark:bg-[#1A1F4D] shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden ${panelClassName ?? ''}`}
           >

@@ -25,20 +25,28 @@ import {
 } from '../services/api/token/tokenLifecycle';
 import { hasPermission, hasAnyPermission, canOnResource } from '../lib/permissions/hasPermission';
 import type { Permission } from '../lib/permissions/permissions.catalog';
-import { getTenantHeaderValue, switchTenant } from './tenants.store';
+import { getTenantHeaderValue, getCurrentTenant, switchTenant } from './tenants.store';
 
 /**
  * À appeler juste après un login/register/Google-auth réussi. Enregistre
  * ce tenant comme tenant courant (voir tenants.store.ts::switchTenant)
  * -- lu ICI (getTenantHeaderValue()), jamais deviné après coup : c'est
  * la valeur qui a RÉELLEMENT été envoyée en X-Tenant-Domain pour cette
- * tentative précise. Pas de nom plus précis disponible à ce stade (ni
- * login ni /users/v1/users/me/ ne renvoient le nom du tenant) -- même
- * repli que ensureHydrated() dans tenants.store.ts.
+ * tentative précise.
+ *
+ * Ne réécrit PAS si currentTenant porte déjà cette même valeur : c'est
+ * le cas normal depuis que LoginModal impose un choix explicite via
+ * TenantSelectButton (voir handleTenantSelect), qui connaît le VRAI nom
+ * de l'organisation (annuaire GET /tenants/v1/) -- switchTenant() ici
+ * écraserait ce nom par le repli domainHeaderValue-comme-nom ci-dessous.
+ * Ce repli ne sert plus que pour un login déclenché hors LoginModal
+ * (aucun cas actuel, mais aucune raison de le supprimer).
  */
 function noteTenantLoginSuccess(): void {
   const domainHeaderValue = getTenantHeaderValue();
-  if (domainHeaderValue) switchTenant({ domainHeaderValue, name: domainHeaderValue });
+  if (!domainHeaderValue) return;
+  if (getCurrentTenant()?.domainHeaderValue === domainHeaderValue) return;
+  switchTenant({ domainHeaderValue, name: domainHeaderValue });
 }
 
 export const ANONYMOUS_USER: Utilisateur = {
