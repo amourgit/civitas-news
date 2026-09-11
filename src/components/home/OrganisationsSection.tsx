@@ -2,18 +2,68 @@
 // src/components/home/OrganisationsSection.tsx
 // Section "Organisations" de la page d'accueil -- même pattern que
 // MeteoLiquidGlassSection.tsx (titre + sous-titre à gauche, action à
-// droite, puis contenu) ; le contenu ici est la liste des organisations
-// (tenants), chacune rendue via OrganisationCard (voir ce fichier :
-// design/animations copiés tels quels du composant fourni).
+// droite, puis contenu). Le contenu ici est la liste des TENANTS actifs
+// de la plateforme (annuaire public, GET /tenants/v1/ -- voir
+// tenantsRepository.list()) : chaque tenant EST une organisation au
+// sens de cette section -- referentiels.Organisation (associations,
+// clubs... à l'intérieur d'UN tenant, voir useReferentiels) est un tout
+// autre concept, sans rapport ici.
+//
+// Carte réutilisée TELLE QUELLE (OrganisationCard.tsx, design/animations
+// copiés du composant fourni, non modifiés) : seule la fonction de
+// conversion Tenant -> Organisation ci-dessous adapte les données à ses
+// champs attendus (organisation.id doit être une chaîne : String(tenant.id)).
 // ============================================================
-import React from 'react';
-import { Building2 } from 'lucide-react';
-import { useReferentiels } from '../../features/news/hooks/useReferentiels';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Building2, Plus } from 'lucide-react';
+import { tenantsRepository, type Tenant } from '../../services/api/repositories/tenants.repository';
+import type { Organisation } from '../../types/global.types';
 import { Skeleton } from '../ui/Skeleton';
+import { Button } from '../ui/Button';
 import { OrganisationCard } from './organisations/OrganisationCard';
 
+/** Un tenant de l'annuaire public, présenté à OrganisationCard comme une
+ * Organisation -- seuls les champs que la carte lit réellement sont
+ * renseignés (voir OrganisationCard.tsx : logo/nom/type/id/creeLe/description). */
+function tenantVersOrganisation(tenant: Tenant): Organisation {
+  return {
+    id: String(tenant.id),
+    nom: tenant.name,
+    logo: tenant.logo ?? null,
+    type: 'Organisation',
+    description: tenant.description ?? '',
+    creeLe: tenant.createdAt,
+  };
+}
+
 export const OrganisationsSection: React.FC = () => {
-  const { organisations, isLoading, error } = useReferentiels();
+  const navigate = useNavigate();
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+    tenantsRepository
+      .list()
+      .then((data) => {
+        if (!cancelled) setTenants(data);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Impossible de charger les organisations pour le moment.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const organisations = tenants.map(tenantVersOrganisation);
 
   return (
     <div className="w-full my-4 space-y-3">
@@ -29,10 +79,18 @@ export const OrganisationsSection: React.FC = () => {
               Organisations
             </h2>
             <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">
-              Associations, administrations et clubs actifs sur la plateforme
+              Organisations actives sur la plateforme
             </p>
           </div>
         </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Plus className="w-4 h-4" />}
+          onClick={() => navigate('/organisations/creer')}
+        >
+          Créer une organisation
+        </Button>
       </div>
 
       {/* Contenu : cartes organisations, défilement horizontal (cartes
@@ -48,7 +106,7 @@ export const OrganisationsSection: React.FC = () => {
         </div>
       ) : organisations.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 dark:border-white/10 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-          {error ? "Impossible de charger les organisations pour l'instant." : 'Aucune organisation pour le moment.'}
+          {error ?? 'Aucune organisation pour le moment.'}
         </div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
