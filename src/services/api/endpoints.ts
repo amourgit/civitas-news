@@ -48,7 +48,10 @@ export const USERS_ENDPOINTS = {
 } as const;
 
 export const TENANTS_ENDPOINTS = {
+  /** GET -> annuaire public des tenants actifs. POST -> création self-service (tenant + son premier administrateur). */
   create: '/tenants/v1/',
+  /** GET ?sous_domaine=xxx -> vérification de disponibilité en direct, pendant la saisie du formulaire de création. */
+  disponibilite: '/tenants/v1/disponibilite/',
 } as const;
 
 export const DOMAIN_ENDPOINTS = {

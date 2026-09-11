@@ -25,6 +25,21 @@ import {
 } from '../services/api/token/tokenLifecycle';
 import { hasPermission, hasAnyPermission, canOnResource } from '../lib/permissions/hasPermission';
 import type { Permission } from '../lib/permissions/permissions.catalog';
+import { getTenantHeaderValue, switchTenant } from './tenants.store';
+
+/**
+ * À appeler juste après un login/register/Google-auth réussi. Enregistre
+ * ce tenant comme tenant courant (voir tenants.store.ts::switchTenant)
+ * -- lu ICI (getTenantHeaderValue()), jamais deviné après coup : c'est
+ * la valeur qui a RÉELLEMENT été envoyée en X-Tenant-Domain pour cette
+ * tentative précise. Pas de nom plus précis disponible à ce stade (ni
+ * login ni /users/v1/users/me/ ne renvoient le nom du tenant) -- même
+ * repli que ensureHydrated() dans tenants.store.ts.
+ */
+function noteTenantLoginSuccess(): void {
+  const domainHeaderValue = getTenantHeaderValue();
+  if (domainHeaderValue) switchTenant({ domainHeaderValue, name: domainHeaderValue });
+}
 
 export const ANONYMOUS_USER: Utilisateur = {
   id: 'anonyme',
@@ -127,6 +142,7 @@ export function useAuthStore() {
     setState(currentUser, 'loading');
     try {
       await authRepository.login(identifiant, password);
+      noteTenantLoginSuccess();
       const profile = await usersRepository.me();
       setState(profile, 'ready');
       return profile;
@@ -141,6 +157,7 @@ export function useAuthStore() {
     setState(currentUser, 'loading');
     try {
       await authRepository.register(payload);
+      noteTenantLoginSuccess();
       const profile = await usersRepository.me();
       setState(profile, 'ready');
       return profile;
@@ -156,6 +173,7 @@ export function useAuthStore() {
     try {
       await authRepository.loginWithGoogle(credential);
       const profile = await usersRepository.me();
+      noteTenantLoginSuccess();
       setState(profile, 'ready');
       return profile;
     } catch (error) {
