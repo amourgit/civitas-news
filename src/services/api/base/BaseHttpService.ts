@@ -24,7 +24,17 @@ export abstract class BaseHttpService {
   constructor(
     baseUrl: string = env.apiBaseUrl,
     defaultHeaders: Record<string, string> = {},
-    defaultTimeout: number = 20000
+    // 60s (au lieu de 20s) : seul point de configuration du timeout par
+    // défaut pour TOUTES les requêtes de l'app (Get/Post/Update/Delete
+    // en héritent toutes via `this.defaultTimeout`, voir httpClient.ts
+    // qui instancie le singleton `http` utilisé par tous les repositories).
+    // 20s coupait prématurément des requêtes encore légitimement en
+    // cours côté serveur (ex: création de tenant, qui provisionne un
+    // schéma + ses migrations), faisant remonter une NetworkError côté
+    // frontend alors que le backend continuait de travailler. Des appels
+    // ponctuels peuvent toujours passer un `timeout` plus long via leurs
+    // options (voir ex. tenants.repository.ts::create).
+    defaultTimeout: number = 60000
   ) {
     this.baseUrl = baseUrl;
     this.defaultHeaders = {

@@ -87,6 +87,13 @@ export const tenantsRepository = {
       bodySchema: TenantCreatePayloadSchema,
       responseSchema: TenantCreateResponseSchema,
       requireAuth: false,
+      // Provisionne un schéma Postgres + toutes ses migrations côté
+      // backend (voir Tenant.create_with_domain) : nettement plus lent
+      // qu'un CRUD classique. Le défaut global (60s, BaseHttpService)
+      // suffit dans la plupart des cas ; on le porte à 120s ici en marge
+      // de sécurité spécifiquement pour cette requête, la plus coûteuse
+      // de l'app.
+      timeout: 120000,
     });
     return response.data;
   },
