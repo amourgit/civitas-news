@@ -8,6 +8,8 @@
 // ============================================================
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { tenantsRepository, TenantCreatePayloadSchema } from '../../../services/api/repositories/tenants.repository';
+import { switchTenant } from '../../../store/tenants.store';
+import { useAuthStore } from '../../../store/auth.store';
 import { toast } from '../../../hooks/useToast';
 
 export type CreationStep = 'infos' | 'admin' | 'verification';
@@ -42,6 +44,7 @@ export interface CreationResult {
 }
 
 export function useCreerOrganisationForm() {
+  const { login } = useAuthStore();
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<CreerOrganisationFormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<Partial<Record<keyof CreerOrganisationFormState, string>>>({});
@@ -134,6 +137,31 @@ export function useCreerOrganisationForm() {
         password: form.password,
       });
       const response = await tenantsRepository.create(payload);
+
+      // Injection IMMÉDIATE dans le store -- toute requête suivante
+      // (y compris le login ci-dessous) doit cibler CE tenant tout
+      // juste créé, pas celui qui était courant avant (voir
+      // store/tenants.store.ts, "un seul tenant courant").
+      switchTenant({ domainHeaderValue: response.tenant.sousDomaine, name: response.tenant.name });
+
+      // L'écran de succès affirme "le compte administrateur est déjà
+      // actif" -- vrai côté données, mais la session du NAVIGATEUR ne
+      // l'est pas tant qu'on n'a pas explicitement appelé login() avec
+      // les identifiants qu'on vient de saisir. Sans ça, l'utilisateur
+      // revient à l'accueil anonyme et doit tout ressaisir à la main.
+      // Best-effort : un login raté ici ne doit pas transformer une
+      // création RÉUSSIE en écran d'erreur -- le compte existe bel et
+      // bien, il pourra toujours se connecter manuellement ensuite.
+      try {
+        await login(form.identifiant.trim(), form.password);
+      } catch {
+        toast(
+          'info',
+          'Connexion manuelle requise',
+          "L'organisation est créée, mais la connexion automatique a échoué -- connectez-vous depuis le menu."
+        );
+      }
+
       setResult({ name: response.tenant.name, domaine: response.domaine, identifiant: response.admin.identifiant });
       toast('success', 'Organisation créée', `${response.tenant.name} est prête.`);
     } catch (error) {

@@ -51,7 +51,7 @@ import GoogleSignInButton from './GoogleSignInButton';
 import ComingSoonProviderButton from './ComingSoonProviderButton';
 import { TenantSelectButton } from './TenantSelectButton';
 import { AuthGlassStyles, AuthGradientBackground, GlassButton, BlurFade, TextLoop, MiniConfetti, type MiniConfettiHandle } from './AuthGlassKit';
-import { getCurrentTenant, switchTenant, type TenantRef } from '../../store/tenants.store';
+import { getCurrentTenant, getRecentTenants, switchTenant, type TenantRef } from '../../store/tenants.store';
 
 type Mode = 'login' | 'register';
 type Step = 'identifiant' | 'password';
@@ -59,6 +59,23 @@ type Step = 'identifiant' | 'password';
 interface FieldErrors {
   identifiant?: string;
   password?: string;
+}
+
+/**
+ * getCurrentTenant() peut renvoyer une valeur qui n'a JAMAIS été
+ * choisie par personne : env.tenantHost / le hostname du navigateur
+ * servent d'amorce à la navigation anonyme (voir
+ * tenants.store.ts::ensureHydrated, config/env.ts) avant tout choix
+ * explicite -- légitime pour afficher du contenu public, mais PAS pour
+ * pré-remplir silencieusement le sélecteur de connexion : une telle
+ * amorce n'alimente JAMAIS recentTenants (seul switchTenant() le fait,
+ * lui-même appelé uniquement sur un choix explicite ou un login
+ * réussi). Sa présence signale donc un VRAI historique, jamais un
+ * simple repli -- c'est le test à utiliser ici pour respecter "toujours
+ * choisir explicitement", pas getCurrentTenant() seul.
+ */
+function resolveGenuinelyChosenTenant(): TenantRef | null {
+  return getRecentTenants().length > 0 ? getCurrentTenant() : null;
 }
 
 function extractFieldErrors(details: unknown): FieldErrors {
@@ -91,7 +108,7 @@ export default function LoginModal() {
   // store (dernier visité sur cet appareil, ou repli historique) pour
   // ne pas pénaliser un utilisateur qui revient, mais reste soumis à la
   // même validation que n'importe quel autre champ requis ci-dessous.
-  const [selectedTenant, setSelectedTenant] = useState<TenantRef | null>(() => getCurrentTenant());
+  const [selectedTenant, setSelectedTenant] = useState<TenantRef | null>(resolveGenuinelyChosenTenant);
   const [tenantError, setTenantError] = useState(false);
 
   // --- État purement visuel (étapes du popup, visibilité du mot de
@@ -121,7 +138,7 @@ export default function LoginModal() {
       setSuccessMessage(null);
       // Resynchronise sur le tenant courant réel : il a pu changer
       // ailleurs (switch rapide) pendant que ce popup était fermé.
-      setSelectedTenant(getCurrentTenant());
+      setSelectedTenant(resolveGenuinelyChosenTenant());
       setTenantError(false);
     }
   }, [loginModalOpen]);
@@ -638,6 +655,25 @@ export default function LoginModal() {
                 </button>
               </>
             )}
+          </p>
+
+          {/* Distinct de "Créer un compte"/"Créer mon compte" ci-dessus :
+              rejoindre une organisation EXISTANTE (le sélecteur en haut
+              du popup) n'est pas la même action que fonder une
+              organisation qui n'existe pas encore -- voir
+              CreerOrganisationPage.tsx (POST /tenants/v1/). */}
+          <p className="mt-1.5 text-center text-[11.5px] text-gray-400 dark:text-gray-500">
+            Votre organisation n'existe pas encore ?{' '}
+            <button
+              type="button"
+              onClick={() => {
+                closeLoginModal();
+                navigate('/organisations/creer');
+              }}
+              className="font-bold text-[#5B4DFF] hover:underline"
+            >
+              Créez-la
+            </button>
           </p>
         </div>
 
