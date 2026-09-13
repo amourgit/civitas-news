@@ -97,6 +97,15 @@ export interface ModelDef<TRecord = Record<string, unknown>> {
    * (ex: médias/galerie/documents/tags pour News). Reçoit l'enregistrement courant. */
   DetailExtras?: ComponentType<{ record: TRecord }>;
   /**
+   * Composant optionnel affiché au-dessus du tableau générique sur la page
+   * liste (ex : carrousel visuel paginé pour Utilisateurs). Reçoit les
+   * enregistrements déjà chargés par `data.list()` ainsi que l'état de
+   * chargement -- même mécanique que `DetailExtras`, pour éviter à
+   * `BackofficeListPage` de connaître le moindre cas particulier par
+   * modèle : chaque modèle reste seul responsable de son propre extra.
+   */
+  ListExtras?: ComponentType<{ records: TRecord[]; isLoading: boolean }>;
+  /**
    * Route de création personnalisée (ex: un assistant multi-étapes dédié),
    * utilisée par BackofficeListPage à la place du formulaire générique
    * `/admin/:modelKey/nouveau` quand elle est définie. D'autres modèles

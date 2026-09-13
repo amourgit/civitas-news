@@ -78,6 +78,8 @@ export default function BackofficeListPage() {
         </div>
       )}
 
+      {model.ListExtras && <model.ListExtras records={records} isLoading={isLoading} />}
+
       <BackofficeDataTable
         model={model}
         records={records}
