@@ -4,6 +4,8 @@ import type { GetRequestConfig, ApiResponse, AuthConfig } from "./types/http.typ
 import { RequestSanitizer } from "./utils/sanitizer";
 import { UrlBuilder } from "./utils/urlBuilder";
 import { ApiError, ValidationError, NetworkError } from "./errors";
+import { getCacheStore } from "./cache/getCache";
+import { getTenantHeaderValue } from "../../store/tenants.store";
 import { z } from "zod";
 
 // Interface étendue pour les cookies
@@ -16,8 +18,29 @@ interface CookieConfig {
   httpOnly?: boolean;
 }
 
+// Durée par défaut (s) de mise en cache d'une réponse GET quand
+// l'appelant ne précise pas `revalidate` explicitement -- avant ce
+// correctif, l'écriture dans le cache était conditionnée à un
+// `revalidate` que RIEN dans l'app ne passait jamais (grep sur tout
+// src/ : aucun appelant), rendant ce cache totalement mort en
+// pratique. 20s absorbe l'essentiel du trafic "lourd" (montages
+// multiples de composants lisant la même liste, navigation
+// aller-retour, re-renders) sans risquer une fraîcheur perçue
+// dégradée -- et toute mutation réussie vide le cache entier de toute
+// façon (voir authFetchInterceptor.ts), donc la fenêtre de péremption
+// réelle est souvent bien plus courte que 20s.
+const DEFAULT_GET_CACHE_TTL_SECONDS = 20;
+
 export class GetService extends BaseHttpService {
-  private readonly cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
+  // Requêtes GET identiques déjà en vol (même clé de cache) : partagées
+  // plutôt que reparties en double. Complémentaire du cache TTL
+  // ci-dessus -- celui-ci couvre les lectures RÉPÉTÉES dans le temps,
+  // celui-là couvre les lectures SIMULTANÉES (plusieurs composants qui
+  // montent en même temps et demandent chacun la même ressource,
+  // React StrictMode qui double les effets en dev, etc.) : aucun coût
+  // de fraîcheur puisqu'elles partagent littéralement le même appel
+  // réseau en cours.
+  private readonly inFlight = new Map<string, Promise<{ data: unknown; status: number; headers: Headers }>>();
 
   /**
    * Effectue une requête GET avec validation et configuration avancée
@@ -50,50 +73,89 @@ export class GetService extends BaseHttpService {
       cookieNames = []
     } = config;
 
+    // `cache` fait double emploi (déjà le cas avant ce correctif) : mode
+    // natif passé tel quel à `fetch()` ET flag pour le cache applicatif
+    // ci-dessous. 'no-cache'/'no-store'/'reload' expriment tous les
+    // trois une intention appelante de "je veux une réponse fraîche" :
+    // on respecte ça en désactivant LECTURE et ÉCRITURE du cache
+    // applicatif dans ces trois cas (pas seulement 'no-cache' comme
+    // avant ce correctif).
+    const bypassAppCache = cache === 'no-cache' || cache === 'no-store' || cache === 'reload';
+
     try {
       // Construire l'URL avec les paramètres
       const sanitizedParams = sanitize && params ? RequestSanitizer.sanitizeParams(params) : params;
       const fullUrl = UrlBuilder.buildUrl(this.baseUrl, endpoint, sanitizedParams);
 
-      // Vérifier le cache local si applicable
+      // Clé incluant le tenant COURANT et le token d'accès courant (ou
+      // 'anon' en son absence) -- indispensable en multi-tenant : sans
+      // ça, deux tenants (ou deux utilisateurs successifs dans le même
+      // onglet) partageraient les mêmes entrées de cache pour un même
+      // endpoint, avec fuite de données de l'un vers l'autre. Le token
+      // n'est ajouté qu'à la clé, jamais persisté ailleurs ni exposé.
       const cacheKey = this.generateCacheKey(fullUrl, headers);
-      const cachedData = this.getCachedData(cacheKey);
-      
-      if (cachedData && cache !== 'no-cache') {
-        return {
-          data: cachedData as TResponse,
-          status: 200,
-          headers: new Headers(),
-          cached: true
-        };
+
+      if (!bypassAppCache) {
+        const cachedData = getCacheStore.get(cacheKey);
+        if (cachedData !== undefined) {
+          return {
+            data: cachedData as TResponse,
+            status: 200,
+            headers: new Headers(),
+            cached: true
+          };
+        }
       }
 
-      // Construire les headers avec authentification complète
-      const requestHeaders = await this.buildGetHeaders(headers, requireAuth, authConfig, cookieNames);
+      // Requêtes identiques déjà en vol : on attend la même promesse au
+      // lieu de redéclencher un appel réseau redondant (voir `inFlight`
+      // ci-dessus). Fait AVANT le fetch, jamais après, pour couvrir le
+      // cas qu'il cible : deux appelants qui arrivent quasi simultanément.
+      let fetchPromise = this.inFlight.get(cacheKey);
+      if (!fetchPromise) {
+        fetchPromise = (async () => {
+          // Construire les headers avec authentification complète
+          const requestHeaders = await this.buildGetHeaders(headers, requireAuth, authConfig, cookieNames);
 
-      // Exécuter la requête avec retry -- l'AbortController est recréé à
-      // CHAQUE tentative (à l'intérieur de la closure), pas une seule
-      // fois avant la boucle : sinon, après un premier timeout, le
-      // signal reste définitivement "aborted" et toutes les tentatives
-      // suivantes échouent instantanément sans jamais réessayer pour de
-      // vrai -- ce qui aurait rendu le retry inutile face à un cold
-      // start Render (le service peut mettre 30-60s à se réveiller après
-      // une période d'inactivité), pourtant le cas qu'il doit couvrir.
-      const response = await this.executeWithRetry(() => {
-        const controller = this.createAbortController(timeout);
-        const fetchConfig: RequestInit = {
-          method: 'GET',
-          headers: requestHeaders,
-          signal: controller.signal,
-          cache,
-          // Support des cookies
-          credentials: withCredentials ? 'include' : 'same-origin',
-        };
-        return fetch(fullUrl, fetchConfig);
-      }, retry);
+          // Exécuter la requête avec retry -- l'AbortController est recréé à
+          // CHAQUE tentative (à l'intérieur de la closure), pas une seule
+          // fois avant la boucle : sinon, après un premier timeout, le
+          // signal reste définitivement "aborted" et toutes les tentatives
+          // suivantes échouent instantanément sans jamais réessayer pour de
+          // vrai -- ce qui aurait rendu le retry inutile face à un cold
+          // start Render (le service peut mettre 30-60s à se réveiller après
+          // une période d'inactivité), pourtant le cas qu'il doit couvrir.
+          const response = await this.executeWithRetry(() => {
+            const controller = this.createAbortController(timeout);
+            const fetchConfig: RequestInit = {
+              method: 'GET',
+              headers: requestHeaders,
+              signal: controller.signal,
+              cache,
+              // Support des cookies
+              credentials: withCredentials ? 'include' : 'same-origin',
+            };
+            return fetch(fullUrl, fetchConfig);
+          }, retry);
 
-      // Traiter la réponse
-      const rawData = await this.handleResponse(response, endpoint);
+          const rawData = await this.handleResponse(response, endpoint);
+          return { data: rawData, status: response.status, headers: response.headers };
+        })();
+
+        this.inFlight.set(cacheKey, fetchPromise);
+        // Effet de bord uniquement (nettoyage de la map) : on ignore
+        // volontairement la promesse renvoyée par `.finally()` pour ne
+        // jamais avoir deux objets-promesse distincts en circulation
+        // pour le même appel (celui stocké dans `inFlight` et celui
+        // utilisé localement ci-dessous doivent rester le MÊME objet).
+        void fetchPromise.finally(() => {
+          if (this.inFlight.get(cacheKey) === fetchPromise) {
+            this.inFlight.delete(cacheKey);
+          }
+        });
+      }
+
+      const { data: rawData, status, headers: responseHeaders } = await fetchPromise;
 
       // Transformer les données si nécessaire
       const processedData = transform ? transform(rawData) : rawData;
@@ -101,15 +163,21 @@ export class GetService extends BaseHttpService {
       // Valider avec Zod
       const validatedData = await this.validateData(schema, processedData, endpoint);
 
-      // Mettre en cache si nécessaire
-      if (cache !== 'no-cache' && revalidate) {
-        this.setCachedData(cacheKey, validatedData, revalidate * 1000);
+      // Mettre en cache (TTL explicite via `revalidate`, sinon défaut --
+      // voir DEFAULT_GET_CACHE_TTL_SECONDS ; `revalidate: 0` désactive
+      // explicitement la mise en cache pour cet appel sans désactiver le
+      // partage `inFlight` ci-dessus).
+      if (!bypassAppCache) {
+        const ttlSeconds = revalidate ?? DEFAULT_GET_CACHE_TTL_SECONDS;
+        if (ttlSeconds > 0) {
+          getCacheStore.set(cacheKey, validatedData, ttlSeconds * 1000);
+        }
       }
 
       return {
         data: validatedData as TResponse,
-        status: response.status,
-        headers: response.headers,
+        status,
+        headers: responseHeaders,
         cached: false
       };
 
@@ -337,29 +405,18 @@ export class GetService extends BaseHttpService {
   // === MÉTHODES PRIVÉES ORIGINALES ===
 
   private generateCacheKey(url: string, headers: HeadersInit): string {
+    // Tenant courant + token d'accès courant ('anon' sinon) : deux
+    // appels au même endpoint mais dans des contextes tenant/utilisateur
+    // différents ne doivent JAMAIS partager une entrée de cache -- voir
+    // le commentaire d'appel dans get(). Le tenant n'est normalement
+    // injecté dans les headers réels QUE plus tard, par
+    // authFetchInterceptor.ts (au niveau de window.fetch) : on le
+    // relit ici directement depuis le store pour que la clé de cache en
+    // tienne compte dès ce niveau-ci.
+    const tenant = getTenantHeaderValue() ?? '__no_tenant__';
+    const authIdentity = this.getToken() ?? '__anon__';
     const headersString = JSON.stringify(headers);
-    return `${url}:${headersString}`;
-  }
-
-  private getCachedData(key: string): unknown | null {
-    const cached = this.cache.get(key);
-    if (!cached) return null;
-
-    const isExpired = Date.now() - cached.timestamp > cached.ttl;
-    if (isExpired) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    return cached.data;
-  }
-
-  private setCachedData(key: string, data: unknown, ttl: number): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl
-    });
+    return `${tenant}::${authIdentity}::${url}::${headersString}`;
   }
 
   private async validateData<T>(
@@ -404,19 +461,22 @@ export class GetService extends BaseHttpService {
   }
 
   /**
-   * Méthode pour nettoyer le cache
+   * Vide le cache applicatif partagé (voir cache/getCache.ts). Public
+   * pour un reset manuel ponctuel ; l'invalidation courante se fait
+   * automatiquement après toute mutation réussie, voir
+   * authFetchInterceptor.ts.
    */
   public clearCache(): void {
-    this.cache.clear();
+    getCacheStore.clear();
   }
 
   /**
-   * Méthode pour obtenir les statistiques du cache
+   * Statistiques du cache applicatif partagé (debug uniquement).
    */
   public getCacheStats(): { size: number; keys: string[] } {
     return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys())
+      size: getCacheStore.size,
+      keys: getCacheStore.keys()
     };
   }
 }

@@ -32,6 +32,7 @@
 
 import { tokenStore } from './tokenStore';
 import { toast } from '../../../hooks/useToast';
+import { getCacheStore } from '../cache/getCache';
 
 let installed = false;
 let originalFetch: typeof window.fetch | null = null;
@@ -69,6 +70,27 @@ function isOwnApiRequest(input: RequestInfo | URL, apiBaseUrl: string): boolean 
 function isRefreshEndpoint(input: RequestInfo | URL): boolean {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   return url.includes('/token/v1/refresh');
+}
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Vide le cache applicatif des GET (cache/getCache.ts) après toute
+ * mutation réussie vers notre propre API. Volontairement brutal (clear
+ * intégral, jamais ciblé par endpoint) : GetService.ts et ce fichier
+ * sont les deux seuls points de couplage avec ce cache, un clear
+ * global évite d'avoir à tenir à jour une carte "quel endpoint écrit
+ * invalide quelle(s) lecture(s)" à chaque nouveau repository. Ici plutôt
+ * que dans GetService/PostService/UpdateService/DeleteService : c'est
+ * le seul endroit qui voit déjà passer TOUTES les requêtes (voir
+ * l'en-tête du fichier) sans exception -- sauf le chemin XHR d'upload
+ * de PostService, qui ne passe jamais par `fetch` ; voir le clear
+ * dédié à côté de `xhr.onload` dans PostService.ts.
+ */
+function maybeInvalidateGetCache(isOwn: boolean, method: string, response: Response): void {
+  if (isOwn && response.ok && MUTATING_METHODS.has(method.toUpperCase())) {
+    getCacheStore.clear();
+  }
 }
 
 async function performRefresh(apiBaseUrl: string, tenantHost: string | null): Promise<string | null> {
@@ -182,8 +204,10 @@ export function installAuthFetchInterceptor(apiBaseUrl: string, getTenantHeaderV
     // tenant faite entretemps par l'utilisateur (store/tenants.store.ts).
     const tenantHost = isOwn && getTenantHeaderValueFn ? getTenantHeaderValueFn() : null;
     const requestInit = isOwn ? { ...init, headers: withTenantHeader(init?.headers, tenantHost) } : init;
+    const method = (requestInit?.method ?? init?.method ?? 'GET').toUpperCase();
 
     const response = await baseFetch(input, requestInit);
+    maybeInvalidateGetCache(isOwn, method, response);
 
     const eligible =
       response.status === 401 &&
@@ -196,6 +220,8 @@ export function installAuthFetchInterceptor(apiBaseUrl: string, getTenantHeaderV
     const newAccessToken = await refreshAccessToken();
     if (!newAccessToken) return response; // refresh échoué -> on propage le 401 d'origine
 
-    return baseFetch(input, withAuthorization(requestInit, newAccessToken, tenantHost));
+    const retryResponse = await baseFetch(input, withAuthorization(requestInit, newAccessToken, tenantHost));
+    maybeInvalidateGetCache(isOwn, method, retryResponse);
+    return retryResponse;
   };
 }

@@ -5,6 +5,7 @@ import type { ApiResponse, RetryConfig } from "./types/http.types";
 import { RequestSanitizer } from "./utils/sanitizer";
 import { UrlBuilder } from "./utils/urlBuilder";
 import { ApiError, ValidationError, NetworkError } from "./errors";
+import { getCacheStore } from "./cache/getCache";
 import { z } from "zod";
 // Nécessaire UNIQUEMENT pour le chemin XMLHttpRequest ci-dessous (upload
 // avec suivi de progression) : ce chemin n'appelle jamais `fetch`, donc
@@ -366,6 +367,15 @@ export class PostService extends BaseHttpService {
               statusText: xhr.statusText,
               headers: new Headers()
             });
+            // xhr ne passe jamais par `fetch` -> jamais par
+            // authFetchInterceptor.ts, qui vide le cache GET après
+            // toute mutation réussie. Upload = toujours une mutation
+            // (POST) : on réplique la même invalidation ici pour ne pas
+            // laisser une liste (ex: assets d'un article) obsolète tant
+            // que le TTL du cache n'a pas expiré de lui-même.
+            if (xhr.status >= 200 && xhr.status < 300) {
+              getCacheStore.clear();
+            }
             resolve(response);
           };
           

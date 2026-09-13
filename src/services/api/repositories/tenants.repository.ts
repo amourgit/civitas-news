@@ -75,6 +75,11 @@ export const tenantsRepository = {
       params: { sous_domaine: sousDomaine },
       schema: DisponibiliteSchema,
       requireAuth: false,
+      // Vérification "en direct" par nature (voir commentaire ci-dessus) :
+      // exclue du cache GET par défaut (20s, voir GetService.ts) pour ne
+      // jamais répondre "disponible" à partir d'une réponse mise en
+      // cache pendant que l'utilisateur retape la même chaîne.
+      cache: 'no-cache',
     });
     return response.data;
   },
