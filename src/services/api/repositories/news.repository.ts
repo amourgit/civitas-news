@@ -10,6 +10,12 @@ import { http } from './httpClient';
 import { NEWS_ENDPOINTS } from '../endpoints';
 import { NewsSchema, type News, type NewsType, type TypeReaction } from '../../../types/global.types';
 import { paginatedSchema, fetchAllPages } from '../utils/pagination';
+import {
+  TenantEnvelopeEntrySchema,
+  flattenPaginatedEnvelope,
+  type TenantScopedItem,
+} from '../utils/tenantEnvelope';
+import { z } from 'zod';
 
 /**
  * Paramètres de filtrage de la liste News — un champ par champ
@@ -154,6 +160,36 @@ export const newsRepository = {
       });
       return { results: response.data.results, next: response.data.next };
     });
+  },
+
+  /**
+   * Fil COMBINÉ : News du tenant courant + des tenants `is_public=true`
+   * (Ministères, Mutuelles...), voir tenants/middleware.py::
+   * TenantMiddleware._fan_out_get côté backend et
+   * store/tenants.store.ts::getTenantHeaderListValue côté frontend, qui
+   * pose la liste dans X-Tenant-Domain pour ce GET. Chaque élément
+   * renvoyé porte le tenant qui l'a produit (`tenant`), pour permettre
+   * un badge "Ministère de la Santé" sur les News qui ne viennent pas du
+   * tenant courant, voir le fil d'actualités.
+   *
+   * Volontairement PREMIÈRE PAGE UNIQUEMENT par tenant (pas
+   * fetchAllPages comme list() ci-dessus) : la pagination indépendante
+   * de plusieurs tenants sur un même fil combiné (page 2 du tenant A
+   * pendant que le tenant B est encore en page 1) est un problème à
+   * part entière, volontairement hors scope ici -- un fil combiné
+   * affiche la première page de chacun. "Charger plus" sur ce fil
+   * précis nécessiterait un curseur par tenant, pas juste `page++`.
+   */
+  async listAcrossTenants(params?: NewsQueryParams): Promise<TenantScopedItem<News>[]> {
+    const wireParams = buildWireParams(params);
+    const response = await http.get.get({
+      endpoint: NEWS_ENDPOINTS.list,
+      params: wireParams,
+      schema: z.array(TenantEnvelopeEntrySchema),
+      requireAuth: false,
+      multiTenant: true,
+    });
+    return flattenPaginatedEnvelope(response.data, NewsSchema);
   },
 
   async getBySlug(slugOrId: string): Promise<News | null> {

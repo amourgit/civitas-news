@@ -112,6 +112,46 @@ function persistRecentTenants(tenants: TenantRef[]): void {
   }
 }
 
+function readPublicTenants(): TenantRef[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(PUBLIC_TENANTS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isTenantRef);
+  } catch {
+    return [];
+  }
+}
+
+function persistPublicTenants(tenants: TenantRef[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(PUBLIC_TENANTS_STORAGE_KEY, JSON.stringify(tenants));
+  } catch {
+    // Stockage indisponible — la liste combinée retombe simplement sur
+    // le seul tenant courant pour cette session (voir
+    // getTenantHeaderListValue), sans rien casser : le backend ignore
+    // silencieusement une liste incomplète, il traite juste moins de
+    // tenants que prévu.
+  }
+}
+
+/**
+ * Hydrate `publicTenants` depuis le cache localStorage au tout premier
+ * accès (avant même le premier appel réseau réel, voir
+ * refreshPublicTenants dans services/api/publicTenantsBootstrap.ts) --
+ * séparée de ensureHydrated() ci-dessus à dessein : ce sont deux notions
+ * indépendantes (voir l'en-tête du fichier), pas de raison de coupler
+ * leur instant d'hydratation.
+ */
+function ensurePublicTenantsHydrated(): void {
+  if (publicTenantsHydrated) return;
+  publicTenantsHydrated = true;
+  publicTenants = readPublicTenants();
+}
+
 /**
  * Initialise currentTenant au tout premier accès : le tenant le plus
  * récemment ouvert sur cet appareil, sinon repli sur le mécanisme
@@ -145,6 +185,62 @@ function ensureHydrated(): void {
 export function getTenantHeaderValue(): string | null {
   ensureHydrated();
   return currentTenant?.domainHeaderValue ?? null;
+}
+
+/**
+ * Tenants `is_public=true` connus (cache local, potentiellement
+ * périmé de quelques minutes — voir la fréquence de
+ * refreshPublicTenants dans services/api/publicTenantsBootstrap.ts).
+ * Lecture pure, ne déclenche jamais d'appel réseau.
+ */
+export function getPublicTenants(): TenantRef[] {
+  ensurePublicTenantsHydrated();
+  return publicTenants;
+}
+
+/**
+ * Remplace intégralement la liste des tenants publics connus (appelée
+ * par services/api/publicTenantsBootstrap.ts après un GET
+ * /tenants/v1/publics/ réussi — jamais par l'UI directement, cette
+ * fonction est un pur setter d'état, pas un déclencheur réseau).
+ */
+export function setPublicTenants(tenants: TenantRef[]): void {
+  ensurePublicTenantsHydrated();
+  publicTenants = tenants;
+  persistPublicTenants(tenants);
+  notify();
+}
+
+/**
+ * Valeur à poser dans X-Tenant-Domain pour une requête GET : le tenant
+ * COURANT (s'il y en a un) suivi de tous les tenants PUBLICS connus,
+ * dédupliqués (un tenant public qui se trouve être aussi le tenant
+ * courant n'apparaît qu'une fois), le tenant courant toujours en
+ * première position -- c'est lui que le backend traite comme tenant
+ * "principal" de la réponse (voir tenants/middleware.py::
+ * TenantMiddleware._fan_out_get, primary_tenant = premier hostname).
+ *
+ * Distincte de getTenantHeaderValue() (singulier, INCHANGÉ) : celle-ci
+ * reste utilisée pour tout ce qui n'est PAS un GET (écritures,
+ * toujours mono-tenant), voir authFetchInterceptor.ts. `null` si ni
+ * tenant courant ni tenant public connu -- même convention que
+ * getTenantHeaderValue.
+ */
+export function getTenantHeaderListValue(): string | null {
+  ensureHydrated();
+  ensurePublicTenantsHydrated();
+  const seen = new Set<string>();
+  const values: string[] = [];
+  if (currentTenant) {
+    seen.add(currentTenant.domainHeaderValue);
+    values.push(currentTenant.domainHeaderValue);
+  }
+  for (const tenant of publicTenants) {
+    if (seen.has(tenant.domainHeaderValue)) continue;
+    seen.add(tenant.domainHeaderValue);
+    values.push(tenant.domainHeaderValue);
+  }
+  return values.length > 0 ? values.join(',') : null;
 }
 
 export function getCurrentTenant(): TenantRef | null {
@@ -198,6 +294,7 @@ export function forgetRecentTenant(domainHeaderValue: string): void {
 
 export function useTenantsStore() {
   ensureHydrated();
+  ensurePublicTenantsHydrated();
   const [, forceRender] = useState(0);
 
   useEffect(() => {
@@ -211,6 +308,7 @@ export function useTenantsStore() {
   return {
     currentTenant,
     recentTenants,
+    publicTenants,
     switchTenant,
     forgetRecentTenant,
   };

@@ -109,3 +109,75 @@ describe('tenants.store', () => {
     expect(result.current.recentTenants).toEqual([TENANT_A]);
   });
 });
+
+// ============================================================
+// Réforme multi-tenant des GET : getTenantHeaderListValue combine le
+// tenant COURANT et les tenants PUBLICS -- bien distincte de
+// getTenantHeaderValue (singulier, testé ci-dessus), qui doit continuer
+// à ne JAMAIS renvoyer de liste.
+// ============================================================
+describe('tenants.store — tenants publics (réforme multi-tenant des GET)', () => {
+  const TENANT_PUBLIC_A: TenantRef = { domainHeaderValue: 'ministere-sante', name: 'Ministère de la Santé' };
+  const TENANT_PUBLIC_B: TenantRef = { domainHeaderValue: 'mutuelle-x', name: 'Mutuelle X' };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it('renvoie null quand ni tenant courant ni tenant public ne sont connus', async () => {
+    vi.doMock('../../config/env', () => ({ env: { tenantHost: '' } }));
+    const { getTenantHeaderListValue } = await importFreshStore();
+
+    expect(getTenantHeaderListValue()).toBeNull();
+  });
+
+  it('combine le tenant courant et les tenants publics, tenant courant en tête', async () => {
+    const { switchTenant, setPublicTenants, getTenantHeaderListValue } = await importFreshStore();
+
+    switchTenant(TENANT_A);
+    setPublicTenants([TENANT_PUBLIC_A, TENANT_PUBLIC_B]);
+
+    expect(getTenantHeaderListValue()).toBe('civitas,ministere-sante,mutuelle-x');
+  });
+
+  it('déduplique un tenant public qui se trouve être aussi le tenant courant', async () => {
+    const { switchTenant, setPublicTenants, getTenantHeaderListValue } = await importFreshStore();
+
+    switchTenant(TENANT_PUBLIC_A);
+    setPublicTenants([TENANT_PUBLIC_A, TENANT_PUBLIC_B]);
+
+    expect(getTenantHeaderListValue()).toBe('ministere-sante,mutuelle-x');
+  });
+
+  it("n'affecte jamais getTenantHeaderValue (singulier) -- reste le tenant courant seul", async () => {
+    const { switchTenant, setPublicTenants, getTenantHeaderValue, getTenantHeaderListValue } = await importFreshStore();
+
+    switchTenant(TENANT_A);
+    setPublicTenants([TENANT_PUBLIC_A, TENANT_PUBLIC_B]);
+
+    expect(getTenantHeaderValue()).toBe('civitas');
+    expect(getTenantHeaderValue()).not.toContain(',');
+    expect(getTenantHeaderListValue()).toContain(',');
+  });
+
+  it('setPublicTenants persiste en localStorage et est restauré au remontage', async () => {
+    const { setPublicTenants } = await importFreshStore();
+    setPublicTenants([TENANT_PUBLIC_A, TENANT_PUBLIC_B]);
+
+    const { getPublicTenants } = await importFreshStore();
+    expect(getPublicTenants()).toEqual([TENANT_PUBLIC_A, TENANT_PUBLIC_B]);
+  });
+
+  it('setPublicTenants remplace intégralement la liste précédente (jamais un ajout)', async () => {
+    const { setPublicTenants, getPublicTenants } = await importFreshStore();
+
+    setPublicTenants([TENANT_PUBLIC_A, TENANT_PUBLIC_B]);
+    setPublicTenants([TENANT_PUBLIC_A]);
+
+    expect(getPublicTenants()).toEqual([TENANT_PUBLIC_A]);
+  });
+});

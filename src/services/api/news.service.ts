@@ -15,6 +15,7 @@ import type { News, NewsType, TypeReaction, Categorie, Organisation, Etablisseme
 import { INITIAL_NEWS as MOCK_NEWS } from './mocks/news.mock';
 import { newsRepository } from './repositories/news.repository';
 import type { NewsQueryParams } from './repositories/news.repository';
+import type { TenantScopedItem } from './utils/tenantEnvelope';
 
 /** Conservé pour compatibilité ascendante (tests, composants statistiques). */
 export const INITIAL_NEWS: News[] = MOCK_NEWS;
@@ -118,6 +119,32 @@ export const newsService = {
 
   getNewsList: async (params?: NewsQueryParams): Promise<News[]> => {
     return newsService.getNews(params);
+  },
+
+  /**
+   * Fil COMBINÉ : News du tenant courant + des tenants publics (voir
+   * repositories/news.repository.ts::listAcrossTenants). Chaque élément
+   * porte le tenant qui l'a produit -- à l'appelant (composant de fil)
+   * de décider comment le restituer (badge, section séparée...).
+   *
+   * Mode mock : aucun vrai tenant public à simuler -- retombe sur la
+   * liste mock existante, chaque élément tagué d'un tenant générique
+   * (id 0), pour rester utilisable en dev sans backend réel.
+   */
+  getNewsAcrossTenants: async (params?: NewsQueryParams): Promise<TenantScopedItem<News>[]> => {
+    if (env.useMockData) {
+      const data = await newsService.getNews(params);
+      return data.map((item) => ({
+        item,
+        tenant: {
+          id: 0,
+          name: env.tenantHost || 'Tenant local',
+          sousDomaine: env.tenantHost || 'local',
+          isPublic: false,
+        },
+      }));
+    }
+    return newsRepository.listAcrossTenants(params);
   },
 
   getSujets: async (params?: NewsQueryParams): Promise<News[]> => {

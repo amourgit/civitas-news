@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GetService } from '../../GetService';
 import { tokenStore } from '../tokenStore';
+import { getCacheStore } from '../../cache/getCache';
 
 /**
  * Régression production : le backend (tenants/middleware.py) résout le
@@ -39,6 +40,15 @@ describe('installAuthFetchInterceptor — en-tête X-Tenant-Domain', () => {
       async () => new Response(JSON.stringify({}), { status: 200, headers: { 'Content-Type': 'application/json' } })
     );
     vi.stubGlobal('fetch', mockFetch);
+    // Cache GetService (cache/getCache.ts) : un vrai singleton de module,
+    // PAS remis à zéro par vi.resetModules() ci-dessous (GetService n'est
+    // jamais réimporté dynamiquement, seul authFetchInterceptor l'est) ni
+    // par vi.stubGlobal ci-dessus. Sans ce clear, un test qui appelle
+    // service.get() sur le même endpoint/params/headers qu'un test
+    // précédent recevrait sa réponse EN CACHE -- fetch jamais rappelé --
+    // indépendamment du getter tenant injecté dans install() pour CE
+    // test précis (la clé de cache lit le store RÉEL, pas ce getter).
+    getCacheStore.clear();
   });
 
   afterEach(() => {
@@ -137,5 +147,73 @@ describe('installAuthFetchInterceptor — en-tête X-Tenant-Domain', () => {
     active = 'civitas';
     await fetch(`${API_BASE_URL}/sondages/v1/sondages/`);
     expect(new Headers(mockFetch.mock.calls[1][1]?.headers as HeadersInit).get('X-Tenant-Domain')).toBe('civitas');
+  });
+});
+
+// ============================================================
+// Réforme multi-tenant des GET : un GET porte la liste combinée
+// (tenant courant + tenants publics, voir store/tenants.store.ts::
+// getTenantHeaderListValue) quand ce 3e getter est fourni à
+// installAuthFetchInterceptor ; toute autre méthode reste mono-tenant
+// (getTenantHeaderValue, 2e paramètre) -- voir tenants/middleware.py
+// côté backend, dont le fan-out ne s'applique qu'aux GET.
+// ============================================================
+describe('installAuthFetchInterceptor — liste combinée sur GET (réforme multi-tenant)', () => {
+  const API_BASE_URL = 'https://civitasnews-backend.onrender.com/api';
+
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn(
+      async () => new Response(JSON.stringify({}), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    );
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    tokenStore.clear();
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it('pose la liste combinée (3e getter) sur un GET, pas le tenant seul (2e getter)', async () => {
+    const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
+    install(API_BASE_URL, () => 'civitas', () => 'civitas,ministere-sante,mutuelle-x');
+
+    await fetch(`${API_BASE_URL}/news/v1/news/`, { method: 'GET' });
+
+    const headers = new Headers(mockFetch.mock.calls[0][1]?.headers as HeadersInit);
+    expect(headers.get('X-Tenant-Domain')).toBe('civitas,ministere-sante,mutuelle-x');
+  });
+
+  it('un GET sans méthode explicite (défaut fetch) est traité comme un GET -- liste combinée posée', async () => {
+    const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
+    install(API_BASE_URL, () => 'civitas', () => 'civitas,ministere-sante');
+
+    await fetch(`${API_BASE_URL}/news/v1/news/`); // pas de `method` dans init -> GET implicite
+
+    const headers = new Headers(mockFetch.mock.calls[0][1]?.headers as HeadersInit);
+    expect(headers.get('X-Tenant-Domain')).toBe('civitas,ministere-sante');
+  });
+
+  it('pose le tenant SEUL (2e getter) sur une écriture, même si le 3e getter est fourni', async () => {
+    const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
+    install(API_BASE_URL, () => 'civitas', () => 'civitas,ministere-sante,mutuelle-x');
+
+    await fetch(`${API_BASE_URL}/news/v1/news/`, { method: 'POST', body: '{}' });
+
+    const headers = new Headers(mockFetch.mock.calls[0][1]?.headers as HeadersInit);
+    expect(headers.get('X-Tenant-Domain')).toBe('civitas');
+    expect(headers.get('X-Tenant-Domain')).not.toContain(',');
+  });
+
+  it("retombe sur le tenant seul pour un GET si aucun 3e getter n'est fourni à l'installation (compat ascendante)", async () => {
+    const { installAuthFetchInterceptor: install } = await import('../authFetchInterceptor');
+    install(API_BASE_URL, () => 'civitas'); // pas de 3e argument
+
+    await fetch(`${API_BASE_URL}/news/v1/news/`, { method: 'GET' });
+
+    const headers = new Headers(mockFetch.mock.calls[0][1]?.headers as HeadersInit);
+    expect(headers.get('X-Tenant-Domain')).toBe('civitas');
   });
 });

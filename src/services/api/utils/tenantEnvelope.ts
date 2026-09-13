@@ -56,11 +56,20 @@ export const TenantEnvelopeEntrySchema = z.object({
   statusCode: z.number(),
   data: z.unknown().nullable(),
 });
-export type TenantEnvelopeEntry<T = unknown> = {
+/** Type "brut" tel qu'inféré par Zod (`data` structurellement optionnel,
+ * ZodUnknown oblige) -- c'est CE type que produit réellement
+ * `TenantEnvelopeEntrySchema.parse`/GetService, donc celui que les
+ * fonctions ci-dessous acceptent en entrée. */
+export type TenantEnvelopeEntryRaw = z.infer<typeof TenantEnvelopeEntrySchema>;
+
+/** Type de CONFORT pour construire une enveloppe à la main (tests,
+ * fixtures) avec `data` explicitement requis -- un objet qui le fournit
+ * satisfait trivialement TenantEnvelopeEntryRaw ci-dessus. */
+export interface TenantEnvelopeEntry<T = unknown> {
   tenant: TenantEnvelopeRef;
   statusCode: number;
   data: T | null;
-};
+}
 
 /**
  * Détecte la forme `[{tenant, statusCode, data}, ...]`. Volontairement
@@ -70,9 +79,10 @@ export type TenantEnvelopeEntry<T = unknown> = {
  * une réponse qui n'a simplement rien à voir (tableau nu, objet paginé,
  * `{detail, errorCode}` d'erreur classique...).
  */
-export function isTenantEnvelope(value: unknown): value is TenantEnvelopeEntry[] {
+export function isTenantEnvelope(value: unknown): value is TenantEnvelopeEntryRaw[] {
   return (
     Array.isArray(value) &&
+    value.length > 0 &&
     value.every((item) => TenantEnvelopeEntrySchema.safeParse(item).success)
   );
 }
@@ -86,7 +96,6 @@ export function isTenantEnvelope(value: unknown): value is TenantEnvelopeEntry[]
  */
 export function unwrapToPrimaryTenant(rawData: unknown): unknown {
   if (!isTenantEnvelope(rawData)) return rawData;
-  if (rawData.length === 0) return null;
   return rawData[0].data;
 }
 
@@ -113,7 +122,7 @@ export interface TenantScopedItem<T> {
  * repositories/news.repository.ts::listAcrossTenants.
  */
 export function flattenPaginatedEnvelope<TItem>(
-  envelope: TenantEnvelopeEntry[],
+  envelope: TenantEnvelopeEntryRaw[],
   itemSchema: z.ZodType<TItem>
 ): TenantScopedItem<TItem>[] {
   const flattened: TenantScopedItem<TItem>[] = [];

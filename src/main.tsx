@@ -3,8 +3,9 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { installAuthFetchInterceptor } from './services/api/token/authFetchInterceptor';
+import { startPublicTenantsLifecycle } from './services/api/publicTenantsLifecycle';
 import { env } from './config/env';
-import { getTenantHeaderValue } from './store/tenants.store';
+import { getTenantHeaderValue, getTenantHeaderListValue } from './store/tenants.store';
 
 if (typeof window !== 'undefined') {
   try {
@@ -36,9 +37,16 @@ if (typeof window !== 'undefined') {
 }
 
 // Refresh automatique et transparent des tokens expirés, + en-tête
-// X-Tenant-Domain sur chaque requête (tenant COURANT de la session, un
-// seul à la fois — voir authFetchInterceptor.ts et store/tenants.store.ts).
-installAuthFetchInterceptor(env.apiBaseUrl, getTenantHeaderValue);
+// X-Tenant-Domain sur chaque requête : liste combinée (tenant courant +
+// tenants publics) sur les GET, tenant courant seul sur les écritures —
+// voir authFetchInterceptor.ts et store/tenants.store.ts.
+installAuthFetchInterceptor(env.apiBaseUrl, getTenantHeaderValue, getTenantHeaderListValue);
+
+// Annuaire des tenants publics (Ministères, Mutuelles...) : un premier
+// GET immédiat puis un rafraîchissement périodique, voir
+// services/api/publicTenantsLifecycle.ts. Indépendant de
+// l'authentification — utile même à un visiteur anonyme.
+startPublicTenantsLifecycle();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
