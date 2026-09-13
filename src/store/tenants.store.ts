@@ -28,6 +28,21 @@
 //    donc l'autorisation) reste entièrement à la charge du backend au
 //    moment où l'on rebascule dessus. Voir switchTenant().
 //
+// Troisième notion, AJOUTÉE par la réforme multi-tenant des GET, bien
+// distincte des deux ci-dessus :
+//  - publicTenants : les tenants `is_public=true` connus du backend
+//    (voir GET /tenants/v1/publics/, tenants.repository.ts::
+//    publicList()), rafraîchis au démarrage puis à intervalle régulier
+//    par refreshPublicTenants() (services/api/publicTenantsBootstrap.ts)
+//    et mis en cache ici + en localStorage. Ils n'ont AUCUN rapport avec
+//    recentTenants (pas un historique de navigation, pas géré par
+//    switchTenant) : ce sont des tenants que l'utilisateur n'a jamais
+//    "ouverts", dont le contenu doit simplement apparaître à côté de
+//    celui du tenant courant sur toute lecture (GET) -- voir
+//    getTenantHeaderListValue ci-dessous, seule fonction qui les combine
+//    avec currentTenant. getTenantHeaderValue (singulier, existant)
+//    reste inchangé et continue de ne renvoyer QUE currentTenant.
+//
 // Pattern "store maison" identique aux autres stores de ce dossier
 // (état de module + Set de listeners notifiés via useState/useEffect) —
 // voir auth.store.ts / notifications.store.ts.
@@ -51,10 +66,13 @@ export interface TenantRef {
 
 const RECENT_TENANTS_STORAGE_KEY = 'civitas_recent_tenants';
 const MAX_RECENT_TENANTS = 8;
+const PUBLIC_TENANTS_STORAGE_KEY = 'civitas_public_tenants';
 
 let currentTenant: TenantRef | null = null;
 let recentTenants: TenantRef[] = [];
+let publicTenants: TenantRef[] = [];
 let hydrated = false;
+let publicTenantsHydrated = false;
 const listeners = new Set<() => void>();
 
 function notify(): void {

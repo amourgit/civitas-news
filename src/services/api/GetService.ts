@@ -4,6 +4,7 @@ import type { GetRequestConfig, ApiResponse, AuthConfig } from "./types/http.typ
 import { RequestSanitizer } from "./utils/sanitizer";
 import { UrlBuilder } from "./utils/urlBuilder";
 import { ApiError, ValidationError, NetworkError } from "./errors";
+import { unwrapToPrimaryTenant } from "./utils/tenantEnvelope";
 import { z } from "zod";
 
 // Interface étendue pour les cookies
@@ -47,7 +48,8 @@ export class GetService extends BaseHttpService {
       // Nouvelles options d'authentification
       authConfig,
       withCredentials = false,
-      cookieNames = []
+      cookieNames = [],
+      multiTenant = false
     } = config;
 
     try {
@@ -95,8 +97,16 @@ export class GetService extends BaseHttpService {
       // Traiter la réponse
       const rawData = await this.handleResponse(response, endpoint);
 
+      // Réforme multi-tenant (voir services/api/utils/tenantEnvelope.ts) :
+      // par défaut, on replie l'enveloppe `[{tenant, statusCode, data}]`
+      // sur le tenant PRINCIPAL -- `schema`/`transform` ci-dessous restent
+      // écrits pour la forme "sans enveloppe", sans aucun changement pour
+      // la quasi-totalité des appels existants. `multiTenant: true` laisse
+      // passer l'enveloppe brute pour l'appelant qui la demande explicitement.
+      const scopedData = multiTenant ? rawData : unwrapToPrimaryTenant(rawData);
+
       // Transformer les données si nécessaire
-      const processedData = transform ? transform(rawData) : rawData;
+      const processedData = transform ? transform(scopedData) : scopedData;
 
       // Valider avec Zod
       const validatedData = await this.validateData(schema, processedData, endpoint);

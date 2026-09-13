@@ -50,4 +50,16 @@ export interface GetRequestConfig<TResponse> {
   authConfig?: AuthConfig;
   withCredentials?: boolean;
   cookieNames?: string[];
+  /**
+   * Par défaut (false), GetService replie automatiquement l'enveloppe
+   * multi-tenant du backend (voir services/api/utils/tenantEnvelope.ts)
+   * sur le tenant PRINCIPAL -- `schema` continue de valider la forme
+   * "sans enveloppe" habituelle, sans aucun changement pour la quasi-
+   * totalité des appels existants.
+   * Passer `true` pour les rares appels qui veulent explicitement la
+   * répartition par tenant (ex: un fil combiné tenant courant + tenants
+   * publics) -- `schema`, si fourni, doit alors valider un TABLEAU
+   * d'enveloppes (voir TenantEnvelopeEntrySchema), pas la ressource nue.
+   */
+  multiTenant?: boolean;
 }

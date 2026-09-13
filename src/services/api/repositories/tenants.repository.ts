@@ -40,6 +40,15 @@ export const TenantSchema = z.object({
   logo: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   createdAt: z.string().optional(),
+  // Ajoutés pour la réforme multi-tenant des GET (voir
+  // store/tenants.store.ts::getTenantHeaderListValue) : `domain` est la
+  // valeur EXACTE à poser dans X-Tenant-Domain pour ce tenant (calculée
+  // côté backend, TenantPublicSerializer.get_domain -- jamais reconstruite
+  // ici depuis sousDomaine), `isPublic` reflète Tenant.is_public. Optionnels
+  // pour ne rien casser côté TenantCreateResponse, qui réutilise ce même
+  // schéma mais ne s'intéresse pas à ces deux champs.
+  domain: z.string().nullable().optional(),
+  isPublic: z.boolean().optional(),
 });
 export type Tenant = z.infer<typeof TenantSchema>;
 
@@ -62,6 +71,24 @@ export const tenantsRepository = {
   async list(): Promise<Tenant[]> {
     const response = await http.get.get<Tenant[]>({
       endpoint: TENANTS_ENDPOINTS.create,
+      schema: z.array(TenantSchema),
+      requireAuth: false,
+    });
+    return response.data;
+  },
+
+  /**
+   * GET /tenants/v1/publics/ -- tenants is_public=true, destinés à être
+   * ajoutés (en plus du tenant courant) dans X-Tenant-Domain sur CHAQUE
+   * requête GET -- voir store/tenants.store.ts::getTenantHeaderListValue,
+   * qui consomme le résultat via setPublicTenants(). Appel simple, mono-
+   * tenant (pas de `multiTenant: true` ici) : GetService replie déjà
+   * automatiquement l'enveloppe backend sur le tenant principal par
+   * défaut, exactement la forme attendue par ce schéma.
+   */
+  async publicList(): Promise<Tenant[]> {
+    const response = await http.get.get<Tenant[]>({
+      endpoint: TENANTS_ENDPOINTS.publics,
       schema: z.array(TenantSchema),
       requireAuth: false,
     });

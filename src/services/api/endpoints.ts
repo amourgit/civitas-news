@@ -52,6 +52,8 @@ export const TENANTS_ENDPOINTS = {
   create: '/tenants/v1/',
   /** GET ?sous_domaine=xxx -> vérification de disponibilité en direct, pendant la saisie du formulaire de création. */
   disponibilite: '/tenants/v1/disponibilite/',
+  /** GET -> annuaire des tenants is_public=true, pour la réforme multi-tenant des GET (voir store/tenants.store.ts). */
+  publics: '/tenants/v1/publics/',
 } as const;
 
 export const DOMAIN_ENDPOINTS = {
