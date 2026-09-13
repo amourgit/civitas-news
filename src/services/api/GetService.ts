@@ -1,6 +1,6 @@
 // services/GetService.ts
 import { BaseHttpService } from "./base/BaseHttpService";
-import type { GetRequestConfig, ApiResponse, AuthConfig } from "./types/http.types";
+import type { GetRequestConfig, ApiResponse, AuthConfig, RetryConfig } from "./types/http.types";
 import { RequestSanitizer } from "./utils/sanitizer";
 import { UrlBuilder } from "./utils/urlBuilder";
 import { ApiError, ValidationError, NetworkError } from "./errors";
@@ -94,88 +94,62 @@ export class GetService extends BaseHttpService {
       // endpoint, avec fuite de données de l'un vers l'autre. Le token
       // n'est ajouté qu'à la clé, jamais persisté ailleurs ni exposé.
       const cacheKey = this.generateCacheKey(fullUrl, headers);
+      const ttlSeconds = revalidate ?? DEFAULT_GET_CACHE_TTL_SECONDS;
 
-      if (!bypassAppCache) {
-        const cachedData = getCacheStore.get(cacheKey);
-        if (cachedData !== undefined) {
-          return {
-            data: cachedData as TResponse,
-            status: 200,
-            headers: new Headers(),
-            cached: true
-          };
-        }
-      }
-
-      // Requêtes identiques déjà en vol : on attend la même promesse au
-      // lieu de redéclencher un appel réseau redondant (voir `inFlight`
-      // ci-dessus). Fait AVANT le fetch, jamais après, pour couvrir le
-      // cas qu'il cible : deux appelants qui arrivent quasi simultanément.
-      let fetchPromise = this.inFlight.get(cacheKey);
-      if (!fetchPromise) {
-        fetchPromise = (async () => {
-          // Construire les headers avec authentification complète
-          const requestHeaders = await this.buildGetHeaders(headers, requireAuth, authConfig, cookieNames);
-
-          // Exécuter la requête avec retry -- l'AbortController est recréé à
-          // CHAQUE tentative (à l'intérieur de la closure), pas une seule
-          // fois avant la boucle : sinon, après un premier timeout, le
-          // signal reste définitivement "aborted" et toutes les tentatives
-          // suivantes échouent instantanément sans jamais réessayer pour de
-          // vrai -- ce qui aurait rendu le retry inutile face à un cold
-          // start Render (le service peut mettre 30-60s à se réveiller après
-          // une période d'inactivité), pourtant le cas qu'il doit couvrir.
-          const response = await this.executeWithRetry(() => {
-            const controller = this.createAbortController(timeout);
-            const fetchConfig: RequestInit = {
-              method: 'GET',
-              headers: requestHeaders,
-              signal: controller.signal,
-              cache,
-              // Support des cookies
-              credentials: withCredentials ? 'include' : 'same-origin',
-            };
-            return fetch(fullUrl, fetchConfig);
-          }, retry);
-
-          const rawData = await this.handleResponse(response, endpoint);
-          return { data: rawData, status: response.status, headers: response.headers };
-        })();
-
-        this.inFlight.set(cacheKey, fetchPromise);
-        // Effet de bord uniquement (nettoyage de la map) : on ignore
-        // volontairement la promesse renvoyée par `.finally()` pour ne
-        // jamais avoir deux objets-promesse distincts en circulation
-        // pour le même appel (celui stocké dans `inFlight` et celui
-        // utilisé localement ci-dessous doivent rester le MÊME objet).
-        void fetchPromise.finally(() => {
-          if (this.inFlight.get(cacheKey) === fetchPromise) {
-            this.inFlight.delete(cacheKey);
-          }
+      const fetchFresh = () =>
+        this.fetchValidateAndCache<TResponse>({
+          cacheKey,
+          fullUrl,
+          endpoint,
+          headers,
+          schema,
+          transform,
+          nativeCache: cache,
+          timeout,
+          requireAuth,
+          authConfig,
+          withCredentials,
+          cookieNames,
+          retry,
+          bypassAppCache,
+          ttlSeconds,
         });
-      }
 
-      const { data: rawData, status, headers: responseHeaders } = await fetchPromise;
-
-      // Transformer les données si nécessaire
-      const processedData = transform ? transform(rawData) : rawData;
-
-      // Valider avec Zod
-      const validatedData = await this.validateData(schema, processedData, endpoint);
-
-      // Mettre en cache (TTL explicite via `revalidate`, sinon défaut --
-      // voir DEFAULT_GET_CACHE_TTL_SECONDS ; `revalidate: 0` désactive
-      // explicitement la mise en cache pour cet appel sans désactiver le
-      // partage `inFlight` ci-dessus).
       if (!bypassAppCache) {
-        const ttlSeconds = revalidate ?? DEFAULT_GET_CACHE_TTL_SECONDS;
-        if (ttlSeconds > 0) {
-          getCacheStore.set(cacheKey, validatedData, ttlSeconds * 1000);
+        const entry = getCacheStore.getEntry(cacheKey);
+        if (entry) {
+          const age = Date.now() - entry.timestamp;
+          if (age <= entry.ttl) {
+            // Encore fraîche : latence quasi nulle, aucun aller-retour réseau.
+            return { data: entry.data as TResponse, status: 200, headers: new Headers(), cached: true };
+          }
+          if (age <= entry.ttl * 2) {
+            // Stale-while-revalidate : périmée mais pas trop -- on
+            // renvoie IMMÉDIATEMENT cette valeur (latence nulle pour
+            // CET appelant) tout en rafraîchissant en arrière-plan pour
+            // que la PROCHAINE lecture retrouve une donnée à jour. Pas
+            // d'`await` ici : c'est tout l'intérêt. `inFlight` (voir
+            // fetchValidateAndCache) évite un doublon si une autre
+            // requête, elle, attend une donnée fraîche au même instant.
+            void fetchFresh().catch(() => {
+              // Échec silencieux : on a déjà rendu la donnée périmée à
+              // l'appelant ci-dessous, la prochaine lecture retentera
+              // normalement (au pire elle retombera sur ce même chemin
+              // stale-while-revalidate, au pire sur un fetch bloquant
+              // si l'entrée a fini par dépasser sa fenêtre de grâce).
+            });
+            return { data: entry.data as TResponse, status: 200, headers: new Headers(), cached: true };
+          }
+          // Au-delà de 2x le TTL : trop vieille pour être resservie
+          // telle quelle, on retombe sur un fetch bloquant normal
+          // ci-dessous (getEntry a déjà purgé l'entrée dans ce cas).
         }
       }
+
+      const { data: validatedData, status, headers: responseHeaders } = await fetchFresh();
 
       return {
-        data: validatedData as TResponse,
+        data: validatedData,
         status,
         headers: responseHeaders,
         cached: false
@@ -194,6 +168,92 @@ export class GetService extends BaseHttpService {
 
       throw this.processError(error, endpoint);
     }
+  }
+
+  /**
+   * Effectue réellement l'appel réseau (avec retry + déduplication
+   * `inFlight`), valide la réponse, et l'écrit dans le cache applicatif
+   * si non désactivé. Extrait de `get()` pour être appelable aussi bien
+   * de façon BLOQUANTE (cache-miss classique, l'appelant attend le
+   * résultat) que EN ARRIÈRE-PLAN, sans attendre (stale-while-revalidate
+   * ci-dessus, l'appelant a déjà reçu une valeur périmée immédiatement).
+   */
+  private async fetchValidateAndCache<TResponse>(opts: {
+    cacheKey: string;
+    fullUrl: string;
+    endpoint: string;
+    headers: Record<string, string>;
+    schema?: z.ZodSchema<TResponse>;
+    transform?: (data: unknown) => TResponse;
+    nativeCache: RequestCache;
+    timeout: number;
+    requireAuth: boolean;
+    authConfig?: AuthConfig;
+    withCredentials: boolean;
+    cookieNames: string[];
+    retry: RetryConfig;
+    bypassAppCache: boolean;
+    ttlSeconds: number;
+  }): Promise<{ data: TResponse; status: number; headers: Headers }> {
+    const { cacheKey } = opts;
+
+    // Requêtes identiques déjà en vol : on attend la même promesse au
+    // lieu de redéclencher un appel réseau redondant. Couvre à la fois
+    // "deux composants qui montent en même temps" ET "une lecture
+    // stale-while-revalidate déclenche un rafraîchissement pendant
+    // qu'une autre requête, elle, attendait déjà une donnée fraîche".
+    let fetchPromise = this.inFlight.get(cacheKey);
+    if (!fetchPromise) {
+      fetchPromise = (async () => {
+        // Construire les headers avec authentification complète
+        const requestHeaders = await this.buildGetHeaders(opts.headers, opts.requireAuth, opts.authConfig, opts.cookieNames);
+
+        // Exécuter la requête avec retry -- l'AbortController est recréé à
+        // CHAQUE tentative (à l'intérieur de la closure), pas une seule
+        // fois avant la boucle : sinon, après un premier timeout, le
+        // signal reste définitivement "aborted" et toutes les tentatives
+        // suivantes échouent instantanément sans jamais réessayer pour de
+        // vrai -- ce qui aurait rendu le retry inutile face à un cold
+        // start Render (le service peut mettre 30-60s à se réveiller après
+        // une période d'inactivité), pourtant le cas qu'il doit couvrir.
+        const response = await this.executeWithRetry(() => {
+          const controller = this.createAbortController(opts.timeout);
+          const fetchConfig: RequestInit = {
+            method: 'GET',
+            headers: requestHeaders,
+            signal: controller.signal,
+            cache: opts.nativeCache,
+            // Support des cookies
+            credentials: opts.withCredentials ? 'include' : 'same-origin',
+          };
+          return fetch(opts.fullUrl, fetchConfig);
+        }, opts.retry);
+
+        const rawData = await this.handleResponse(response, opts.endpoint);
+        const processedData = opts.transform ? opts.transform(rawData) : rawData;
+        const validatedData = await this.validateData(opts.schema, processedData, opts.endpoint);
+
+        if (!opts.bypassAppCache && opts.ttlSeconds > 0) {
+          getCacheStore.set(cacheKey, validatedData, opts.ttlSeconds * 1000);
+        }
+
+        return { data: validatedData, status: response.status, headers: response.headers };
+      })();
+
+      this.inFlight.set(cacheKey, fetchPromise);
+      // Effet de bord uniquement (nettoyage de la map) : on ignore
+      // volontairement la promesse renvoyée par `.finally()` pour ne
+      // jamais avoir deux objets-promesse distincts en circulation pour
+      // le même appel (celui stocké dans `inFlight` et celui renvoyé à
+      // l'appelant doivent rester le MÊME objet).
+      void fetchPromise.finally(() => {
+        if (this.inFlight.get(cacheKey) === fetchPromise) {
+          this.inFlight.delete(cacheKey);
+        }
+      });
+    }
+
+    return fetchPromise as Promise<{ data: TResponse; status: number; headers: Headers }>;
   }
 
   /**
