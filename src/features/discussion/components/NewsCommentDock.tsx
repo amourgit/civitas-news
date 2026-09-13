@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Smile, Send, Mic, Square, X } from 'lucide-react';
 import { Commentaire } from '../../../types/global.types';
 import { Avatar } from '../../../components/ui/Avatar';
@@ -364,7 +365,20 @@ export const NewsCommentDock: React.FC<NewsCommentDockProps> = ({
     else startRecording();
   };
 
-  return (
+  // Portalé directement dans document.body (comme le clone du bouton
+  // sidebar dans Header.tsx, même raison) : `position: fixed` reste
+  // fiable UNIQUEMENT tant qu'aucun ancêtre entre l'élément et <body>
+  // n'introduit son propre "containing block" (transform, filter,
+  // backdrop-filter, will-change, contain...) ou son propre contexte
+  // d'empilement -- sur desktop/tablette, la pile de wrappers de layout
+  // (Header/NotchNav, colonnes du contenu, etc.) au-dessus de cette page
+  // pouvait retomber dans ce cas et rendre le dock invisible/coincé
+  // sous le contenu, tout en restant correct sur mobile où le DOM
+  // traversé est plus simple. Le portail supprime la dépendance à
+  // TOUT ancêtre : le dock est toujours un enfant direct de <body>,
+  // donc toujours positionné par rapport au vrai viewport, sur toutes
+  // les tailles d'écran.
+  return createPortal(
     <div
       className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pointer-events-none"
       style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
@@ -598,7 +612,8 @@ export const NewsCommentDock: React.FC<NewsCommentDockProps> = ({
       </div>
 
       <WhatsAppEmojiModal isOpen={showEmojiModal} onClose={() => setShowEmojiModal(false)} onSelectEmoji={handleEmojiSelect} />
-    </div>
+    </div>,
+    document.body
   );
 };
 

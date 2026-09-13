@@ -25,10 +25,14 @@ import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
 // les icônes d'option (aide, backoffice, connexion/profil), reprises
 // telles quelles. Depuis la refonte structurelle de NotchNav, le bloc
 // droit est scindé en deux pièces détachées : `rightContent` (aide +
-// lien backoffice + connexion/profil, groupées dans un même cadre) et
-// `rightAction` (bascule sidebar backoffice, toujours seule dans son
-// propre cadre, au coin réel de l'écran) — visibles à toutes les
-// tailles (desktop, tablette, mobile).
+// lien backoffice + connexion/profil) et `rightAction` (bascule
+// sidebar backoffice) — visibles à toutes les tailles (desktop,
+// tablette, mobile). Chaque bouton de `rightContent` est entièrement
+// libre (aucun cadre/pilule commun, aucun chevauchement en marge
+// négative) : un simple `gap` régulier (gap-2.5, sm:gap-3 -- identique
+// à l'espacement déjà utilisé entre rightContent/rightAction/
+// upperContent dans notch-nav.tsx) les sépare, exactement le même
+// traitement que les items de la navbar centrale/sidebar.
 const NAV_ITEMS: (NotchItemData & { path: string })[] = [
   { id: 'accueil', label: 'Accueil', icon: Home },
   { id: 'news', label: 'News', icon: Layers },
@@ -93,11 +97,11 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   );
 
   const rightContent = (
-    <div className="flex items-center">
+    <div className="flex items-center gap-2.5 sm:gap-3">
       {/* Help icon */}
       <button
         type="button"
-        className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 ring-2 ring-white/20 transition-colors hover:bg-[#4749e0] hover:text-white sm:flex [&:not(:first-child)]:-ml-1.5"
+        className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 ring-2 ring-white/20 transition-colors hover:bg-[#4749e0] hover:text-white sm:flex"
         title="Aide & Support"
       >
         <HelpCircle className="w-4 h-4" />
@@ -110,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
       {isAuthenticated && (can(PERMISSIONS.BACKOFFICE_ACCESS) || can(PERMISSIONS.ADMIN_ACCESS)) && (
         <Link
           to="/admin"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 ring-2 ring-white/20 transition-colors hover:bg-[#4749e0] hover:text-white [&:not(:first-child)]:-ml-1.5"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 ring-2 ring-white/20 transition-colors hover:bg-[#4749e0] hover:text-white"
           title="Backoffice"
         >
           <ShieldCheck className="w-4 h-4" />
@@ -125,11 +129,11 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
           vers l'avatar une fois la session restaurée. */}
       {isHydrating ? (
         <div
-          className="h-8 w-8 shrink-0 rounded-full bg-white/15 animate-pulse [&:not(:first-child)]:-ml-1.5"
+          className="h-8 w-8 shrink-0 rounded-full bg-white/15 animate-pulse"
           aria-hidden="true"
         />
       ) : isAuthenticated ? (
-        <div className="relative shrink-0 [&:not(:first-child)]:-ml-1.5">
+        <div className="relative shrink-0">
           <ProfileDropdown />
           {/* Renouvellement de token en arrière-plan (voir
               services/api/token/tokenLifecycle.ts) -- avant ce correctif,
@@ -148,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
         <button
           type="button"
           onClick={openLoginModal}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 ring-2 ring-white/20 transition-colors hover:bg-[#4749e0] hover:text-white [&:not(:first-child)]:-ml-1.5"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3B3DD9] text-white/90 ring-2 ring-white/20 transition-colors hover:bg-[#4749e0] hover:text-white"
           title="Se connecter"
         >
           <LogIn className="w-4 h-4" />

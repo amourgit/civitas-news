@@ -99,7 +99,7 @@ export const OrganisationsSection: React.FC = () => {
           affiché, même sans donnée/en erreur -- la section ne doit
           jamais disparaître entièrement en silence. */}
       {isLoading ? (
-        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
+        <div className="flex items-start gap-4 overflow-x-auto overflow-y-visible pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
           <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
           <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
           <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
@@ -109,7 +109,20 @@ export const OrganisationsSection: React.FC = () => {
           {error ?? 'Aucune organisation pour le moment.'}
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
+        // items-start + overflow-y-visible : la section ne doit imposer
+        // AUCUNE hauteur aux cartes. Par défaut, un conteneur flex
+        // étire ses enfants à la hauteur du plus grand (align-items:
+        // stretch) -- c'est la carte qui doit mener la taille, pas la
+        // section, d'où items-start. Et `overflow-x-auto` seul fait
+        // recalculer `overflow-y` à `auto` par la spec CSS (et non
+        // `visible`) dès qu'un seul axe est mis à une valeur non
+        // "visible" -- ce conteneur devenait alors, sans le vouloir,
+        // une boîte de clipping vertical, rognant le glow/box-shadow
+        // qui déborde légèrement au-dessus et en dessous de chaque
+        // carte (voir OrganisationCard.css : box-shadow de .content).
+        // overflow-y-visible force explicitement l'axe Y à rester
+        // "visible" tout en gardant le scroll horizontal actif sur X.
+        <div className="flex items-start gap-4 overflow-x-auto overflow-y-visible pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
           {organisations.map((organisation) => (
             <OrganisationCard key={organisation.id} organisation={organisation} />
           ))}
