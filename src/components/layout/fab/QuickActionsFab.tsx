@@ -34,8 +34,24 @@ const DEFAULT_BOTTOM_OFFSET = 96;
 const DRAG_THRESHOLD = 6;
 /** 0-1 : plus petit = suivi plus "en retard"/élastique sur le pointeur pendant le drag. */
 const FOLLOW_STIFFNESS = 0.22;
-/** Easing avec léger dépassement -- donne la sensation élastique à l'ancrage sur le bord. */
-const SNAP_TRANSITION = 'left 320ms cubic-bezier(0.34, 1.56, 0.64, 1), top 320ms cubic-bezier(0.34, 1.56, 0.64, 1)';
+/**
+ * Rebond d'ancrage au relâchement -- oscillateur harmonique amorti
+ * calculé analytiquement image par image (rAF), PAS une transition CSS
+ * figée (celle-ci ne pouvait produire qu'un unique et léger dépassement,
+ * ressenti comme un arrêt brusque) :
+ *   delta(t) = delta0 * e^(-BOUNCE_DECAY * t) * cos(BOUNCE_ANGULAR_FREQUENCY * t)
+ *   position(t) = cible + delta(t)  (position toujours re-clampée à
+ *   l'écran, voir runBounceSnap -- un dépassement calculé ne doit
+ *   jamais pouvoir sortir le bouton de la zone visible, même pour un
+ *   très grand déplacement initial)
+ * -- delta0 étant l'écart entre le point de lâcher et le coin cible.
+ * Constantes choisies empiriquement pour ~3 rebonds nettement visibles
+ * (dépassement ~30% puis ~9% puis ~3%) avant stabilisation complète,
+ * sur BOUNCE_DURATION ms.
+ */
+const BOUNCE_DURATION = 850;
+const BOUNCE_DECAY = 0.0085;
+const BOUNCE_ANGULAR_FREQUENCY = 0.0225;
 
 interface Position {
   /** Distance depuis le bord gauche de la fenêtre, en px. */
@@ -77,11 +93,14 @@ function defaultPosition(): Position {
  * du pointeur avec un temps de retard (FOLLOW_STIFFNESS) via une
  * boucle requestAnimationFrame qui écrit directement le style DOM
  * (pas de re-render React à chaque frame, uniquement des refs). Au
- * relâchement, ancrage animé (transition CSS avec léger dépassement)
- * sur le bord vertical le plus proche ; position persistée en
- * localStorage pour être restaurée d'une visite à l'autre. Un simple
- * clic (mouvement sous DRAG_THRESHOLD) n'est jamais intercepté : il
- * atteint normalement le onClick interne de MenuContainer.
+ * relâchement, retour ANIMÉ (jamais un saut instantané) vers le bord
+ * vertical le plus proche, avec rebond (voir runBounceSnap /
+ * BOUNCE_* ci-dessus) : le bouton dépasse la cible, revient en arrière,
+ * dépasse encore un peu moins, etc. -- environ 3 rebonds visibles avant
+ * de se stabiliser complètement. Position persistée en localStorage
+ * pour être restaurée d'une visite à l'autre. Un simple clic (mouvement
+ * sous DRAG_THRESHOLD) n'est jamais intercepté : il atteint normalement
+ * le onClick interne de MenuContainer.
  */
 export function QuickActionsFab() {
   const navigate = useNavigate();
@@ -93,15 +112,15 @@ export function QuickActionsFab() {
   const visualPositionRef = useRef<Position>({ x: 0, y: 0 });
   const pointerTargetRef = useRef<Position | null>(null);
   const rafRef = useRef<number | null>(null);
+  const bounceRafRef = useRef<number | null>(null);
   const dragStartRef = useRef<{ pointerX: number; pointerY: number; originX: number; originY: number } | null>(null);
   const wasDraggedRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const applyStyle = useCallback((pos: Position, withTransition: boolean) => {
+  const applyStyle = useCallback((pos: Position) => {
     const el = wrapperRef.current;
     if (!el) return;
-    el.style.transition = withTransition ? SNAP_TRANSITION : 'none';
     el.style.left = `${pos.x}px`;
     el.style.top = `${pos.y}px`;
   }, []);
@@ -113,7 +132,7 @@ export function QuickActionsFab() {
     const initial = savedPosition ? clampPosition(savedPosition) : defaultPosition();
     positionRef.current = initial;
     visualPositionRef.current = initial;
-    applyStyle(initial, false);
+    applyStyle(initial);
     // Volontairement exécuté une seule fois au montage : savedPosition
     // ne doit resynchroniser l'affichage qu'à la création du composant,
     // pas à chaque écriture localStorage déclenchée par ce composant
@@ -129,7 +148,7 @@ export function QuickActionsFab() {
       const reclamped = clampPosition(positionRef.current);
       positionRef.current = reclamped;
       visualPositionRef.current = reclamped;
-      applyStyle(reclamped, false);
+      applyStyle(reclamped);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -142,6 +161,46 @@ export function QuickActionsFab() {
     }
   }, []);
 
+  const stopBounceAnimation = useCallback(() => {
+    if (bounceRafRef.current !== null) {
+      cancelAnimationFrame(bounceRafRef.current);
+      bounceRafRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Anime le retour au bord après un lâcher, avec rebond. Trajectoire
+   * calculée directement à partir du temps écoulé (pas de simulation
+   * pas-à-pas à état cumulatif) : reproductible, et interrompue
+   * proprement si l'utilisateur ressaisit le bouton en plein rebond
+   * (voir handlePointerDown) ou si le composant est démonté.
+   */
+  const runBounceSnap = useCallback((from: Position, to: Position) => {
+    stopBounceAnimation();
+    const startTime = performance.now();
+    const delta0X = from.x - to.x;
+    const delta0Y = from.y - to.y;
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      if (elapsed >= BOUNCE_DURATION) {
+        visualPositionRef.current = to;
+        applyStyle(to);
+        bounceRafRef.current = null;
+        return;
+      }
+      const envelope = Math.exp(-BOUNCE_DECAY * elapsed) * Math.cos(BOUNCE_ANGULAR_FREQUENCY * elapsed);
+      const next: Position = clampPosition({
+        x: to.x + delta0X * envelope,
+        y: to.y + delta0Y * envelope,
+      });
+      visualPositionRef.current = next;
+      applyStyle(next);
+      bounceRafRef.current = requestAnimationFrame(tick);
+    };
+    bounceRafRef.current = requestAnimationFrame(tick);
+  }, [applyStyle, stopBounceAnimation]);
+
   const runFollowLoop = useCallback(() => {
     const tick = () => {
       const target = pointerTargetRef.current;
@@ -152,7 +211,7 @@ export function QuickActionsFab() {
         y: current.y + (target.y - current.y) * FOLLOW_STIFFNESS,
       };
       visualPositionRef.current = next;
-      applyStyle(next, false);
+      applyStyle(next);
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -160,6 +219,7 @@ export function QuickActionsFab() {
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0 || !positionRef.current) return; // clic gauche/tactile uniquement
+    stopBounceAnimation(); // ressaisi en plein rebond : on coupe net l'animation en cours
     (e.target as Element).setPointerCapture?.(e.pointerId);
     dragStartRef.current = {
       pointerX: e.clientX,
@@ -168,7 +228,7 @@ export function QuickActionsFab() {
       originY: positionRef.current.y,
     };
     wasDraggedRef.current = false;
-  }, []);
+  }, [stopBounceAnimation]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const start = dragStartRef.current;
@@ -197,16 +257,19 @@ export function QuickActionsFab() {
     pointerTargetRef.current = null;
     setIsDragging(false);
 
+    const from = visualPositionRef.current;
     const snapped = snapToNearestEdge(positionRef.current);
     positionRef.current = snapped;
-    visualPositionRef.current = snapped;
-    applyStyle(snapped, true);
+    runBounceSnap(from, snapped);
     setSavedPosition(snapped);
-  }, [applyStyle, stopFollowLoop, setSavedPosition]);
+  }, [stopFollowLoop, runBounceSnap, setSavedPosition]);
 
-  // Coupe la boucle de suivi si le composant est démonté en plein drag
-  // (navigation programmatique, etc.).
-  useLayoutEffect(() => stopFollowLoop, [stopFollowLoop]);
+  // Coupe les boucles de suivi/rebond si le composant est démonté en
+  // plein geste (navigation programmatique, etc.).
+  useLayoutEffect(() => () => {
+    stopFollowLoop();
+    stopBounceAnimation();
+  }, [stopFollowLoop, stopBounceAnimation]);
 
   const handleClickCapture = useCallback((e: React.MouseEvent) => {
     if (wasDraggedRef.current) {
