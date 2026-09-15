@@ -528,15 +528,15 @@ export function NotchNav({
                   `upperContent` (injecté par la page active, voir
                   TopbarSlotsContext.tsx) : ASIDE volontairement
                   transparent, sans fond ni arrondi propre -- chaque
-                  bouton à l'intérieur porte désormais SON PROPRE cercle
+                  bouton à l'intérieur porte SON PROPRE cercle
                   (bg-[#3B3DD9] rounded-full, taille fixe, voir
-                  Header.tsx) et se chevauche horizontalement avec ses
-                  voisins (margin négative), même principe visuel que
-                  la pile d'avatars des réactions sur les cards News
-                  (voir AvatarGroup.tsx) : plusieurs cercles PARFAITS
-                  distincts plutôt qu'une seule pilule commune qui les
-                  aurait déformés en rectangle aux coins arrondis dès
-                  qu'il y en a plus d'un.
+                  Header.tsx), totalement libre et séparé de ses
+                  voisins par un simple gap régulier (gap-2.5/gap-3,
+                  voir Header.tsx) -- plus de chevauchement en marge
+                  négative façon pile d'avatars (voir AvatarGroup.tsx) :
+                  chaque bouton se comporte comme un item de
+                  navbar/sidebar ordinaire, avec un espacement franc
+                  et non plus une pilule commune.
                 - `rightAction` (bascule sidebar) : même traitement --
                   l'aside ne porte plus le cercle, seul le bouton à
                   l'intérieur (voir sidebarToggleButtonClassName dans

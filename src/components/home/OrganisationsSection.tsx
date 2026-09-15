@@ -99,7 +99,7 @@ export const OrganisationsSection: React.FC = () => {
           affiché, même sans donnée/en erreur -- la section ne doit
           jamais disparaître entièrement en silence. */}
       {isLoading ? (
-        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
+        <div className="flex items-start gap-4 overflow-x-auto overflow-y-visible pt-1 pb-8 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
           <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
           <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
           <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
@@ -109,7 +109,19 @@ export const OrganisationsSection: React.FC = () => {
           {error ?? 'Aucune organisation pour le moment.'}
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
+        // items-start : par défaut, un conteneur flex étire ses enfants
+        // à la hauteur du plus grand (align-items: stretch) -- c'est la
+        // carte qui doit mener la taille, pas la section, d'où
+        // items-start (aucune hauteur n'est donc jamais "imposée" par
+        // ce rail aux cartes, chacune garde sa propre hauteur naturelle).
+        // overflow-y-visible + pt-1/pb-8 (au lieu de pb-2) : filet de
+        // sécurité supplémentaire pour que le glow/box-shadow de chaque
+        // carte (voir OrganisationCard.css : box-shadow de .content,
+        // qui déborde visuellement de ~30-40px sous la carte) ait
+        // toujours la place de se dessiner en entier, même si le
+        // navigateur traite l'axe Y comme une boîte de défilement/
+        // clipping dès que overflow-x est actif sur l'autre axe.
+        <div className="flex items-start gap-4 overflow-x-auto overflow-y-visible pt-1 pb-8 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
           {organisations.map((organisation) => (
             <OrganisationCard key={organisation.id} organisation={organisation} />
           ))}

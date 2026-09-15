@@ -33,14 +33,24 @@ const MAX_ENTRIES = 300;
 class GetCacheStore {
   private readonly store = new Map<string, CacheEntry>();
 
-  get(key: string): unknown | undefined {
+  /**
+   * Entrée BRUTE (avec timestamp/ttl), y compris si périmée -- à la
+   * différence d'un simple `get()`, ne supprime PAS une entrée juste
+   * expirée : c'est GetService (stale-while-revalidate) qui décide si
+   * une entrée périmée mais encore dans sa fenêtre de grâce doit être
+   * resservie telle quelle pendant un rafraîchissement silencieux en
+   * arrière-plan. Purgée seulement au-delà de 2x sa propre durée de
+   * vie -- au-delà, plus personne ne la resservira jamais, autant
+   * libérer la mémoire.
+   */
+  getEntry(key: string): CacheEntry | undefined {
     const entry = this.store.get(key);
     if (!entry) return undefined;
-    if (Date.now() - entry.timestamp > entry.ttl) {
+    if (Date.now() - entry.timestamp > entry.ttl * 2) {
       this.store.delete(key);
       return undefined;
     }
-    return entry.data;
+    return entry;
   }
 
   set(key: string, data: unknown, ttlMs: number): void {
