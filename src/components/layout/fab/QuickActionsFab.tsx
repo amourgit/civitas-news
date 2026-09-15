@@ -35,10 +35,11 @@ const DRAG_THRESHOLD = 6;
 /** 0-1 : plus petit = suivi plus "en retard"/élastique sur le pointeur pendant le drag. */
 const FOLLOW_STIFFNESS = 0.22;
 /**
- * Rebond d'ancrage au relâchement -- oscillateur harmonique amorti
- * calculé analytiquement image par image (rAF), PAS une transition CSS
- * figée (celle-ci ne pouvait produire qu'un unique et léger dépassement,
- * ressenti comme un arrêt brusque) :
+ * Rebond d'ancrage au relâchement -- UNIQUEMENT horizontal (axe X, par
+ * rapport à l'écran ; voir runBounceSnap) -- oscillateur harmonique
+ * amorti calculé analytiquement image par image (rAF), PAS une
+ * transition CSS figée (celle-ci ne pouvait produire qu'un unique et
+ * léger dépassement, ressenti comme un arrêt brusque) :
  *   delta(t) = delta0 * e^(-BOUNCE_DECAY * t) * cos(BOUNCE_ANGULAR_FREQUENCY * t)
  *   position(t) = cible + delta(t)  (position toujours re-clampée à
  *   l'écran, voir runBounceSnap -- un dépassement calculé ne doit
@@ -94,10 +95,12 @@ function defaultPosition(): Position {
  * boucle requestAnimationFrame qui écrit directement le style DOM
  * (pas de re-render React à chaque frame, uniquement des refs). Au
  * relâchement, retour ANIMÉ (jamais un saut instantané) vers le bord
- * vertical le plus proche, avec rebond (voir runBounceSnap /
- * BOUNCE_* ci-dessus) : le bouton dépasse la cible, revient en arrière,
- * dépasse encore un peu moins, etc. -- environ 3 rebonds visibles avant
- * de se stabiliser complètement. Position persistée en localStorage
+ * vertical le plus proche, avec rebond HORIZONTAL uniquement, par
+ * rapport à l'écran (voir runBounceSnap / BOUNCE_* ci-dessus) : le
+ * bouton dépasse la cible sur l'axe X, revient en arrière, dépasse
+ * encore un peu moins, etc. -- environ 3 rebonds visibles avant de se
+ * stabiliser complètement ; l'axe Y, lui, rejoint sa cible en douceur
+ * sans jamais osciller. Position persistée en localStorage
  * pour être restaurée d'une visite à l'autre. Un simple clic (mouvement
  * sous DRAG_THRESHOLD) n'est jamais intercepté : il atteint normalement
  * le onClick interne de MenuContainer.
@@ -169,11 +172,18 @@ export function QuickActionsFab() {
   }, []);
 
   /**
-   * Anime le retour au bord après un lâcher, avec rebond. Trajectoire
-   * calculée directement à partir du temps écoulé (pas de simulation
-   * pas-à-pas à état cumulatif) : reproductible, et interrompue
-   * proprement si l'utilisateur ressaisit le bouton en plein rebond
-   * (voir handlePointerDown) ou si le composant est démonté.
+   * Anime le retour au bord après un lâcher, avec rebond -- UNIQUEMENT
+   * sur l'axe horizontal (X), par rapport à l'écran : c'est l'axe sur
+   * lequel le bouton s'ancre réellement (voir snapToNearestEdge, qui ne
+   * touche jamais à Y). L'axe vertical rejoint sa cible en lissage pur
+   * (même decay, sans le facteur cos -- donc sans oscillation), pour
+   * rattraper en douceur le léger écart dû au retard élastique du suivi
+   * pendant le drag (FOLLOW_STIFFNESS), sans jamais rebondir de haut en
+   * bas. Trajectoire calculée directement à partir du temps écoulé (pas
+   * de simulation pas-à-pas à état cumulatif) : reproductible, et
+   * interrompue proprement si l'utilisateur ressaisit le bouton en
+   * plein rebond (voir handlePointerDown) ou si le composant est
+   * démonté.
    */
   const runBounceSnap = useCallback((from: Position, to: Position) => {
     stopBounceAnimation();
@@ -189,10 +199,11 @@ export function QuickActionsFab() {
         bounceRafRef.current = null;
         return;
       }
-      const envelope = Math.exp(-BOUNCE_DECAY * elapsed) * Math.cos(BOUNCE_ANGULAR_FREQUENCY * elapsed);
+      const decayOnly = Math.exp(-BOUNCE_DECAY * elapsed);
+      const bounceEnvelope = decayOnly * Math.cos(BOUNCE_ANGULAR_FREQUENCY * elapsed);
       const next: Position = clampPosition({
-        x: to.x + delta0X * envelope,
-        y: to.y + delta0Y * envelope,
+        x: to.x + delta0X * bounceEnvelope, // horizontal : rebond (oscillation amortie)
+        y: to.y + delta0Y * decayOnly, // vertical : lissage pur, jamais d'oscillation
       });
       visualPositionRef.current = next;
       applyStyle(next);
