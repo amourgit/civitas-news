@@ -32,6 +32,7 @@ import type { BackendUser } from '../../../types/models/backend.types';
 import { ROLE_LABELS } from '../../../lib/constants/userRoles';
 import { chunk } from '../../../lib/utils';
 import { Skeleton } from '../../ui/Skeleton';
+import { InitialsAvatar, getInitials, getUserDisplayName } from './InitialsAvatar';
 
 /** Nombre maximum d'utilisateurs par slide -- seuil fixe et unique,
  * exporté pour rester la seule source de vérité (tests, réutilisation). */
@@ -47,16 +48,8 @@ interface OrbitPerson {
   initials: string;
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return '?';
-}
-
 function toOrbitPerson(user: BackendUser): OrbitPerson {
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
-  const name = fullName || user.username || `Utilisateur #${user.id}`;
+  const name = getUserDisplayName(user);
   return {
     id: user.id,
     name,
@@ -64,30 +57,6 @@ function toOrbitPerson(user: BackendUser): OrbitPerson {
     email: user.email || 'Email non renseigné',
     initials: getInitials(name),
   };
-}
-
-/** Pastille avatar en initiales -- l'API Utilisateur n'expose pas de
- * photo de profil sur cet endpoint. Même palette de marque que le
- * composant Avatar partagé (src/components/ui/Avatar.tsx), à des
- * tailles arbitraires en pixels pour coller précisément aux gabarits
- * (responsives) de l'orbite d'origine. */
-function InitialsAvatar({
-  initials,
-  sizePx,
-  className = '',
-}: {
-  initials: string;
-  sizePx: number;
-  className?: string;
-}) {
-  return (
-    <div
-      style={{ width: sizePx, height: sizePx, fontSize: sizePx * 0.36 }}
-      className={`flex items-center justify-center rounded-full bg-gradient-to-br from-[#5B4DFF] to-[#1A1F4D] text-white font-bold shrink-0 ${className}`}
-    >
-      {initials}
-    </div>
-  );
 }
 
 const useResponsive = (): ScreenSize => {

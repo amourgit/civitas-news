@@ -16,6 +16,7 @@ import { usersRepository } from '../../../../services/api/repositories/users.rep
 import { PERMISSIONS } from '../../../../lib/permissions/permissions.catalog';
 import { ROLE_OPTIONS } from '../../../../lib/constants/userRoles';
 import UserOrbitCarousel from '../../users/UserOrbitCarousel';
+import UserRecordDetail from '../../users/UserRecordDetail';
 
 function toNullableInt(value: unknown): number | null | undefined {
   if (value === undefined) return undefined;
@@ -46,6 +47,13 @@ export const utilisateurModel: ModelDef<BackendUser> = {
   // (listExtrasMode: 'above' ou suppression de l'option).
   ListExtras: UserOrbitCarousel,
   listExtrasMode: 'replace',
+  // Fiche détail "profil" (bannière, statuts, grille d'informations,
+  // badges) en lieu et place du Card + formulaire générique -- voir
+  // ModelDef.RecordExtras. L'édition, elle, continue de passer par
+  // BackofficeRecordForm (bouton « Modifier » de la fiche) : seule la
+  // CONSULTATION change de design.
+  RecordExtras: UserRecordDetail,
+  recordViewMode: 'replace',
   fields: [
     { name: 'username', label: "Nom d'utilisateur", type: 'text', readOnly: true },
     { name: 'firstName', label: 'Prénom', type: 'text' },

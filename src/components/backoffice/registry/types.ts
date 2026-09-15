@@ -121,6 +121,28 @@ export interface ModelDef<TRecord = Record<string, unknown>> {
    */
   listExtrasMode?: 'above' | 'replace';
   /**
+   * Composant optionnel qui REMPLACE entièrement le Card + formulaire
+   * générique de la page de détail (voir BackofficeRecordPage) --
+   * même esprit que `ListExtras`/`listExtrasMode`, pour la fiche au
+   * lieu de la liste. Reçoit l'enregistrement chargé, l'autorisation
+   * de gestion, un callback de mise à jour locale (après une
+   * sauvegarde) et un callback de retour à la liste. N'est utilisé
+   * qu'en consultation d'un enregistrement existant : la création
+   * continue de passer par le formulaire générique.
+   *
+   * `recordViewMode: 'replace'` (avec `RecordExtras` renseigné) active
+   * ce remplacement ; par défaut (`'form'` ou absent) la page garde
+   * son Card + BackofficeRecordForm habituels.
+   */
+  RecordExtras?: ComponentType<{
+    model: ModelDef<TRecord>;
+    record: TRecord;
+    canManage: boolean;
+    onUpdated: (updated: TRecord) => void;
+    onBack: () => void;
+  }>;
+  recordViewMode?: 'form' | 'replace';
+  /**
    * Route de création personnalisée (ex: un assistant multi-étapes dédié),
    * utilisée par BackofficeListPage à la place du formulaire générique
    * `/admin/:modelKey/nouveau` quand elle est définie. D'autres modèles

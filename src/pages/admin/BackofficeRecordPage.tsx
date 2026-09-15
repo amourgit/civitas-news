@@ -38,21 +38,28 @@ export default function BackofficeRecordPage() {
 
   const canManage = can(model.managePermission ?? model.viewPermission ?? ('backoffice:access' as never));
   const DetailExtras = model.DetailExtras;
+  const RecordExtras = model.RecordExtras;
+  // Vue de détail entièrement custom (voir ModelDef.RecordExtras) :
+  // seulement pertinente en consultation d'un enregistrement existant,
+  // jamais en création (qui a toujours besoin du formulaire générique).
+  const useCustomRecordView = Boolean(RecordExtras && model.recordViewMode === 'replace' && !isCreate);
 
   return (
-    <div className="flex flex-col gap-5 max-w-3xl">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(`/admin/${model.key}`)}
-          className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          aria-label="Retour"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white font-display">
-          {isCreate ? `Créer — ${model.labelSingular}` : model.labelSingular}
-        </h1>
-      </div>
+    <div className={`flex flex-col gap-5 ${useCustomRecordView ? '' : 'max-w-3xl'}`}>
+      {!useCustomRecordView && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(`/admin/${model.key}`)}
+            className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Retour"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white font-display">
+            {isCreate ? `Créer — ${model.labelSingular}` : model.labelSingular}
+          </h1>
+        </div>
+      )}
 
       {isLoading && (
         <Card variant="default" padding="lg" className="flex items-center justify-center py-16">
@@ -67,7 +74,17 @@ export default function BackofficeRecordPage() {
         </Card>
       )}
 
-      {!isLoading && !loadError && (isCreate || record) && (
+      {!isLoading && !loadError && useCustomRecordView && record && RecordExtras && (
+        <RecordExtras
+          model={model}
+          record={record as never}
+          canManage={canManage}
+          onUpdated={(updated) => setRecord(updated as Record<string, unknown>)}
+          onBack={() => navigate(`/admin/${model.key}`)}
+        />
+      )}
+
+      {!isLoading && !loadError && !useCustomRecordView && (isCreate || record) && (
         <Card variant="default" padding="lg">
           <BackofficeRecordForm
             model={model}
@@ -85,7 +102,7 @@ export default function BackofficeRecordPage() {
         </Card>
       )}
 
-      {!isCreate && !isLoading && record && DetailExtras && (
+      {!isCreate && !isLoading && record && !useCustomRecordView && DetailExtras && (
         <DetailExtras record={record as never} />
       )}
     </div>
