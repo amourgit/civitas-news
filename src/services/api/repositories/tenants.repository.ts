@@ -121,11 +121,28 @@ export const tenantsRepository = {
       requireAuth: false,
       // Provisionne un schéma Postgres + toutes ses migrations côté
       // backend (voir Tenant.create_with_domain) : nettement plus lent
-      // qu'un CRUD classique. Le défaut global (60s, BaseHttpService)
-      // suffit dans la plupart des cas ; on le porte à 120s ici en marge
-      // de sécurité spécifiquement pour cette requête, la plus coûteuse
-      // de l'app.
-      timeout: 120000,
+      // qu'un CRUD classique, et le temps réel dépend de la charge du
+      // moment -- 120s s'est révélé encore insuffisant. `timeout: 0` a
+      // un sens précis ici (voir BaseHttpService.createAbortController :
+      // `if (timeoutMs > 0)` -- 0 ne pose simplement AUCUN minuteur
+      // d'abandon) : on attend aussi longtemps qu'il faut, sans jamais
+      // couper nous-mêmes tant que le backend n'a pas répondu.
+      //
+      // AUCUN retry ici, et ça n'a rien d'un oubli : cette requête N'EST
+      // PAS idempotente (elle crée un tenant + son administrateur) --
+      // la moindre re-tentative automatique après un simple ralentissement
+      // (le cas normal ici, pas une vraie panne) créerait un DOUBLON
+      // (deux organisations, ou un conflit de sous-domaine) au lieu de
+      // récupérer proprement. `retry` reste donc délibérément absent
+      // (voir BaseHttpService.executeWithRetry : pas de config -> pas de
+      // nouvelle tentative, jamais un défaut implicite qui réessaierait
+      // dans notre dos).
+      //
+      // Reste un point hors de portée du frontend : un proxy/passerelle
+      // intermédiaire (ex: le service Render du backend) peut fermer la
+      // connexion de son propre chef avant que ce délai illimité ne
+      // s'applique -- rien ne peut compenser ça côté client seul.
+      timeout: 0,
     });
     return response.data;
   },
