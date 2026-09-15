@@ -1,12 +1,14 @@
 // ============================================================
 // src/components/backoffice/users/UserOrbitCarousel.tsx
-// Carrousel visuel des utilisateurs, affiché en haut de la page liste
-// du backoffice Utilisateurs (voir ModelDef.ListExtras et
-// BackofficeListPage). Le design du carrousel orbital -- carte active,
-// rotation des avatars, navigation, indicateurs -- est repris à
-// l'identique d'une maquette existante ; seules la source de données
-// (utilisateurs réels de l'API, pas d'avatar photo -> initiales) et la
-// pagination par lots de 8 sont propres à cet usage backoffice.
+// Carrousel visuel des utilisateurs : il constitue désormais LA vue
+// liste du backoffice Utilisateurs, en lieu et place du tableau
+// générique (voir ModelDef.ListExtras + listExtrasMode: 'replace' dans
+// utilisateur.registry.ts, et le rendu dans BackofficeListPage). Le
+// design du carrousel orbital -- carte active, rotation des avatars,
+// navigation, indicateurs -- est repris à l'identique d'une maquette
+// existante ; seules la source de données (utilisateurs réels de
+// l'API, pas d'avatar photo -> initiales) et la pagination par lots de
+// 8 sont propres à cet usage backoffice.
 //
 // Règle de pagination (volontairement stricte, voir USERS_PER_SLIDE) :
 // un slide contient AU MAXIMUM 8 utilisateurs, jamais un slide par
@@ -386,11 +388,16 @@ export default function UserOrbitCarousel({ records, isLoading }: UserOrbitCarou
 
   return (
     <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-black overflow-hidden">
-      {slideCount > 1 && (
-        <div className="flex items-center justify-between px-3 sm:px-4 pt-3 sm:pt-4">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-            Groupe {slideIndex + 1} / {slideCount} · {records.length} utilisateur{records.length > 1 ? 's' : ''}
-          </span>
+      {/* En-tête toujours visible : le carrousel remplaçant le tableau,
+          il porte seul l'information de volumétrie. Les contrôles de
+          pagination, eux, n'apparaissent qu'au-delà de 8 utilisateurs
+          (c.-à-d. dès qu'il existe un second groupe). */}
+      <div className="flex items-center justify-between gap-3 px-3 sm:px-4 pt-3 sm:pt-4">
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {slideCount > 1 && `Groupe ${slideIndex + 1} / ${slideCount} · `}
+          {records.length} utilisateur{records.length > 1 ? 's' : ''}
+        </span>
+        {slideCount > 1 && (
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setSlideIndex((s) => (s - 1 + slideCount) % slideCount)}
@@ -419,8 +426,8 @@ export default function UserOrbitCarousel({ records, isLoading }: UserOrbitCarou
               <ChevronRight size={14} className="text-gray-700 dark:text-gray-300" />
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       <AnimatePresence mode="wait">
         <motion.div
           key={slideIndex}

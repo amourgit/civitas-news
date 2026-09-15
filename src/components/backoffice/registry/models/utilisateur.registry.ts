@@ -38,10 +38,14 @@ export const utilisateurModel: ModelDef<BackendUser> = {
   // propose donc pas ce bouton, même si l'action existe techniquement.
   capabilities: { create: false, edit: true, delete: false },
   searchFields: ['username', 'email', 'firstName', 'lastName'],
-  // Carrousel visuel affiché au-dessus du tableau (voir
-  // ModelDef.ListExtras) -- lots de 8 utilisateurs par slide, slides
-  // ajoutées automatiquement selon le nombre total d'utilisateurs.
+  // Carrousel visuel qui REMPLACE le tableau générique (voir
+  // ModelDef.ListExtras + listExtrasMode) -- lots de 8 utilisateurs par
+  // slide, slides ajoutées automatiquement selon le nombre total
+  // d'utilisateurs. `searchFields` reste déclaré : il redeviendrait
+  // actif tel quel si le tableau était réaffiché un jour
+  // (listExtrasMode: 'above' ou suppression de l'option).
   ListExtras: UserOrbitCarousel,
+  listExtrasMode: 'replace',
   fields: [
     { name: 'username', label: "Nom d'utilisateur", type: 'text', readOnly: true },
     { name: 'firstName', label: 'Prénom', type: 'text' },

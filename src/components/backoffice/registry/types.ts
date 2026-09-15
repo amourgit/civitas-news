@@ -106,6 +106,21 @@ export interface ModelDef<TRecord = Record<string, unknown>> {
    */
   ListExtras?: ComponentType<{ records: TRecord[]; isLoading: boolean }>;
   /**
+   * Placement de `ListExtras` vis-à-vis du tableau générique :
+   *  - `'above'` (défaut) : extras au-dessus, le tableau reste la vue
+   *    principale de la liste ;
+   *  - `'replace'` : le tableau générique n'est PAS rendu, `ListExtras`
+   *    devient à lui seul la vue liste du modèle (ex : Utilisateurs,
+   *    dont le carrousel remplace désormais le tableau).
+   *
+   * Attention avec `'replace'` : le tableau générique porte aussi la
+   * recherche texte libre (`searchFields`), le bouton de création,
+   * l'édition en ligne et la suppression. Un modèle qui le remplace
+   * doit donc offrir lui-même les accès dont il a besoin (le carrousel
+   * Utilisateurs expose « Voir la fiche » vers `/admin/:key/:id`).
+   */
+  listExtrasMode?: 'above' | 'replace';
+  /**
    * Route de création personnalisée (ex: un assistant multi-étapes dédié),
    * utilisée par BackofficeListPage à la place du formulaire générique
    * `/admin/:modelKey/nouveau` quand elle est définie. D'autres modèles
