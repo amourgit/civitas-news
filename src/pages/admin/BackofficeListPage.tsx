@@ -65,6 +65,14 @@ export default function BackofficeListPage() {
     setRecords((prev) => prev.map((r) => (String(r.id) === String(updated.id) ? updated : r)));
   };
 
+  // Extras du modèle (voir ModelDef.ListExtras) : soit affichés AU-DESSUS
+  // du tableau générique (défaut), soit À LA PLACE de celui-ci quand le
+  // modèle déclare listExtrasMode: 'replace' -- c'est le cas
+  // d'Utilisateurs, dont le carrousel est désormais la vue liste.
+  const ListExtras = model.ListExtras;
+  const extrasReplaceTable = Boolean(ListExtras && model.listExtrasMode === 'replace');
+  const extrasNode = ListExtras ? <ListExtras records={records} isLoading={isLoading} /> : null;
+
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -78,19 +86,25 @@ export default function BackofficeListPage() {
         </div>
       )}
 
-      <BackofficeDataTable
-        model={model}
-        records={records}
-        isLoading={isLoading}
-        canManage={canManage}
-        onCreate={() => navigate(model.createRoute ?? `/admin/${model.key}/nouveau`)}
-        onOpen={(record) => {
-          const r = record as Record<string, unknown>;
-          navigate(model.editRoute ? model.editRoute(r as never) : `/admin/${model.key}/${r.id}`);
-        }}
-        onDelete={(record) => setPendingDelete(record as Record<string, unknown>)}
-        onRecordUpdated={handleRecordUpdated}
-      />
+      {!extrasReplaceTable && extrasNode}
+
+      {extrasReplaceTable ? (
+        extrasNode
+      ) : (
+        <BackofficeDataTable
+          model={model}
+          records={records}
+          isLoading={isLoading}
+          canManage={canManage}
+          onCreate={() => navigate(model.createRoute ?? `/admin/${model.key}/nouveau`)}
+          onOpen={(record) => {
+            const r = record as Record<string, unknown>;
+            navigate(model.editRoute ? model.editRoute(r as never) : `/admin/${model.key}/${r.id}`);
+          }}
+          onDelete={(record) => setPendingDelete(record as Record<string, unknown>)}
+          onRecordUpdated={handleRecordUpdated}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={!!pendingDelete}

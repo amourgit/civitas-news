@@ -14,13 +14,8 @@ import type { ModelDef } from '../types';
 import type { BackendUser } from '../../../../types/models/backend.types';
 import { usersRepository } from '../../../../services/api/repositories/users.repository';
 import { PERMISSIONS } from '../../../../lib/permissions/permissions.catalog';
-
-const ROLE_OPTIONS = [
-  { value: 'etudiant', label: 'Étudiant' },
-  { value: 'organisation', label: 'Organisation' },
-  { value: 'moderateur', label: 'Modérateur' },
-  { value: 'administrateur', label: 'Administrateur' },
-];
+import { ROLE_OPTIONS } from '../../../../lib/constants/userRoles';
+import UserOrbitCarousel from '../../users/UserOrbitCarousel';
 
 function toNullableInt(value: unknown): number | null | undefined {
   if (value === undefined) return undefined;
@@ -43,6 +38,14 @@ export const utilisateurModel: ModelDef<BackendUser> = {
   // propose donc pas ce bouton, même si l'action existe techniquement.
   capabilities: { create: false, edit: true, delete: false },
   searchFields: ['username', 'email', 'firstName', 'lastName'],
+  // Carrousel visuel qui REMPLACE le tableau générique (voir
+  // ModelDef.ListExtras + listExtrasMode) -- lots de 8 utilisateurs par
+  // slide, slides ajoutées automatiquement selon le nombre total
+  // d'utilisateurs. `searchFields` reste déclaré : il redeviendrait
+  // actif tel quel si le tableau était réaffiché un jour
+  // (listExtrasMode: 'above' ou suppression de l'option).
+  ListExtras: UserOrbitCarousel,
+  listExtrasMode: 'replace',
   fields: [
     { name: 'username', label: "Nom d'utilisateur", type: 'text', readOnly: true },
     { name: 'firstName', label: 'Prénom', type: 'text' },

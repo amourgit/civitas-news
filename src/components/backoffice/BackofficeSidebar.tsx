@@ -153,11 +153,19 @@ const CurvedNavbar: React.FC<CurvedNavbarProps> = ({ navItems, onRequestClose, f
       className="h-[100dvh] w-screen max-w-screen-sm fixed right-0 top-0 z-[100] bg-white"
     >
       <div className="h-full pt-11 flex flex-col justify-between">
-        <div className="flex flex-col text-5xl gap-3 mt-0 px-10 md:px-24">
-          <div className="text-black border-b border-black/30 uppercase text-sm mb-0">
+        {/* `min-h-0` est indispensable ici : un enfant flex a par défaut
+            min-height:auto, ce qui l'empêche de rétrécir sous la hauteur
+            de son contenu -- la liste débordait donc sous le bas de
+            l'écran (entrées basses comme Utilisateurs/Journal invisibles
+            ET inatteignables, le scroll du body étant verrouillé pendant
+            l'ouverture du panneau). Avec min-h-0 + overflow-y-auto sur la
+            liste, le bloc titre reste fixe, le pied de page reste ancré
+            en bas, et seule la liste défile. */}
+        <div className="flex flex-col min-h-0 flex-1 text-5xl gap-3 mt-0 px-10 md:px-24">
+          <div className="text-black border-b border-black/30 uppercase text-sm mb-0 shrink-0">
             <p>Navigation</p>
           </div>
-          <section className="bg-transparent mt-0">
+          <section className="bg-transparent mt-0 min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="mx-auto max-w-7xl">
               {navItems.map((item, index) => (
                 <SidebarNavLink key={item.href} heading={item.heading} href={item.href} index={index + 1} onNavigate={onRequestClose} />
