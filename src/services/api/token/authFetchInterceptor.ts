@@ -40,6 +40,7 @@
 import { tokenStore } from './tokenStore';
 import { toast } from '../../../hooks/useToast';
 import { getCacheStore } from '../cache/getCache';
+import { waitForFirstPublicTenantsRefresh } from '../publicTenantsLifecycle';
 
 let installed = false;
 let originalFetch: typeof window.fetch | null = null;
@@ -87,6 +88,15 @@ function isOwnApiRequest(input: RequestInfo | URL, apiBaseUrl: string): boolean 
 function isRefreshEndpoint(input: RequestInfo | URL): boolean {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   return url.includes('/token/v1/refresh');
+}
+
+// La requête GET /tenants/v1/publics/ EST le rafraîchissement que
+// waitForFirstPublicTenantsRefresh() attend -- sans cette exclusion,
+// elle s'attendrait indéfiniment elle-même (deadlock) dès le tout
+// premier appel de la session. Voir son usage dans window.fetch ci-dessous.
+function isPublicTenantsEndpoint(input: RequestInfo | URL): boolean {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  return url.includes('/tenants/v1/publics/');
 }
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -237,6 +247,19 @@ export function installAuthFetchInterceptor(
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const isOwn = isOwnApiRequest(input, apiBaseUrl);
     const method = (init?.method ?? 'GET').toUpperCase();
+
+    // Réforme multi-tenant des GET : laisse une chance bornée (voir
+    // READY_TIMEOUT_MS dans publicTenantsLifecycle.ts) au tout premier
+    // GET /tenants/v1/publics/ de la session de se terminer avant de
+    // figer la liste posée dans X-Tenant-Domain -- sinon ce premier GET
+    // (et potentiellement plusieurs autres, le temps d'un cold start
+    // backend) partait systématiquement sans aucun tenant public, même
+    // une fois `Tenant.is_public` réellement peuplé côté backend.
+    // Exclusion explicite de l'endpoint publics/ lui-même (deadlock sinon).
+    if (isOwn && method === 'GET' && getTenantHeaderListValueFn && !isPublicTenantsEndpoint(input)) {
+      await waitForFirstPublicTenantsRefresh();
+    }
+
     // Résolu ICI, à chaque requête -- pas une seule fois à l'installation
     // -- pour refléter immédiatement une activation/désactivation de
     // tenant faite entretemps par l'utilisateur (store/tenants.store.ts),

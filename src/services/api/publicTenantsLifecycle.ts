@@ -24,8 +24,24 @@ import { setPublicTenants, type TenantRef } from '../../store/tenants.store';
 // bombarder le backend d'un annuaire qui bouge rarement.
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
+// Attendue par authFetchInterceptor.ts (waitForFirstPublicTenantsRefresh)
+// avant de poser X-Tenant-Domain sur le tout premier GET de la session :
+// sans ça, ce premier GET -- tiré quasi immédiatement après
+// createRoot(...).render() dans main.tsx, souvent AVANT que ce module
+// ait eu la moindre chance de répondre -- partait toujours sans aucun
+// tenant public, même une fois `Tenant.is_public` réellement peuplé
+// côté backend. Particulièrement sensible avec un cold start Render
+// (jusqu'à 30-60s) : un visiteur sans cache localStorage encore frais
+// pouvait rater les tenants publics sur PLUSIEURS requêtes de suite, pas
+// juste la toute première. Bornée à READY_TIMEOUT_MS : on ne bloque
+// JAMAIS un GET indéfiniment derrière un backend lent -- passé ce délai,
+// la requête part avec ce qui est déjà connu (store courant,
+// potentiellement vide), exactement le comportement d'avant ce correctif.
+const READY_TIMEOUT_MS = 3000;
+
 let started = false;
 let intervalTimer: ReturnType<typeof setInterval> | null = null;
+let firstRefreshPromise: Promise<void> | null = null;
 
 /**
  * Un seul appel réseau + mise à jour du store. Exportée séparément de
@@ -57,15 +73,34 @@ export async function refreshPublicTenants(): Promise<void> {
 export function startPublicTenantsLifecycle(): void {
   if (started || typeof window === 'undefined') return;
   started = true;
-  void refreshPublicTenants();
+  firstRefreshPromise = refreshPublicTenants();
   intervalTimer = setInterval(() => void refreshPublicTenants(), REFRESH_INTERVAL_MS);
 }
 
 /** Arrête le minuteur -- utile en test pour repartir d'un état propre. */
 export function stopPublicTenantsLifecycle(): void {
   started = false;
+  firstRefreshPromise = null;
   if (intervalTimer) {
     clearInterval(intervalTimer);
     intervalTimer = null;
   }
+}
+
+/**
+ * Attend le tout PREMIER rafraîchissement de la session (déclenché par
+ * startPublicTenantsLifecycle), borné à READY_TIMEOUT_MS -- voir le
+ * commentaire sur cette constante ci-dessus. Sans effet perceptible
+ * après le premier appel (promesse déjà résolue) : c'est UNIQUEMENT la
+ * fenêtre entre le démarrage de l'app et la fin de ce premier appel
+ * réseau que ce correctif comble. `refreshPublicTenants` ne rejette
+ * jamais (voir son propre try/catch) -- `Promise.race` ici ne sert donc
+ * qu'à borner la LATENCE, jamais à intercepter une erreur.
+ */
+export function waitForFirstPublicTenantsRefresh(): Promise<void> {
+  if (!firstRefreshPromise) return Promise.resolve();
+  return Promise.race([
+    firstRefreshPromise,
+    new Promise<void>((resolve) => setTimeout(resolve, READY_TIMEOUT_MS)),
+  ]);
 }
