@@ -54,6 +54,15 @@ export const TENANTS_ENDPOINTS = {
   disponibilite: '/tenants/v1/disponibilite/',
   /** GET -> annuaire des tenants is_public=true, pour la réforme multi-tenant des GET (voir store/tenants.store.ts). */
   publics: '/tenants/v1/publics/',
+  /**
+   * GET/PUT/PATCH -> fiche d'identité primaire (TenantInformationsPrimaires)
+   * du TENANT COURANT -- ressource singleton (aucun id dans l'URL), scopée
+   * par le header X-Tenant-Domain + le token d'accès (IsAccessTokenTenant +
+   * EstAdministrateurDuTenant côté backend). Utilisé juste après la
+   * création self-service d'un tenant (une fois l'admin auto-connecté) pour
+   * enregistrer la fiche complétée dans le stepper de création.
+   */
+  informationsPrimaires: '/tenants/v1/informations-primaires/',
 } as const;
 
 export const DOMAIN_ENDPOINTS = {

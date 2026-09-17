@@ -30,8 +30,67 @@ export const TenantCreatePayloadSchema = z.object({
   description: z.string().max(2000).optional(),
   identifiant: z.string().min(1),
   password: z.string().min(8).max(128),
+  /** Optionnel -- envoyé en multipart si présent, voir tenantsRepository.create ci-dessous. */
+  logo: z.instanceof(File).optional(),
 });
 export type TenantCreatePayload = z.infer<typeof TenantCreatePayloadSchema>;
+
+/**
+ * Fiche d'identité primaire d'un tenant -- voir
+ * `tenants.models.TenantInformationsPrimaires` /
+ * `TenantInformationsPrimairesSerializer` côté backend. Tous les champs
+ * métier sont optionnels ici (le backend les accepte `blank=True`) :
+ * c'est le stepper de création (`useCreerOrganisationForm`) qui impose
+ * ses propres champs obligatoires côté UX, sur la base de
+ * `TenantInformationsPrimaires.CHAMPS_COMPLETION`.
+ */
+export const TenantInformationsPrimairesSchema = z.object({
+  id: z.string().optional(),
+  tenant: z.string().optional(),
+  statut: z.string().optional(),
+  pourcentageCompletion: z.number().optional(),
+  formeJuridique: z.string().nullable().optional(),
+  secteurActivite: z.string().nullable().optional(),
+  raisonSociale: z.string().nullable().optional(),
+  sigle: z.string().nullable().optional(),
+  numeroRccm: z.string().nullable().optional(),
+  numeroNif: z.string().nullable().optional(),
+  numeroAgrement: z.string().nullable().optional(),
+  dateCreationOuAgrement: z.string().nullable().optional(),
+  adresseSiege: z.string().nullable().optional(),
+  ville: z.string().nullable().optional(),
+  province: z.string().nullable().optional(),
+  pays: z.string().nullable().optional(),
+  telephonePrincipal: z.string().nullable().optional(),
+  telephoneSecondaire: z.string().nullable().optional(),
+  emailContact: z.string().nullable().optional(),
+  siteWeb: z.string().nullable().optional(),
+  reseauxSociaux: z.record(z.string(), z.string()).optional(),
+  responsableNomComplet: z.string().nullable().optional(),
+  responsableFonction: z.string().nullable().optional(),
+  responsableTelephone: z.string().nullable().optional(),
+  responsableEmail: z.string().nullable().optional(),
+  contactOperationnelNom: z.string().nullable().optional(),
+  contactOperationnelFonction: z.string().nullable().optional(),
+  contactOperationnelTelephone: z.string().nullable().optional(),
+  contactOperationnelEmail: z.string().nullable().optional(),
+  effectifEstime: z.number().nullable().optional(),
+  zoneCouverture: z.string().nullable().optional(),
+  descriptionActivites: z.string().nullable().optional(),
+  commentaireVerification: z.string().nullable().optional(),
+  verifieLe: z.string().nullable().optional(),
+  creeLe: z.string().optional(),
+  modifieLe: z.string().optional(),
+});
+export type TenantInformationsPrimaires = z.infer<typeof TenantInformationsPrimairesSchema>;
+
+/** Champs réellement modifiables par ce endpoint self-service (voir `read_only_fields` du serializer). */
+export type TenantInformationsPrimairesEcriturePayload = Partial<
+  Omit<
+    TenantInformationsPrimaires,
+    'id' | 'tenant' | 'statut' | 'pourcentageCompletion' | 'commentaireVerification' | 'verifieLe' | 'creeLe' | 'modifieLe'
+  >
+>;
 
 export const TenantSchema = z.object({
   id: z.number(),
@@ -65,6 +124,22 @@ const DisponibiliteSchema = z.object({
   formatValide: z.boolean(),
 });
 export type SousDomaineDisponibilite = z.infer<typeof DisponibiliteSchema>;
+
+/**
+ * camelCase -> snake_case, une seule profondeur (suffisant pour ces
+ * payloads plats) -- nécessaire uniquement pour le chemin MULTIPART de
+ * `create()` ci-dessous : `CamelCaseJSONParser` (backend) ne s'applique
+ * qu'aux requêtes JSON, jamais à `multipart/form-data` (voir la même
+ * note dans news.repository.ts::toSnakeCaseKeys).
+ */
+function toSnakeCaseKeys(fields: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === undefined) continue;
+    out[key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)] = value;
+  }
+  return out;
+}
 
 export const tenantsRepository = {
   /** GET /tenants/v1/ -- annuaire public des tenants actifs. */
@@ -111,12 +186,30 @@ export const tenantsRepository = {
     return response.data;
   },
 
-  /** POST /tenants/v1/ -- crée le tenant + son premier administrateur (compte propre à ce tenant, aucun rôle ailleurs). */
+  /**
+   * POST /tenants/v1/ -- crée le tenant + son premier administrateur
+   * (compte propre à ce tenant, aucun rôle ailleurs). Bascule en
+   * multipart uniquement si un logo est fourni (`TenantCreateSerializer.logo`,
+   * champ optionnel côté backend) -- sinon JSON standard, inchangé.
+   */
   async create(payload: TenantCreatePayload): Promise<TenantCreateResponse> {
-    const response = await http.post.post<TenantCreatePayload, TenantCreateResponse>({
+    const { logo, ...scalarFields } = payload;
+    if (logo) {
+      const response = await http.post.uploadFiles<TenantCreateResponse>({
+        endpoint: TENANTS_ENDPOINTS.create,
+        files: [logo],
+        fieldName: 'logo',
+        additionalFields: toSnakeCaseKeys(scalarFields),
+        responseSchema: TenantCreateResponseSchema,
+        requireAuth: false,
+        timeout: 0,
+      });
+      return response.data;
+    }
+    const response = await http.post.post<Omit<TenantCreatePayload, 'logo'>, TenantCreateResponse>({
       endpoint: TENANTS_ENDPOINTS.create,
-      body: payload,
-      bodySchema: TenantCreatePayloadSchema,
+      body: scalarFields,
+      bodySchema: TenantCreatePayloadSchema.omit({ logo: true }),
       responseSchema: TenantCreateResponseSchema,
       requireAuth: false,
       // Provisionne un schéma Postgres + toutes ses migrations côté
@@ -143,6 +236,43 @@ export const tenantsRepository = {
       // connexion de son propre chef avant que ce délai illimité ne
       // s'applique -- rien ne peut compenser ça côté client seul.
       timeout: 0,
+    });
+    return response.data;
+  },
+
+  /**
+   * GET /tenants/v1/informations-primaires/ -- fiche d'identité du
+   * tenant COURANT (résolu via X-Tenant-Domain + le token d'accès,
+   * réservé à l'administrateur du tenant). Créée à la volée côté
+   * backend au premier accès (`get_or_create`).
+   */
+  async getInformationsPrimaires(): Promise<TenantInformationsPrimaires> {
+    const response = await http.get.get<TenantInformationsPrimaires>({
+      endpoint: TENANTS_ENDPOINTS.informationsPrimaires,
+      schema: TenantInformationsPrimairesSchema,
+      requireAuth: true,
+    });
+    return response.data;
+  },
+
+  /**
+   * PATCH /tenants/v1/informations-primaires/ -- ressource SINGLETON
+   * (aucun id dans l'URL, une seule fiche par tenant). `UpdateService.patch`
+   * exige un `resourceId` qu'il concatène systématiquement à l'endpoint
+   * (voir buildResourceEndpoint) -- on exploite donc son support natif
+   * du placeholder `{id}` avec un `resourceId` vide : `.../{id}` ->
+   * `.../` une fois remplacé, sans toucher à l'infrastructure HTTP
+   * partagée par tout le reste de l'app.
+   */
+  async updateInformationsPrimaires(
+    payload: TenantInformationsPrimairesEcriturePayload,
+  ): Promise<TenantInformationsPrimaires> {
+    const response = await http.update.patch<TenantInformationsPrimairesEcriturePayload, TenantInformationsPrimaires>({
+      endpoint: `${TENANTS_ENDPOINTS.informationsPrimaires}{id}`,
+      resourceId: '',
+      patches: payload,
+      responseSchema: TenantInformationsPrimairesSchema,
+      requireAuth: true,
     });
     return response.data;
   },
