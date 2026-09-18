@@ -2,79 +2,66 @@
 // src/pages/CreerOrganisationPage.tsx
 // Création self-service d'une organisation (= un tenant, architecture
 // tenant-autonome -- voir Tenant.create_with_domain côté backend).
-// 7 étapes -- voir le docstring de useCreerOrganisationForm pour le
-// détail de chacune. Tous les champs texte/date réutilisent les MÊMES
-// composants que le reste de l'app (Input, DatePicker), les sélections
-// utilisent le combobox recherchable partagé avec le backoffice
-// (SelectComboboxField, indicateur `*` déjà intégré) -- aucun champ
-// "maison" ponctuel.
+//
+// Identité visuelle dédiée "formulaire d'enregistrement" -- bandeau
+// d'en-tête (marque + titre), sections à bandeau plein-largeur,
+// lignes de champ libellé + soulignement, pied de page -- entièrement
+// distincte du reste de l'app (voir RegistrationFormKit.tsx). Toute la
+// logique (état, validation, soumission) reste dans
+// useCreerOrganisationForm, INCHANGÉE : cette page n'en modifie que la
+// présentation. Les 7 étapes de l'assistant d'origine sont désormais
+// autant de SECTIONS empilées sur une seule page scrollable -- plus
+// besoin d'un stepper puisque tous les champs sont visibles à la fois ;
+// `stepIndex` (toujours mis à jour par le hook en cas d'échec de
+// validation à la soumission) sert uniquement à faire défiler jusqu'à
+// la première section en erreur, voir l'effet plus bas.
+//
+// Page affichée SANS le chrome habituel de l'app (topbar/dock/colonne
+// latérale/fond de page animé par défaut) -- voir la route dédiée hors
+// <MainLayout> dans App.tsx, qui est justement ce qui monte ce chrome.
+// Cette page peint elle-même son propre fond plein-viewport (voir le
+// conteneur racine ci-dessous) : uniquement le formulaire, comme un
+// document autonome.
 // ============================================================
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Building2,
-  Check,
-  ExternalLink,
-  ImagePlus,
-  Loader2,
-  Plus,
-  Repeat2,
-  Trash2,
-  X,
-} from 'lucide-react';
-import { Stepper, type Step } from '../components/ui/Stepper';
-import { Input } from '../components/ui/Input';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import PasswordField from '../components/auth/PasswordField';
+import { Check, ExternalLink, ImagePlus, Loader2, Plus, Repeat2, Trash2, X } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { SelectComboboxField } from '../components/backoffice/fields/SelectComboboxField';
 import {
   FORME_JURIDIQUE_OPTIONS,
   SECTEUR_ACTIVITE_OPTIONS,
   PROVINCE_GABON_OPTIONS,
   RESEAU_SOCIAL_OPTIONS,
-  libelleOption,
 } from '../features/organisations/creation/informationsPrimaires.options';
-import { useCreerOrganisationForm } from '../features/organisations/creation/useCreerOrganisationForm';
+import {
+  useCreerOrganisationForm,
+  CREATION_STEPS,
+  type CreationStep,
+} from '../features/organisations/creation/useCreerOrganisationForm';
+import {
+  DiamondMark,
+  SectionBar,
+  SectionBody,
+  SubHeading,
+  Field,
+  FieldPair,
+  UnderlineInput,
+  UnderlineTextarea,
+  UnderlinePasswordInput,
+  RadioGroup,
+  LABEL_PAD,
+} from '../features/organisations/creation/components/RegistrationFormKit';
 
-const STEPPER_STEPS: Step[] = [
-  { id: 'infos', title: 'Organisation', description: 'Nom, sous-domaine, logo' },
-  { id: 'identite', title: 'Identité légale', description: 'Forme, secteur, immatriculation' },
-  { id: 'coordonnees', title: 'Coordonnées', description: 'Adresse et contacts' },
-  { id: 'responsable', title: 'Responsable', description: 'Responsable légal' },
-  { id: 'activites', title: 'Activités', description: 'Effectif et description' },
-  { id: 'admin', title: 'Administrateur', description: 'Le compte qui la gèrera' },
-  { id: 'verification', title: 'Vérification', description: 'Relire et créer' },
-];
-
-const inputClass =
-  'w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-[#242A5C] border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#5B4DFF] transition-all disabled:opacity-60 disabled:cursor-not-allowed resize-y';
-const labelClass = 'text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5';
-
-/** Reprend le procédé déjà utilisé par DatePicker/BackofficeRecordForm pour marquer un champ obligatoire : `label *`. */
-function req(label: string, isRequired = true) {
-  return isRequired ? `${label} *` : label;
-}
-
+/** Petit indicateur de disponibilité du sous-domaine -- glissé en suffixe de son UnderlineInput. */
 function SousDomaineIndicateur({ status }: { status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error' }) {
-  if (status === 'checking') return <Loader2 className="w-4 h-4 animate-spin text-gray-400" />;
-  if (status === 'available') return <Check className="w-4 h-4 text-green-500" />;
-  if (status === 'taken' || status === 'invalid') return <X className="w-4 h-4 text-red-500" />;
+  if (status === 'checking') return <Loader2 className="h-4 w-4 animate-spin text-gray-400" />;
+  if (status === 'available') return <Check className="h-4 w-4 text-green-600" />;
+  if (status === 'taken' || status === 'invalid') return <X className="h-4 w-4 text-red-500" />;
   return null;
 }
 
-function ErrorText({ children }: { children?: string }) {
-  if (!children) return null;
-  return <p className="-mt-2 text-xs font-medium text-red-500">{children}</p>;
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-xs font-extrabold uppercase tracking-wide text-[#5B4DFF] pt-1 first:pt-0">{children}</h2>
-  );
-}
-
-/** Sélection + prévisualisation du logo -- même mécanique que CoverImageField (news), en rond/carré pour un logo d'organisation. */
+/** Sélection + prévisualisation du logo -- même mécanique que sur l'ancienne version de cette page, recolorée/resserrée pour s'aligner sur les lignes soulignées voisines. */
 function LogoField({
   file,
   onFileSelected,
@@ -97,43 +84,40 @@ function LogoField({
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className={labelClass}>Logo (optionnel)</label>
+    <div className="flex items-center gap-3 pb-1">
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handlePick} />
-      <div className="flex items-center gap-3">
-        {file && previewUrl ? (
-          <img src={previewUrl} alt="Aperçu du logo" className="w-16 h-16 rounded-2xl object-cover border border-gray-200 dark:border-gray-700" />
-        ) : (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="w-16 h-16 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 text-gray-400 hover:text-[#5B4DFF] hover:border-[#5B4DFF]/50 flex items-center justify-center transition-colors"
-          >
-            <ImagePlus className="w-5 h-5" />
-          </button>
-        )}
-        {file && (
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[180px]">{file.name}</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-[#5B4DFF] hover:underline"
-              >
-                <Repeat2 className="w-3.5 h-3.5" /> Remplacer
-              </button>
-              <button
-                type="button"
-                onClick={onRemove}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:underline"
-              >
-                <X className="w-3.5 h-3.5" /> Retirer
-              </button>
-            </div>
+      {file && previewUrl ? (
+        <img src={previewUrl} alt="Aperçu du logo" className="h-12 w-12 rounded-sm border border-[#B7B7B7] object-cover" />
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex h-12 w-12 items-center justify-center rounded-sm border border-dashed border-[#B7B7B7] text-gray-400 transition-colors hover:border-[#01526B] hover:text-[#01526B]"
+        >
+          <ImagePlus className="h-4 w-4" />
+        </button>
+      )}
+      {file && (
+        <div className="flex flex-col gap-1">
+          <span className="max-w-[180px] truncate text-xs text-gray-500">{file.name}</span>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#01526B] hover:underline"
+            >
+              <Repeat2 className="h-3.5 w-3.5" /> Remplacer
+            </button>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:underline"
+            >
+              <X className="h-3.5 w-3.5" /> Retirer
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -152,28 +136,47 @@ export default function CreerOrganisationPage() {
     sousDomaineStatus,
     isSubmitting,
     result,
-    goNext,
-    goBack,
-    goToStep,
     submit,
   } = useCreerOrganisationForm();
 
   const [passwordConfirmTouched, setPasswordConfirmTouched] = useState(false);
 
+  const today = useMemo(
+    () => new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date()),
+    [],
+  );
+
+  // Défilement automatique vers la première section en erreur : `submit`
+  // (voir useCreerOrganisationForm) positionne déjà `stepIndex` sur la
+  // première étape invalide -- ici on traduit uniquement ce changement
+  // en scroll, plus besoin de masquer/afficher des étapes puisque
+  // TOUTES les sections sont désormais toujours visibles.
+  const sectionRefs = useRef<Partial<Record<CreationStep, HTMLElement | null>>>({});
+  const prevStepIndexRef = useRef(stepIndex);
+  useEffect(() => {
+    if (stepIndex !== prevStepIndexRef.current) {
+      sectionRefs.current[CREATION_STEPS[stepIndex]]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    prevStepIndexRef.current = stepIndex;
+  }, [stepIndex]);
+  const setSectionRef = (step: CreationStep) => (el: HTMLElement | null) => {
+    sectionRefs.current[step] = el;
+  };
+
   if (result) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-10">
-        <Card variant="glass" className="p-8 text-center space-y-4">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-green-500/10 text-green-500 flex items-center justify-center">
-            <Check className="w-7 h-7" />
+      <div className="flex min-h-screen items-center justify-center bg-[#EEF1F2] px-4 py-10">
+        <div className="w-full max-w-md border-[8px] border-[#01526B] bg-white p-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600">
+            <Check className="h-7 w-7" />
           </div>
-          <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">{result.name} est prête</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Le compte administrateur (<span className="font-medium">{result.identifiant}</span>) est déjà actif dans
-            cette organisation, avec le mot de passe que vous venez de choisir.
+          <h1 className="font-display text-xl font-extrabold text-[#262626]">{result.name} est prête</h1>
+          <p className="mt-3 text-sm text-gray-500">
+            Le compte administrateur (<span className="font-medium text-[#262626]">{result.identifiant}</span>) est
+            déjà actif dans cette organisation, avec le mot de passe que vous venez de choisir.
           </p>
           {!result.ficheEnregistree && (
-            <p className="text-xs font-medium text-amber-500 bg-amber-500/10 rounded-xl px-3 py-2">
+            <p className="mt-3 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
               La fiche d'identité n'a pas pu être enregistrée automatiquement -- vous pourrez la compléter depuis
               votre espace administrateur.
             </p>
@@ -182,523 +185,545 @@ export default function CreerOrganisationPage() {
             href={`https://${result.domaine}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[#5B4DFF] hover:underline"
+            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#01526B] hover:underline"
           >
             {result.domaine}
-            <ExternalLink className="w-4 h-4" />
+            <ExternalLink className="h-4 w-4" />
           </a>
-          <div className="pt-2">
-            <Button variant="primary" onClick={() => navigate('/')}>
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="inline-flex items-center justify-center bg-[#01526B] px-6 py-3 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-[#01394A]"
+            >
               Retour à l'accueil
-            </Button>
+            </button>
           </div>
-        </Card>
+        </div>
       </div>
     );
   }
 
-  const step = STEPPER_STEPS[stepIndex].id;
-
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center gap-2">
-        <div className="p-1.5 rounded-xl bg-[#5B4DFF]/10 dark:bg-[#5B4DFF]/20 text-[#5B4DFF]">
-          <Building2 className="w-4 h-4" />
-        </div>
-        <h1 className="text-lg font-extrabold text-gray-900 dark:text-white font-display tracking-tight">
-          Créer une organisation
-        </h1>
-      </div>
-
-      <Stepper steps={STEPPER_STEPS} currentStepIndex={stepIndex} onStepClick={goToStep} />
-      <p className="-mt-4 text-[11px] text-gray-400 dark:text-gray-500">
-        Les champs marqués d'un <span className="text-red-500 font-semibold">*</span> sont obligatoires.
-      </p>
-
-      <Card variant="glass" className="p-6 space-y-4">
-        {step === 'infos' && (
-          <>
-            <Input
-              label={req("Nom de l'organisation")}
-              value={form.name}
-              onChange={(e) => setField('name', e.target.value)}
-              autoFocus
-            />
-            <ErrorText>{errors.name}</ErrorText>
-
-            <div className="relative">
-              <Input
-                label={req('Sous-domaine')}
-                value={form.sousDomaine}
-                onChange={(e) => setSousDomaine(e.target.value.toLowerCase())}
-                inputClassName="pr-8"
-                placeholder="mon-organisation"
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                <SousDomaineIndicateur status={sousDomaineStatus} />
-              </div>
+    <div className="min-h-screen bg-[#EEF1F2] px-3 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-[900px] border-[8px] border-[#01526B] bg-white sm:border-[12px]">
+        {/* En-tête : marque à gauche, titre du formulaire sur bandeau teal à droite. */}
+        <div className="flex flex-col sm:flex-row">
+          <div className="flex flex-1 flex-col justify-center gap-3 px-5 py-6 sm:px-10 sm:py-8">
+            <div className="flex items-center gap-4">
+              <DiamondMark />
+              <span className="font-display text-lg font-extrabold uppercase tracking-tight text-[#01526B] sm:text-2xl">
+                Civitas News
+              </span>
             </div>
-            {errors.sousDomaine ? (
-              <ErrorText>{errors.sousDomaine}</ErrorText>
-            ) : (
-              sousDomaineStatus === 'available' && (
-                <p className="-mt-2 text-xs font-medium text-green-500">Ce sous-domaine est disponible.</p>
-              )
-            )}
+            <span className="inline-flex w-fit items-center border-[1.5px] border-[#01526B] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#01526B] sm:text-[11px]">
+              Nouvelle organisation
+            </span>
+          </div>
+          <div className="hidden w-[6px] shrink-0 bg-[#00C2F5] sm:block" aria-hidden="true" />
+          <div className="flex flex-1 items-center justify-end bg-[#01526B] px-5 py-6 sm:px-10 sm:py-8">
+            <h1 className="max-w-[300px] text-right text-2xl font-extrabold uppercase leading-[1.15] tracking-tight text-white sm:max-w-[360px] sm:text-4xl">
+              Création d'organisation
+            </h1>
+          </div>
+        </div>
 
-            <Input
-              label="Description courte (optionnelle)"
-              value={form.description}
-              onChange={(e) => setField('description', e.target.value)}
-            />
+        {/* Ligne méta : rappel des champs obligatoires + date du jour, comme sur un formulaire papier daté. */}
+        <div className="flex flex-col gap-2 border-b border-[#E3E3E3] px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-10">
+          <p className="text-[11px] text-gray-400">
+            Les champs marqués d'un <span className="font-semibold text-red-500">*</span> sont obligatoires.
+          </p>
+          <span className="text-[11px] text-gray-500 sm:text-xs">Date : {today}</span>
+        </div>
 
-            <LogoField file={form.logo} onFileSelected={(f) => setField('logo', f)} onRemove={() => setField('logo', null)} />
-          </>
-        )}
+        {/* ------------------------------------------------ */}
+        {/* Section 1 -- Organisation                          */}
+        {/* ------------------------------------------------ */}
+        <section ref={setSectionRef('infos')}>
+          <SectionBar>Organisation</SectionBar>
+          <SectionBody>
+            <Field label="Nom de l'organisation" required htmlFor="org-name" error={errors.name}>
+              <UnderlineInput
+                id="org-name"
+                value={form.name}
+                onChange={(e) => setField('name', e.target.value)}
+                autoFocus
+                hasError={Boolean(errors.name)}
+              />
+            </Field>
 
-        {step === 'identite' && (
-          <>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Fiche d'identité légale de l'organisation -- utile à la plateforme et modifiable ensuite depuis votre
-              espace administrateur.
-            </p>
-            <SelectComboboxField
-              label="Forme juridique"
-              options={FORME_JURIDIQUE_OPTIONS}
-              value={form.formeJuridique || undefined}
-              onChange={(v) => setField('formeJuridique', v ?? '')}
-              required
-              error={errors.formeJuridique}
-            />
-            <SelectComboboxField
-              label="Secteur d'activité"
-              options={SECTEUR_ACTIVITE_OPTIONS}
-              value={form.secteurActivite || undefined}
-              onChange={(v) => setField('secteurActivite', v ?? '')}
-              required
-              error={errors.secteurActivite}
-            />
-            <Input
-              label={req('Raison sociale / Dénomination officielle')}
-              value={form.raisonSociale}
-              onChange={(e) => setField('raisonSociale', e.target.value)}
-            />
-            <ErrorText>{errors.raisonSociale}</ErrorText>
+            <div>
+              <Field label="Sous-domaine" required htmlFor="org-sousdomaine" error={errors.sousDomaine}>
+                <UnderlineInput
+                  id="org-sousdomaine"
+                  value={form.sousDomaine}
+                  onChange={(e) => setSousDomaine(e.target.value.toLowerCase())}
+                  placeholder="mon-organisation"
+                  hasError={Boolean(errors.sousDomaine)}
+                  suffix={<SousDomaineIndicateur status={sousDomaineStatus} />}
+                />
+              </Field>
+              {!errors.sousDomaine && sousDomaineStatus === 'available' && (
+                <p className={cn(LABEL_PAD, '-mt-4 text-[11px] font-medium text-green-600')}>
+                  Ce sous-domaine est disponible.
+                </p>
+              )}
+            </div>
 
-            <Input
-              label="Sigle / Acronyme (optionnel)"
-              value={form.sigle}
-              onChange={(e) => setField('sigle', e.target.value)}
-            />
+            <Field label="Description courte (optionnelle)" htmlFor="org-description">
+              <UnderlineInput
+                id="org-description"
+                value={form.description}
+                onChange={(e) => setField('description', e.target.value)}
+              />
+            </Field>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Input
-                  label={req('Numéro RCCM')}
+            <Field label="Logo (optionnel)">
+              <LogoField
+                file={form.logo}
+                onFileSelected={(f) => setField('logo', f)}
+                onRemove={() => setField('logo', null)}
+              />
+            </Field>
+          </SectionBody>
+        </section>
+
+        {/* ------------------------------------------------ */}
+        {/* Section 2 -- Identité légale                       */}
+        {/* ------------------------------------------------ */}
+        <section ref={setSectionRef('identite')}>
+          <SectionBar>Identité légale</SectionBar>
+          <SectionBody note="Fiche d'identité légale de l'organisation -- utile à la plateforme et modifiable ensuite depuis votre espace administrateur.">
+            <Field label="Forme juridique" required error={errors.formeJuridique}>
+              <SelectComboboxField
+                label="Forme juridique"
+                hideLabel
+                variant="underline"
+                options={FORME_JURIDIQUE_OPTIONS}
+                value={form.formeJuridique || undefined}
+                onChange={(v) => setField('formeJuridique', v ?? '')}
+                required
+                error={errors.formeJuridique}
+              />
+            </Field>
+
+            <Field label="Secteur d'activité" required error={errors.secteurActivite}>
+              <SelectComboboxField
+                label="Secteur d'activité"
+                hideLabel
+                variant="underline"
+                options={SECTEUR_ACTIVITE_OPTIONS}
+                value={form.secteurActivite || undefined}
+                onChange={(v) => setField('secteurActivite', v ?? '')}
+                required
+                error={errors.secteurActivite}
+              />
+            </Field>
+
+            <Field label="Raison sociale / dénomination" required htmlFor="org-raison" error={errors.raisonSociale}>
+              <UnderlineInput
+                id="org-raison"
+                value={form.raisonSociale}
+                onChange={(e) => setField('raisonSociale', e.target.value)}
+                hasError={Boolean(errors.raisonSociale)}
+              />
+            </Field>
+
+            <Field label="Sigle / Acronyme (optionnel)" htmlFor="org-sigle">
+              <UnderlineInput id="org-sigle" value={form.sigle} onChange={(e) => setField('sigle', e.target.value)} />
+            </Field>
+
+            <FieldPair>
+              <Field label="Numéro RCCM" required htmlFor="org-rccm" error={errors.numeroRccm}>
+                <UnderlineInput
+                  id="org-rccm"
                   value={form.numeroRccm}
                   onChange={(e) => setField('numeroRccm', e.target.value)}
+                  hasError={Boolean(errors.numeroRccm)}
                 />
-                <ErrorText>{errors.numeroRccm}</ErrorText>
-              </div>
-              <div>
-                <Input
-                  label={req('Numéro NIF')}
+              </Field>
+              <Field label="Numéro NIF" required htmlFor="org-nif" error={errors.numeroNif}>
+                <UnderlineInput
+                  id="org-nif"
                   value={form.numeroNif}
                   onChange={(e) => setField('numeroNif', e.target.value)}
+                  hasError={Boolean(errors.numeroNif)}
                 />
-                <ErrorText>{errors.numeroNif}</ErrorText>
-              </div>
-            </div>
+              </Field>
+            </FieldPair>
 
-            <Input
-              label="Numéro d'agrément / de récépissé (optionnel)"
-              value={form.numeroAgrement}
-              onChange={(e) => setField('numeroAgrement', e.target.value)}
-            />
+            <Field label="N° d'agrément (optionnel)" htmlFor="org-agrement">
+              <UnderlineInput
+                id="org-agrement"
+                value={form.numeroAgrement}
+                onChange={(e) => setField('numeroAgrement', e.target.value)}
+              />
+            </Field>
 
-            <Input
-              label={req("Date de création / d'agrément")}
-              type="date"
-              max={new Date().toISOString().slice(0, 10)}
-              value={form.dateCreationOuAgrement}
-              onChange={(e) => setField('dateCreationOuAgrement', e.target.value)}
-            />
-            <ErrorText>{errors.dateCreationOuAgrement}</ErrorText>
-          </>
-        )}
+            <Field
+              label="Date de création / d'agrément"
+              required
+              htmlFor="org-date-creation"
+              error={errors.dateCreationOuAgrement}
+            >
+              <UnderlineInput
+                id="org-date-creation"
+                type="date"
+                max={new Date().toISOString().slice(0, 10)}
+                value={form.dateCreationOuAgrement}
+                onChange={(e) => setField('dateCreationOuAgrement', e.target.value)}
+                hasError={Boolean(errors.dateCreationOuAgrement)}
+              />
+            </Field>
+          </SectionBody>
+        </section>
 
-        {step === 'coordonnees' && (
-          <>
-            <div>
-              <label className={labelClass}>{req('Adresse du siège')}</label>
-              <textarea
+        {/* ------------------------------------------------ */}
+        {/* Section 3 -- Coordonnées                           */}
+        {/* ------------------------------------------------ */}
+        <section ref={setSectionRef('coordonnees')}>
+          <SectionBar>Coordonnées</SectionBar>
+          <SectionBody>
+            <Field label="Adresse du siège" required align="start" htmlFor="org-adresse" error={errors.adresseSiege}>
+              <UnderlineTextarea
+                id="org-adresse"
+                rows={2}
                 value={form.adresseSiege}
                 onChange={(e) => setField('adresseSiege', e.target.value)}
-                rows={2}
-                className={`${inputClass} mt-1.5`}
+                hasError={Boolean(errors.adresseSiege)}
               />
-              <ErrorText>{errors.adresseSiege}</ErrorText>
-            </div>
+            </Field>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Input label={req('Ville')} value={form.ville} onChange={(e) => setField('ville', e.target.value)} />
-                <ErrorText>{errors.ville}</ErrorText>
-              </div>
-              <SelectComboboxField
-                label="Province"
-                options={PROVINCE_GABON_OPTIONS}
-                value={form.province || undefined}
-                onChange={(v) => setField('province', v ?? '')}
-                required
-                error={errors.province}
-              />
-            </div>
+            <FieldPair>
+              <Field label="Ville" required htmlFor="org-ville" error={errors.ville}>
+                <UnderlineInput
+                  id="org-ville"
+                  value={form.ville}
+                  onChange={(e) => setField('ville', e.target.value)}
+                  hasError={Boolean(errors.ville)}
+                />
+              </Field>
+              <Field label="Province" required error={errors.province}>
+                <SelectComboboxField
+                  label="Province"
+                  hideLabel
+                  variant="underline"
+                  options={PROVINCE_GABON_OPTIONS}
+                  value={form.province || undefined}
+                  onChange={(v) => setField('province', v ?? '')}
+                  required
+                  error={errors.province}
+                />
+              </Field>
+            </FieldPair>
 
-            <Input label="Pays" value={form.pays} onChange={(e) => setField('pays', e.target.value)} />
+            <Field label="Pays" htmlFor="org-pays">
+              <UnderlineInput id="org-pays" value={form.pays} onChange={(e) => setField('pays', e.target.value)} />
+            </Field>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Input
-                  label={req('Téléphone principal')}
+            <FieldPair>
+              <Field label="Téléphone principal" required htmlFor="org-tel1" error={errors.telephonePrincipal}>
+                <UnderlineInput
+                  id="org-tel1"
                   type="tel"
                   placeholder="+241 XX XX XX XX"
                   value={form.telephonePrincipal}
                   onChange={(e) => setField('telephonePrincipal', e.target.value)}
+                  hasError={Boolean(errors.telephonePrincipal)}
                 />
-                <ErrorText>{errors.telephonePrincipal}</ErrorText>
-              </div>
-              <Input
-                label="Téléphone secondaire"
-                type="tel"
-                placeholder="+241 XX XX XX XX"
-                value={form.telephoneSecondaire}
-                onChange={(e) => setField('telephoneSecondaire', e.target.value)}
-              />
-            </div>
+              </Field>
+              <Field label="Téléphone secondaire" htmlFor="org-tel2">
+                <UnderlineInput
+                  id="org-tel2"
+                  type="tel"
+                  placeholder="+241 XX XX XX XX"
+                  value={form.telephoneSecondaire}
+                  onChange={(e) => setField('telephoneSecondaire', e.target.value)}
+                />
+              </Field>
+            </FieldPair>
 
-            <div>
-              <Input
-                label={req('Email de contact')}
+            <Field label="Email de contact" required htmlFor="org-email" error={errors.emailContact}>
+              <UnderlineInput
+                id="org-email"
                 type="email"
                 value={form.emailContact}
                 onChange={(e) => setField('emailContact', e.target.value)}
+                hasError={Boolean(errors.emailContact)}
               />
-              <ErrorText>{errors.emailContact}</ErrorText>
-            </div>
+            </Field>
 
-            <Input
-              label="Site web (optionnel)"
-              type="url"
-              placeholder="https://..."
-              value={form.siteWeb}
-              onChange={(e) => setField('siteWeb', e.target.value)}
-            />
+            <Field label="Site web (optionnel)" htmlFor="org-siteweb">
+              <UnderlineInput
+                id="org-siteweb"
+                type="url"
+                placeholder="https://..."
+                value={form.siteWeb}
+                onChange={(e) => setField('siteWeb', e.target.value)}
+              />
+            </Field>
 
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label className={labelClass}>Réseaux sociaux (optionnel)</label>
+            <Field label="Réseaux sociaux (optionnel)" align="start">
+              <div className="flex flex-col gap-4">
                 <button
                   type="button"
                   onClick={addReseauSocial}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#5B4DFF] hover:underline"
+                  className="inline-flex w-fit items-center gap-1 text-[12.5px] font-semibold text-[#01526B] hover:underline"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Ajouter
+                  <Plus className="h-3.5 w-3.5" /> Ajouter un réseau
                 </button>
-              </div>
-              {form.reseauxSociaux.map((entry) => (
-                <div key={entry.id} className="flex items-center gap-2">
-                  <div className="w-36 shrink-0">
-                    <SelectComboboxField
-                      label=""
-                      placeholder="Plateforme"
-                      options={RESEAU_SOCIAL_OPTIONS}
-                      value={entry.plateforme || undefined}
-                      onChange={(v) => updateReseauSocial(entry.id, { plateforme: v ?? '' })}
+                {form.reseauxSociaux.map((entry) => (
+                  <div key={entry.id} className="flex items-end gap-3">
+                    <div className="w-[118px] shrink-0 sm:w-[150px]">
+                      <SelectComboboxField
+                        label="Plateforme"
+                        hideLabel
+                        variant="underline"
+                        placeholder="Plateforme"
+                        options={RESEAU_SOCIAL_OPTIONS}
+                        value={entry.plateforme || undefined}
+                        onChange={(v) => updateReseauSocial(entry.id, { plateforme: v ?? '' })}
+                      />
+                    </div>
+                    <UnderlineInput
+                      placeholder="https://..."
+                      value={entry.url}
+                      onChange={(e) => updateReseauSocial(entry.id, { url: e.target.value })}
                     />
+                    <button
+                      type="button"
+                      onClick={() => removeReseauSocial(entry.id)}
+                      aria-label="Retirer ce réseau social"
+                      className="shrink-0 pb-[7px] text-gray-400 hover:text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                  <Input
-                    label="URL"
-                    placeholder="https://..."
-                    value={entry.url}
-                    onChange={(e) => updateReseauSocial(entry.id, { url: e.target.value })}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeReseauSocial(entry.id)}
-                    className="shrink-0 text-gray-400 hover:text-red-500 transition-colors"
-                    aria-label="Retirer ce réseau social"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+                ))}
+              </div>
+            </Field>
+          </SectionBody>
+        </section>
 
-        {step === 'responsable' && (
-          <>
-            <SectionTitle>Responsable légal</SectionTitle>
-            <div>
-              <Input
-                label={req('Nom complet')}
+        {/* ------------------------------------------------ */}
+        {/* Section 4 -- Responsable & contact                 */}
+        {/* ------------------------------------------------ */}
+        <section ref={setSectionRef('responsable')}>
+          <SectionBar>Responsable &amp; contact</SectionBar>
+          <SectionBody>
+            <SubHeading>Responsable légal</SubHeading>
+            <Field label="Nom complet" required htmlFor="resp-nom" error={errors.responsableNomComplet}>
+              <UnderlineInput
+                id="resp-nom"
                 value={form.responsableNomComplet}
                 onChange={(e) => setField('responsableNomComplet', e.target.value)}
-                autoFocus
+                hasError={Boolean(errors.responsableNomComplet)}
               />
-              <ErrorText>{errors.responsableNomComplet}</ErrorText>
-            </div>
-            <div>
-              <Input
-                label={req('Fonction')}
+            </Field>
+            <Field label="Fonction" required htmlFor="resp-fonction" error={errors.responsableFonction}>
+              <UnderlineInput
+                id="resp-fonction"
                 value={form.responsableFonction}
                 onChange={(e) => setField('responsableFonction', e.target.value)}
+                hasError={Boolean(errors.responsableFonction)}
               />
-              <ErrorText>{errors.responsableFonction}</ErrorText>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Input
-                  label={req('Téléphone')}
+            </Field>
+            <FieldPair>
+              <Field label="Téléphone" required htmlFor="resp-tel" error={errors.responsableTelephone}>
+                <UnderlineInput
+                  id="resp-tel"
                   type="tel"
                   value={form.responsableTelephone}
                   onChange={(e) => setField('responsableTelephone', e.target.value)}
+                  hasError={Boolean(errors.responsableTelephone)}
                 />
-                <ErrorText>{errors.responsableTelephone}</ErrorText>
-              </div>
-              <div>
-                <Input
-                  label={req('Email')}
+              </Field>
+              <Field label="Email" required htmlFor="resp-email" error={errors.responsableEmail}>
+                <UnderlineInput
+                  id="resp-email"
                   type="email"
                   value={form.responsableEmail}
                   onChange={(e) => setField('responsableEmail', e.target.value)}
+                  hasError={Boolean(errors.responsableEmail)}
                 />
-                <ErrorText>{errors.responsableEmail}</ErrorText>
-              </div>
-            </div>
+              </Field>
+            </FieldPair>
 
-            <SectionTitle>Contact opérationnel</SectionTitle>
-            <label className="flex items-center gap-3 py-1 cursor-pointer select-none">
-              <button
-                type="button"
-                onClick={() => setField('contactOperationnelIdentique', !form.contactOperationnelIdentique)}
-                className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${
-                  form.contactOperationnelIdentique ? 'bg-[#5B4DFF]' : 'bg-gray-300 dark:bg-gray-700'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                    form.contactOperationnelIdentique ? 'translate-x-[18px]' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                C'est le même que le responsable légal
-              </span>
-            </label>
+            <SubHeading>Contact opérationnel</SubHeading>
+            <Field label="Contact opérationnel">
+              <RadioGroup
+                name="contact-operationnel-identique"
+                value={form.contactOperationnelIdentique ? 'identique' : 'different'}
+                onChange={(v) => setField('contactOperationnelIdentique', v === 'identique')}
+                options={[
+                  { value: 'identique', label: 'Identique au responsable légal' },
+                  { value: 'different', label: 'Contact différent' },
+                ]}
+              />
+            </Field>
 
             {!form.contactOperationnelIdentique && (
               <>
-                <Input
-                  label="Nom complet (optionnel)"
-                  value={form.contactOperationnelNom}
-                  onChange={(e) => setField('contactOperationnelNom', e.target.value)}
-                />
-                <Input
-                  label="Fonction (optionnelle)"
-                  value={form.contactOperationnelFonction}
-                  onChange={(e) => setField('contactOperationnelFonction', e.target.value)}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Téléphone (optionnel)"
-                    type="tel"
-                    value={form.contactOperationnelTelephone}
-                    onChange={(e) => setField('contactOperationnelTelephone', e.target.value)}
+                <Field label="Nom complet (optionnel)" htmlFor="contact-nom">
+                  <UnderlineInput
+                    id="contact-nom"
+                    value={form.contactOperationnelNom}
+                    onChange={(e) => setField('contactOperationnelNom', e.target.value)}
                   />
-                  <div>
-                    <Input
-                      label="Email (optionnel)"
+                </Field>
+                <Field label="Fonction (optionnelle)" htmlFor="contact-fonction">
+                  <UnderlineInput
+                    id="contact-fonction"
+                    value={form.contactOperationnelFonction}
+                    onChange={(e) => setField('contactOperationnelFonction', e.target.value)}
+                  />
+                </Field>
+                <FieldPair>
+                  <Field label="Téléphone (optionnel)" htmlFor="contact-tel">
+                    <UnderlineInput
+                      id="contact-tel"
+                      type="tel"
+                      value={form.contactOperationnelTelephone}
+                      onChange={(e) => setField('contactOperationnelTelephone', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Email (optionnel)" htmlFor="contact-email" error={errors.contactOperationnelEmail}>
+                    <UnderlineInput
+                      id="contact-email"
                       type="email"
                       value={form.contactOperationnelEmail}
                       onChange={(e) => setField('contactOperationnelEmail', e.target.value)}
+                      hasError={Boolean(errors.contactOperationnelEmail)}
                     />
-                    <ErrorText>{errors.contactOperationnelEmail}</ErrorText>
-                  </div>
-                </div>
+                  </Field>
+                </FieldPair>
               </>
             )}
-          </>
-        )}
+          </SectionBody>
+        </section>
 
-        {step === 'activites' && (
-          <>
-            <div>
-              <Input
-                label={req('Effectif estimé')}
+        {/* ------------------------------------------------ */}
+        {/* Section 5 -- Activités                             */}
+        {/* ------------------------------------------------ */}
+        <section ref={setSectionRef('activites')}>
+          <SectionBar>Activités</SectionBar>
+          <SectionBody>
+            <Field label="Effectif estimé" required htmlFor="act-effectif" error={errors.effectifEstime}>
+              <UnderlineInput
+                id="act-effectif"
                 type="number"
                 min={0}
                 placeholder="Nombre de membres / employés / adhérents"
                 value={form.effectifEstime}
                 onChange={(e) => setField('effectifEstime', e.target.value)}
-                autoFocus
+                hasError={Boolean(errors.effectifEstime)}
               />
-              <ErrorText>{errors.effectifEstime}</ErrorText>
-            </div>
-
-            <div>
-              <label className={labelClass}>Zone de couverture (optionnelle)</label>
-              <textarea
+            </Field>
+            <Field label="Zone de couverture (optionnelle)" align="start" htmlFor="act-zone">
+              <UnderlineTextarea
+                id="act-zone"
+                rows={2}
+                placeholder="Provinces / villes couvertes par l'activité"
                 value={form.zoneCouverture}
                 onChange={(e) => setField('zoneCouverture', e.target.value)}
-                placeholder="Provinces / villes couvertes par l'activité"
-                rows={2}
-                className={`${inputClass} mt-1.5`}
               />
-            </div>
-
-            <div>
-              <label className={labelClass}>{req('Description détaillée des activités')}</label>
-              <textarea
+            </Field>
+            <Field
+              label="Description détaillée des activités"
+              required
+              align="start"
+              htmlFor="act-description"
+              error={errors.descriptionActivites}
+            >
+              <UnderlineTextarea
+                id="act-description"
+                rows={4}
                 value={form.descriptionActivites}
                 onChange={(e) => setField('descriptionActivites', e.target.value)}
-                rows={4}
-                className={`${inputClass} mt-1.5`}
+                hasError={Boolean(errors.descriptionActivites)}
               />
-              <ErrorText>{errors.descriptionActivites}</ErrorText>
-            </div>
-          </>
-        )}
+            </Field>
+          </SectionBody>
+        </section>
 
-        {step === 'admin' && (
-          <>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Ce compte sera le premier administrateur de <span className="font-medium">{form.name || 'cette organisation'}</span>,
-              actif uniquement ici -- il n'aura aucun rôle ailleurs sur la plateforme.
-            </p>
-            <Input
-              label={req('Email ou téléphone')}
-              value={form.identifiant}
-              onChange={(e) => setField('identifiant', e.target.value)}
-              autoFocus
-            />
-            <ErrorText>{errors.identifiant}</ErrorText>
-
-            <PasswordField
-              id="creer-org-password"
-              label={req('Mot de passe')}
-              value={form.password}
-              onChange={(v) => setField('password', v)}
-              autoComplete="new-password"
-              error={errors.password}
-            />
-            <PasswordField
-              id="creer-org-password-confirm"
-              label={req('Confirmer le mot de passe')}
-              value={form.passwordConfirm}
-              onChange={(v) => {
-                setPasswordConfirmTouched(true);
-                setField('passwordConfirm', v);
-              }}
-              autoComplete="new-password"
+        {/* ------------------------------------------------ */}
+        {/* Section 6 -- Compte administrateur                 */}
+        {/* ------------------------------------------------ */}
+        <section ref={setSectionRef('admin')}>
+          <SectionBar>Compte administrateur</SectionBar>
+          <SectionBody
+            note={
+              <>
+                Ce compte sera le premier administrateur de{' '}
+                <span className="font-medium text-[#262626]">{form.name || 'cette organisation'}</span>, actif
+                uniquement ici -- il n'aura aucun rôle ailleurs sur la plateforme.
+              </>
+            }
+          >
+            <Field label="Email ou téléphone" required htmlFor="admin-identifiant" error={errors.identifiant}>
+              <UnderlineInput
+                id="admin-identifiant"
+                value={form.identifiant}
+                onChange={(e) => setField('identifiant', e.target.value)}
+                hasError={Boolean(errors.identifiant)}
+              />
+            </Field>
+            <Field label="Mot de passe" required htmlFor="admin-password" error={errors.password}>
+              <UnderlinePasswordInput
+                id="admin-password"
+                value={form.password}
+                onChange={(v) => setField('password', v)}
+                autoComplete="new-password"
+                hasError={Boolean(errors.password)}
+              />
+            </Field>
+            <Field
+              label="Confirmer le mot de passe"
+              required
+              htmlFor="admin-password-confirm"
               error={passwordConfirmTouched ? errors.passwordConfirm : undefined}
-            />
-          </>
-        )}
+            >
+              <UnderlinePasswordInput
+                id="admin-password-confirm"
+                value={form.passwordConfirm}
+                onChange={(v) => {
+                  setPasswordConfirmTouched(true);
+                  setField('passwordConfirm', v);
+                }}
+                autoComplete="new-password"
+                hasError={passwordConfirmTouched && Boolean(errors.passwordConfirm)}
+              />
+            </Field>
+          </SectionBody>
+        </section>
 
-        {step === 'verification' && (
-          <div className="space-y-4 text-sm">
-            <RecapSection title="Organisation">
-              <RecapLigne label="Nom" value={form.name} />
-              <RecapLigne label="Sous-domaine" value={form.sousDomaine} />
-              {form.description && <RecapLigne label="Description" value={form.description} />}
-              {form.logo && <RecapLigne label="Logo" value={form.logo.name} />}
-            </RecapSection>
-
-            <RecapSection title="Identité légale">
-              <RecapLigne label="Forme juridique" value={libelleOption(FORME_JURIDIQUE_OPTIONS, form.formeJuridique)} />
-              <RecapLigne label="Secteur d'activité" value={libelleOption(SECTEUR_ACTIVITE_OPTIONS, form.secteurActivite)} />
-              <RecapLigne label="Raison sociale" value={form.raisonSociale} />
-              {form.sigle && <RecapLigne label="Sigle" value={form.sigle} />}
-              <RecapLigne label="RCCM" value={form.numeroRccm} />
-              <RecapLigne label="NIF" value={form.numeroNif} />
-              {form.numeroAgrement && <RecapLigne label="Agrément" value={form.numeroAgrement} />}
-              <RecapLigne label="Date de création" value={form.dateCreationOuAgrement} />
-            </RecapSection>
-
-            <RecapSection title="Coordonnées">
-              <RecapLigne label="Adresse" value={form.adresseSiege} />
-              <RecapLigne label="Ville" value={`${form.ville}, ${libelleOption(PROVINCE_GABON_OPTIONS, form.province) ?? ''}`} />
-              <RecapLigne label="Pays" value={form.pays} />
-              <RecapLigne label="Téléphone" value={form.telephonePrincipal} />
-              <RecapLigne label="Email" value={form.emailContact} />
-              {form.siteWeb && <RecapLigne label="Site web" value={form.siteWeb} />}
-              {form.reseauxSociaux.length > 0 && (
-                <RecapLigne
-                  label="Réseaux sociaux"
-                  value={form.reseauxSociaux
-                    .filter((e) => e.plateforme && e.url)
-                    .map((e) => libelleOption(RESEAU_SOCIAL_OPTIONS, e.plateforme))
-                    .join(', ')}
-                />
-              )}
-            </RecapSection>
-
-            <RecapSection title="Responsable & contact">
-              <RecapLigne label="Responsable" value={`${form.responsableNomComplet} — ${form.responsableFonction}`} />
-              <RecapLigne label="Contact resp." value={`${form.responsableTelephone} · ${form.responsableEmail}`} />
-              {!form.contactOperationnelIdentique && form.contactOperationnelNom && (
-                <RecapLigne label="Contact opérationnel" value={form.contactOperationnelNom} />
-              )}
-            </RecapSection>
-
-            <RecapSection title="Activités">
-              <RecapLigne label="Effectif estimé" value={form.effectifEstime} />
-              {form.zoneCouverture && <RecapLigne label="Zone de couverture" value={form.zoneCouverture} />}
-              <RecapLigne label="Description" value={form.descriptionActivites} />
-            </RecapSection>
-
-            <RecapSection title="Administrateur">
-              <RecapLigne label="Identifiant" value={form.identifiant} />
-            </RecapSection>
+        {/* Pied de page -- écho du bandeau contact/signature du gabarit,
+            adapté à un formulaire numérique : marque, rappel d'éditabilité,
+            puis l'action de soumission à la place de la ligne de signature. */}
+        <div className="grid grid-cols-1 gap-6 border-t-2 border-[#01526B] px-5 py-7 sm:grid-cols-[1fr_1.4fr_auto] sm:gap-8 sm:px-10">
+          <div className="flex items-center gap-3">
+            <DiamondMark scale={0.68} />
+            <div className="text-[12px] leading-snug text-gray-500">
+              <p className="font-semibold text-[#01526B]">Civitas News</p>
+              <p>Espace organisations</p>
+            </div>
           </div>
-        )}
-      </Card>
-
-      <div className="flex justify-between">
-        <Button variant="ghost" onClick={goBack} disabled={stepIndex === 0 || isSubmitting}>
-          Précédent
-        </Button>
-        {stepIndex < STEPPER_STEPS.length - 1 ? (
-          <Button variant="primary" onClick={goNext}>
-            Suivant
-          </Button>
-        ) : (
-          <Button variant="primary" onClick={submit} isLoading={isSubmitting}>
-            Créer l'organisation
-          </Button>
-        )}
+          <div className="border-t border-[#E3E3E3] pt-4 text-[12px] leading-snug text-gray-500 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0">
+            Votre fiche reste modifiable depuis l'espace administrateur après la création de l'organisation.
+          </div>
+          <div className="flex items-center border-t border-[#E3E3E3] pt-4 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0">
+            <button
+              type="button"
+              onClick={submit}
+              disabled={isSubmitting}
+              className="inline-flex w-full items-center justify-center gap-2 bg-[#01526B] px-6 py-3 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-[#01394A] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              Créer l'organisation
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
-  );
-}
-
-function RecapSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <h3 className="text-xs font-extrabold uppercase tracking-wide text-[#5B4DFF]">{title}</h3>
-      <div className="space-y-2 border-b border-gray-100 dark:border-white/10 pb-3">{children}</div>
-    </div>
-  );
-}
-
-function RecapLigne({ label, value }: { label: string; value?: string }) {
-  if (!value) return null;
-  return (
-    <div className="flex justify-between gap-4">
-      <span className="text-gray-500 dark:text-gray-400 shrink-0">{label}</span>
-      <span className="font-medium text-gray-900 dark:text-white text-right">{value}</span>
     </div>
   );
 }

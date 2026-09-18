@@ -28,6 +28,17 @@ export interface SelectComboboxFieldProps {
   disabled?: boolean;
   error?: string;
   placeholder?: string;
+  /**
+   * 'boxed' (défaut) -- look historique inchangé partout ailleurs dans
+   * l'app (fond gris, coins arrondis, anneau violet au focus).
+   * 'underline' -- variante sans fond ni coin arrondi, simple ligne
+   * inférieure, réservée aux écrans avec une identité visuelle propre
+   * (ex : CreerOrganisationPage) qui posent déjà leur propre label à
+   * côté du champ -- voir `hideLabel`.
+   */
+  variant?: 'boxed' | 'underline';
+  /** Masque le <label> interne -- utile quand l'appelant affiche déjà son propre libellé (variant='underline'). */
+  hideLabel?: boolean;
 }
 
 export const SelectComboboxField: React.FC<SelectComboboxFieldProps> = ({
@@ -39,6 +50,8 @@ export const SelectComboboxField: React.FC<SelectComboboxFieldProps> = ({
   disabled,
   error,
   placeholder = '— Sélectionner —',
+  variant = 'boxed',
+  hideLabel = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -55,10 +68,12 @@ export const SelectComboboxField: React.FC<SelectComboboxFieldProps> = ({
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      <label htmlFor={fieldId} className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-      </label>
+      {!hideLabel && (
+        <label htmlFor={fieldId} className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+          {label}
+          {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
 
       <InlineCellPopover
         isOpen={isOpen}
@@ -77,15 +92,24 @@ export const SelectComboboxField: React.FC<SelectComboboxFieldProps> = ({
             aria-label={label}
             disabled={disabled}
             className={cn(
-              'w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-[#242A5C] border text-sm text-left transition-all focus:outline-none focus:ring-2 focus:ring-[#5B4DFF]',
-              error ? 'border-red-400' : 'border-gray-200 dark:border-gray-700',
-              disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer',
+              'w-full flex items-center justify-between gap-2 text-sm text-left transition-all focus:outline-none',
+              variant === 'underline'
+                ? cn(
+                    'py-2 bg-transparent border-0 border-b',
+                    error ? 'border-red-400' : 'border-[#B7B7B7] focus:border-[#01526B]',
+                    disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer',
+                  )
+                : cn(
+                    'px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-[#242A5C] border focus:ring-2 focus:ring-[#5B4DFF]',
+                    error ? 'border-red-400' : 'border-gray-200 dark:border-gray-700',
+                    disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer',
+                  ),
             )}
           >
-            <span className={selected ? 'text-gray-900 dark:text-white truncate' : 'text-gray-400 truncate'}>
+            <span className={selected ? (variant === 'underline' ? 'text-[#262626] truncate' : 'text-gray-900 dark:text-white truncate') : 'text-gray-400 truncate'}>
               {selected ? selected.label : placeholder}
             </span>
-            <ChevronsUpDown className="w-4 h-4 shrink-0 opacity-50 text-gray-400" />
+            <ChevronsUpDown className={cn('w-4 h-4 shrink-0', variant === 'underline' ? 'text-[#01526B] opacity-70' : 'opacity-50 text-gray-400')} />
           </button>
         }
       >
