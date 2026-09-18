@@ -294,8 +294,9 @@ export default function CreerOrganisationPage() {
         <section ref={setSectionRef('identite')}>
           <SectionBar>Identité légale</SectionBar>
           <SectionBody note="Fiche d'identité légale de l'organisation -- utile à la plateforme et modifiable ensuite depuis votre espace administrateur.">
-            <Field label="Forme juridique" required error={errors.formeJuridique}>
+            <Field label="Forme juridique" required htmlFor="org-forme-juridique" error={errors.formeJuridique}>
               <SelectComboboxField
+                id="org-forme-juridique"
                 label="Forme juridique"
                 hideLabel
                 variant="underline"
@@ -307,8 +308,9 @@ export default function CreerOrganisationPage() {
               />
             </Field>
 
-            <Field label="Secteur d'activité" required error={errors.secteurActivite}>
+            <Field label="Secteur d'activité" required htmlFor="org-secteur-activite" error={errors.secteurActivite}>
               <SelectComboboxField
+                id="org-secteur-activite"
                 label="Secteur d'activité"
                 hideLabel
                 variant="underline"
@@ -403,8 +405,9 @@ export default function CreerOrganisationPage() {
                   hasError={Boolean(errors.ville)}
                 />
               </Field>
-              <Field label="Province" required error={errors.province}>
+              <Field label="Province" required htmlFor="org-province" error={errors.province}>
                 <SelectComboboxField
+                  id="org-province"
                   label="Province"
                   hideLabel
                   variant="underline"

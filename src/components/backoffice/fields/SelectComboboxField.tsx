@@ -39,6 +39,8 @@ export interface SelectComboboxFieldProps {
   variant?: 'boxed' | 'underline';
   /** Masque le <label> interne -- utile quand l'appelant affiche déjà son propre libellé (variant='underline'). */
   hideLabel?: boolean;
+  /** Id explicite du déclencheur -- pour associer un <label htmlFor> externe (voir `hideLabel`). Sans quoi un id est dérivé de `label`. */
+  id?: string;
 }
 
 export const SelectComboboxField: React.FC<SelectComboboxFieldProps> = ({
@@ -52,11 +54,12 @@ export const SelectComboboxField: React.FC<SelectComboboxFieldProps> = ({
   placeholder = '— Sélectionner —',
   variant = 'boxed',
   hideLabel = false,
+  id,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const nullable = !required;
-  const fieldId = `bo-combobox-${label.toLowerCase().replace(/\s+/g, '-')}`;
+  const fieldId = id ?? `bo-combobox-${label.toLowerCase().replace(/\s+/g, '-')}`;
 
   const selected = useMemo(() => options.find((o) => o.value === value), [options, value]);
 
@@ -158,7 +161,7 @@ export const SelectComboboxField: React.FC<SelectComboboxFieldProps> = ({
         </div>
       </InlineCellPopover>
 
-      {error && <span className="text-xs text-red-500">{error}</span>}
+      {!hideLabel && error && <span className="text-xs text-red-500">{error}</span>}
     </div>
   );
 };

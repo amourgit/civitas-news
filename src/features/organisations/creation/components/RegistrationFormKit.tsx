@@ -223,11 +223,11 @@ export function RadioGroup({
               value={opt.value}
               checked={checked}
               onChange={() => onChange(opt.value)}
-              className="sr-only"
+              className="peer sr-only"
             />
             <span
               className={cn(
-                'inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full border-[1.6px]',
+                'inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full border-[1.6px] peer-focus-visible:ring-2 peer-focus-visible:ring-[#01526B] peer-focus-visible:ring-offset-2',
                 checked ? 'border-[#01526B]' : 'border-[#9a9a9a]',
               )}
             >
