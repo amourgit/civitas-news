@@ -1,16 +1,8 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import {
-  Home,
-  Layers,
-  Search as SearchIcon,
-  BarChart3,
-  HelpCircle,
-  LogIn,
-  ShieldCheck,
-} from 'lucide-react';
-import { NotchNav, type NotchItemData } from '../ui/notch-nav';
+import { HelpCircle, LogIn, ShieldCheck } from 'lucide-react';
+import { NotchNav } from '../ui/notch-nav';
 import { ProfileDropdown } from './ProfileDropdown';
 import { BackofficeSidebar } from '../backoffice/BackofficeSidebar';
 import { useUiStore } from '../../store/ui.store';
@@ -19,26 +11,23 @@ import { useTopbarSlots } from '../../context/TopbarSlotsContext';
 import { useBackofficeSidebarStore } from '../../store/backofficeSidebar.store';
 import { usePermissions } from '../../lib/permissions/usePermissions';
 import { PERMISSIONS } from '../../lib/permissions/permissions.catalog';
+import { useNavDestinations } from '../../config/navigation.config';
 
 // Topbar = NotchNav (voir src/components/ui/notch-nav.tsx). Ce fichier
-// ne fait QUE le câblage réel : logo, pages principales (items), et
-// les icônes d'option (aide, backoffice, connexion/profil), reprises
-// telles quelles. Depuis la refonte structurelle de NotchNav, le bloc
-// droit est scindé en deux pièces détachées : `rightContent` (aide +
-// lien backoffice + connexion/profil) et `rightAction` (bascule
-// sidebar backoffice) — visibles à toutes les tailles (desktop,
-// tablette, mobile). Chaque bouton de `rightContent` est entièrement
-// libre (aucun cadre/pilule commun, aucun chevauchement en marge
-// négative) : un simple `gap` régulier (gap-2.5, sm:gap-3 -- identique
-// à l'espacement déjà utilisé entre rightContent/rightAction/
-// upperContent dans notch-nav.tsx) les sépare, exactement le même
-// traitement que les items de la navbar centrale/sidebar.
-const NAV_ITEMS: (NotchItemData & { path: string })[] = [
-  { id: 'accueil', label: 'Accueil', icon: Home },
-  { id: 'news', label: 'News', icon: Layers },
-  { id: 'recherche', label: 'Rechercher', icon: SearchIcon },
-  { id: 'statistiques', label: 'Statistiques', icon: BarChart3 },
-].map((item, i) => ({ ...item, path: ['/', '/news', '/recherche', '/statistiques'][i] }));
+// ne fait QUE le câblage réel : logo, pages principales (items, voir
+// config/navigation.config.ts -- SOURCE UNIQUE partagée avec le dock
+// mobile, voir MobileDock.tsx), et les icônes d'option (aide,
+// backoffice, connexion/profil), reprises telles quelles. Depuis la
+// refonte structurelle de NotchNav, le bloc droit est scindé en deux
+// pièces détachées : `rightContent` (aide + lien backoffice +
+// connexion/profil) et `rightAction` (bascule sidebar backoffice) —
+// visibles à toutes les tailles (desktop, tablette, mobile). Chaque
+// bouton de `rightContent` est entièrement libre (aucun cadre/pilule
+// commun, aucun chevauchement en marge négative) : un simple `gap`
+// régulier (gap-2.5, sm:gap-3 -- identique à l'espacement déjà utilisé
+// entre rightContent/rightAction/upperContent dans notch-nav.tsx) les
+// sépare, exactement le même traitement que les items de la navbar
+// centrale/sidebar.
 
 export interface HeaderProps {
   children?: React.ReactNode;
@@ -56,6 +45,10 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   // bloquer l'accès à quoi que ce soit.
   const { isAuthenticated, isHydrating, isAdmin, isSyncingToken } = useAuthStore();
   const { can } = usePermissions();
+  // Liste déjà filtrée par permission (voir useNavDestinations) --
+  // EXACTEMENT la même liste, dans le même ordre, que celle rendue
+  // par MobileDock.tsx : les deux lisent config/navigation.config.ts.
+  const navDestinations = useNavDestinations();
   // Contenu des deux niveaux de la topbar, entièrement décidé par la
   // page active (voir context/TopbarSlotsContext.tsx et
   // useSetTopbarContent) -- Header.tsx ne fait que relire l'état publié
@@ -70,13 +63,11 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
     closeMobile: closeBackofficeNav,
   } = useBackofficeSidebarStore();
 
-  const activeItem = [...NAV_ITEMS]
-    .reverse()
-    .find((item) => (item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path)));
+  const activeItem = navDestinations.find((item) => item.isActive(location.pathname));
   const activeId = activeItem?.id ?? '';
 
   const handleActiveChange = (id: string) => {
-    const item = NAV_ITEMS.find((i) => i.id === id);
+    const item = navDestinations.find((i) => i.id === id);
     if (item) navigate(item.path);
   };
 
@@ -258,7 +249,7 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
   return (
     <>
       <NotchNav
-        items={NAV_ITEMS}
+        items={navDestinations}
         activeId={activeId}
         onActiveChange={handleActiveChange}
         logo={logo}

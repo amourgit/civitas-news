@@ -1,74 +1,39 @@
 import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Layers, Vote, Video, User } from 'lucide-react';
 import { AnimatedTabBar, type TabItem } from '../ui/AnimatedTabBar';
+import { useNavDestinations } from '../../config/navigation.config';
 
 // Dock mobile — remplace l'ancien BottomNav.tsx. Design/animation
 // repris tel quel dans AnimatedTabBar.tsx ; ce fichier ne fait que le
-// câblage réel : les 5 destinations, leurs icônes/couleurs, et la
-// détection de l'onglet actif à partir de l'URL courante.
-interface DockDestination {
-  label: string;
-  icon: React.ReactNode;
-  color: string;
-  path: string;
-  isActive: (pathname: string, search: URLSearchParams) => boolean;
-}
-
-const DESTINATIONS: DockDestination[] = [
-  {
-    label: 'Home',
-    icon: <Home className="icon" />,
-    color: '#5B4DFF', // --civitas-purple
-    path: '/',
-    isActive: (pathname) => pathname === '/',
-  },
-  {
-    label: 'News',
-    icon: <Layers className="icon" />,
-    color: '#3B82F6', // --civitas-info
-    path: '/news',
-    isActive: (pathname) => pathname.startsWith('/news') || pathname.startsWith('/sujets'),
-  },
-  {
-    label: 'Sondage',
-    icon: <Vote className="icon" />,
-    color: '#7B61FF', // --civitas-purple-accent
-    // Page dédiée (voir SondagesListPage.tsx) -- ce n'est plus un
-    // renvoi vers /news avec un filtre appliqué.
-    path: '/sondages',
-    isActive: (pathname) => pathname.startsWith('/sondages'),
-  },
-  {
-    label: 'Reels et Directs',
-    icon: <Video className="icon" />,
-    color: '#F59E0B', // --civitas-warning
-    path: '/reels',
-    isActive: (pathname) => pathname.startsWith('/reels'),
-  },
-  {
-    label: 'Profil',
-    icon: <User className="icon" />,
-    color: '#16A34A', // --civitas-success
-    path: '/profil',
-    isActive: (pathname) => pathname.startsWith('/profil'),
-  },
-];
-
+// câblage réel : icônes/couleurs et détection de l'onglet actif à
+// partir de l'URL courante. Les destinations elles-mêmes viennent de
+// config/navigation.config.ts -- SOURCE UNIQUE partagée avec la topbar
+// desktop/tablette (voir Header.tsx) : ajouter/retirer une page là-bas
+// se répercute automatiquement ici, sans jamais désynchroniser les
+// deux listes (c'était le bug signalé : ce fichier avait auparavant
+// son propre tableau DESTINATIONS, distinct de NAV_ITEMS dans
+// Header.tsx).
 export const MobileDock: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const search = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const navDestinations = useNavDestinations();
 
   const activeIndexFromRoute = useMemo(() => {
-    const idx = DESTINATIONS.findIndex((d) => d.isActive(location.pathname, search));
+    const idx = navDestinations.findIndex((d) => d.isActive(location.pathname));
     return idx === -1 ? 0 : idx;
-  }, [location.pathname, search]);
+  }, [navDestinations, location.pathname]);
 
-  const items: TabItem[] = DESTINATIONS.map((d) => ({ icon: d.icon, color: d.color }));
+  const items: TabItem[] = useMemo(
+    () =>
+      navDestinations.map((d) => {
+        const Icon = d.icon;
+        return { icon: <Icon className="icon" />, color: d.color };
+      }),
+    [navDestinations]
+  );
 
   const handleTabChange = (index: number) => {
-    navigate(DESTINATIONS[index].path);
+    navigate(navDestinations[index].path);
   };
 
   return (

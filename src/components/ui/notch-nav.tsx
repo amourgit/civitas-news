@@ -279,8 +279,14 @@ export const NotchItem = forwardRef<HTMLButtonElement, NotchItemProps>(
         disabled={disabled}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
+        // aria-label + title : nécessaires dès que le libellé texte est
+        // masqué (voir plus bas, "hidden lg:inline") -- sans ça, un
+        // item icône-seule (tablette/petit desktop) redeviendrait
+        // muet pour un lecteur d'écran et sans info-bulle au survol.
+        aria-label={label}
+        title={label}
         className={cn(
-          "relative flex h-9 cursor-pointer items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors outline-none select-none",
+          "relative flex h-9 cursor-pointer items-center gap-2 rounded-full px-2.5 lg:px-3.5 text-sm font-medium transition-colors outline-none select-none",
           "focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-1",
           isActive
             ? "font-semibold text-white"
@@ -314,7 +320,14 @@ export const NotchItem = forwardRef<HTMLButtonElement, NotchItemProps>(
             />
           )}
 
-          <span className="leading-none">{label}</span>
+          {/* Libellé masqué en dessous de lg (desktop/tablette compacts
+              -- voir bandeau d'en-tête du fichier : jusqu'à 7 destinations
+              possibles désormais, voir NAV_DESTINATIONS dans
+              config/navigation.config.ts) : icône seule tant que la
+              largeur n'est pas confortable, texte complet à partir de
+              lg (>=1024px). aria-label/title ci-dessus couvrent
+              l'accessibilité pendant que le texte est masqué. */}
+          <span className="hidden leading-none lg:inline">{label}</span>
 
           {badge && (
             <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-tight uppercase text-white">

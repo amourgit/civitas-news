@@ -17,6 +17,14 @@
     --civitas-warning: #F59E0B;
     --civitas-error: #DC2626;
     --civitas-info: #3B82F6;
+    /* Ajoutées pour la navigation principale unifiée (voir
+       config/navigation.config.ts) : deux teintes de plus étaient
+       nécessaires pour couvrir Recherche/Statistiques sans réutiliser
+       --civitas-error (sémantique "danger", inadapté à un item de nav)
+       ni une teinte trop sombre (--civitas-navy*) qui se fondrait dans
+       le fond translucide du dock mobile. */
+    --civitas-teal: #06B6D4;
+    --civitas-rose: #EC4899;
 
     --radius-sm: 8px;
     --radius-md: 16px;
