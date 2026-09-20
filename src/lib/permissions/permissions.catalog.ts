@@ -52,6 +52,18 @@ export const PERMISSIONS = {
   ADMIN_SIGNALEMENT_TRAITER: 'admin:signalement:traiter',
   ADMIN_AUDIT_VIEW: 'admin:audit:view',
   ADMIN_UTILISATEUR_GERER: 'admin:utilisateur:gerer',
+  // Édition FINE d'une fiche utilisateur (voir
+  // components/backoffice/users/profile/userProfile.schema.ts : chaque
+  // champ déclare la permission qui gouverne son édition). GERER reste
+  // la porte d'entrée (accès à la fiche + bouton « Modifier ») ; ces
+  // cinq-là décident QUOI on peut y modifier -- ex : accorder
+  // EDIT_STATUT à un profil « support » sans lui donner le pouvoir de
+  // promouvoir un compte (EDIT_ROLE).
+  ADMIN_UTILISATEUR_EDIT_IDENTITE: 'admin:utilisateur:edit:identite',
+  ADMIN_UTILISATEUR_EDIT_CONTACT: 'admin:utilisateur:edit:contact',
+  ADMIN_UTILISATEUR_EDIT_ROLE: 'admin:utilisateur:edit:role',
+  ADMIN_UTILISATEUR_EDIT_RATTACHEMENT: 'admin:utilisateur:edit:rattachement',
+  ADMIN_UTILISATEUR_EDIT_STATUT: 'admin:utilisateur:edit:statut',
   // Raccourci "Publier un article" du bouton flottant d'actions rapides
   // (voir components/layout/fab/QuickActionsFab.tsx) : volontairement
   // distinct de NEWS_CREATE (accordé dès le rôle 'organisation') --

@@ -17,13 +17,7 @@ import { PERMISSIONS } from '../../../../lib/permissions/permissions.catalog';
 import { ROLE_OPTIONS } from '../../../../lib/constants/userRoles';
 import UserOrbitCarousel from '../../users/UserOrbitCarousel';
 import UserRecordDetail from '../../users/UserRecordDetail';
-
-function toNullableInt(value: unknown): number | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null || value === '') return null;
-  const n = Number(value);
-  return Number.isNaN(n) ? undefined : n;
-}
+import { buildUserPatch } from '../../users/profile/userProfile.logic';
 
 export const utilisateurModel: ModelDef<BackendUser> = {
   key: 'utilisateur',
@@ -49,9 +43,11 @@ export const utilisateurModel: ModelDef<BackendUser> = {
   listExtrasMode: 'replace',
   // Fiche détail "profil" (bannière, statuts, grille d'informations,
   // badges) en lieu et place du Card + formulaire générique -- voir
-  // ModelDef.RecordExtras. L'édition, elle, continue de passer par
-  // BackofficeRecordForm (bouton « Modifier » de la fiche) : seule la
-  // CONSULTATION change de design.
+  // ModelDef.RecordExtras. Le bouton « Modifier » de la fiche transforme
+  // ces MÊMES cadres en champs, en place (voir users/profile/) : le
+  // formulaire générique (BackofficeRecordForm) n'est plus utilisé pour
+  // les utilisateurs. `fields` ci-dessous reste la description de
+  // référence du modèle (registre, sélecteurs FK d'autres tables).
   RecordExtras: UserRecordDetail,
   recordViewMode: 'replace',
   fields: [
@@ -77,18 +73,8 @@ export const utilisateurModel: ModelDef<BackendUser> = {
       return users.map((u) => ({ ...u, id: u.id }));
     },
     get: async (id) => usersRepository.getById(Number(id)),
-    update: (id, values) => usersRepository.update(Number(id), {
-      firstName: values.firstName as string,
-      lastName: values.lastName as string,
-      email: (values.email as string) || undefined,
-      role: values.role as BackendUser['role'],
-      etablissement: toNullableInt(values.etablissement),
-      organisation: toNullableInt(values.organisation),
-      isActive: values.isActive as boolean,
-      isVerified: values.isVerified as boolean,
-      phoneNumber: (values.phoneNumber as string) || undefined,
-      address: (values.address as string) || undefined,
-      dateOfBirth: (values.dateOfBirth as string) || null,
-    }),
+    // `values` peut ne contenir QUE les champs modifiés (PATCH partiel) :
+    // voir buildUserPatch pour la règle « absent = non envoyé ».
+    update: (id, values) => usersRepository.update(Number(id), buildUserPatch(values)),
   },
 };
