@@ -18,3 +18,8 @@ export function chunk<T>(items: readonly T[], size: number): T[][] {
   }
   return groups;
 }
+
+/** Borne `value` entre `min` et `max` inclus. */
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}

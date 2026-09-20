@@ -21,6 +21,7 @@ import { tenantsRepository, type Tenant } from '../../services/api/repositories/
 import type { Organisation } from '../../types/global.types';
 import { Skeleton } from '../ui/Skeleton';
 import { Button } from '../ui/Button';
+import { DragCarousel } from '../ui/DragCarousel';
 import { OrganisationCard } from './organisations/OrganisationCard';
 
 /** Un tenant de l'annuaire public, présenté à OrganisationCard comme une
@@ -109,23 +110,26 @@ export const OrganisationsSection: React.FC = () => {
           {error ?? 'Aucune organisation pour le moment.'}
         </div>
       ) : (
-        // items-start : par défaut, un conteneur flex étire ses enfants
-        // à la hauteur du plus grand (align-items: stretch) -- c'est la
-        // carte qui doit mener la taille, pas la section, d'où
-        // items-start (aucune hauteur n'est donc jamais "imposée" par
-        // ce rail aux cartes, chacune garde sa propre hauteur naturelle).
-        // overflow-y-visible + pt-1/pb-8 (au lieu de pb-2) : filet de
-        // sécurité supplémentaire pour que le glow/box-shadow de chaque
-        // carte (voir OrganisationCard.css : box-shadow de .content,
-        // qui déborde visuellement de ~30-40px sous la carte) ait
-        // toujours la place de se dessiner en entier, même si le
-        // navigateur traite l'axe Y comme une boîte de défilement/
-        // clipping dès que overflow-x est actif sur l'autre axe.
-        <div className="flex items-start gap-4 overflow-x-auto overflow-y-visible pt-1 pb-8 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
+        // DragCarousel : rail libre glissé à la main (inertie réelle,
+        // sans flèches/points -- voir DragCarousel.tsx), plutôt qu'un
+        // simple scroll natif. items-start sur la piste : un conteneur
+        // flex étire sinon ses enfants à la hauteur du plus grand
+        // (align-items: stretch) -- c'est la carte qui doit mener la
+        // taille, pas la section. pt-1/pb-8 (au lieu de pb-2) : filet
+        // de sécurité pour que le glow/box-shadow de chaque carte (voir
+        // OrganisationCard.css : box-shadow de .content, qui déborde
+        // visuellement de ~30-40px sous la carte) ait toujours la place
+        // de se dessiner en entier -- overflow-y-visible sur le
+        // viewport joue le même rôle que dans l'ancien rail.
+        <DragCarousel
+          ariaLabel="Organisations actives sur la plateforme"
+          viewportClassName="-mx-1 px-1"
+          trackClassName="items-start gap-4 pt-1 pb-8"
+        >
           {organisations.map((organisation) => (
             <OrganisationCard key={organisation.id} organisation={organisation} />
           ))}
-        </div>
+        </DragCarousel>
       )}
     </div>
   );
