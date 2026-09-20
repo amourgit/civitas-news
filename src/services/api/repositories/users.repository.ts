@@ -43,11 +43,15 @@ export const usersRepository = {
     });
   },
 
-  async getById(id: number): Promise<BackendUser> {
+  /** `fresh: true` contourne le cache GET applicatif -- pour relire une
+   * fiche qu'on vient de modifier, sans dépendre de la politique
+   * d'invalidation globale (voir cache/getCache.ts). */
+  async getById(id: number, options: { fresh?: boolean } = {}): Promise<BackendUser> {
     const response = await http.get.get<BackendUser>({
       endpoint: USERS_ENDPOINTS.detail(id),
       schema: BackendUserSchema,
       requireAuth: true,
+      ...(options.fresh ? { cache: 'no-cache' as const } : {}),
     });
     return response.data;
   },
@@ -66,16 +70,27 @@ export const usersRepository = {
   /** PATCH — réservé aux modérateurs/administrateurs côté backend (voir
    * UserViewSet.permission_classes). Passe par UserUpdateSerializer, qui
    * n'inclut PAS `username`/`badges`/`isStaff`/`isSuperuser`/`dateJoined` :
-   * ces champs sont ignorés s'ils sont présents dans `data`. */
+   * ces champs sont ignorés s'ils sont présents dans `data`.
+   *
+   * Deux particularités, toutes deux verrouillées par
+   * __tests__/users.repository.test.ts :
+   *  - `preserveNull` : `null` est une INSTRUCTION pour DRF (vider une FK
+   *    ou la date de naissance). Le sanitizer par défaut le retirerait
+   *    et la modification serait perdue en silence.
+   *  - la réponse du PATCH est rendue par UserUpdateSerializer, donc sans
+   *    `id`/`username`/`badges` : elle ne peut pas être validée par
+   *    BackendUserSchema (elle faisait échouer toute sauvegarde). On
+   *    relit la fiche complète après l'écriture -- ce qui rend aussi les
+   *    champs en lecture seule (badges, dates) à jour. */
   async update(id: number, data: Partial<BackendUserEcriturePayload>): Promise<BackendUser> {
-    const response = await http.update.patch<Partial<BackendUserEcriturePayload>, BackendUser>({
+    await http.update.patch<Partial<BackendUserEcriturePayload>, unknown>({
       endpoint: USERS_ENDPOINTS.list,
       resourceId: id,
       patches: data,
-      responseSchema: BackendUserSchema,
+      preserveNull: true,
       requireAuth: true,
     });
-    return response.data;
+    return usersRepository.getById(id, { fresh: true });
   },
 
   async remove(id: number): Promise<void> {

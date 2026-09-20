@@ -11,7 +11,7 @@ import type {
   JsonPatchOperation,
 } from "./types/update.types";
 import type { ApiResponse } from "./types/http.types";
-import { RequestSanitizer } from "./utils/sanitizer";
+import { RequestSanitizer, type SanitizeOptions } from "./utils/sanitizer";
 import { UrlBuilder } from "./utils/urlBuilder";
 import { ApiError, ValidationError, NetworkError, ConflictError } from "./errors";
 import { z } from "zod";
@@ -259,6 +259,7 @@ export class UpdateService extends BaseHttpService {
         timeout = this.defaultTimeout,
         requireAuth = false,
         sanitize = true,
+        preserveNull = false,
         validatePatches = true,
         optimisticUpdate = false,
         conflictResolution = 'server',
@@ -284,7 +285,8 @@ export class UpdateService extends BaseHttpService {
         const formattedPatches = isFormData ? validatedPatches : await this.formatPatches(
           validatedPatches,
           patchFormat,
-          sanitize
+          sanitize,
+          preserveNull
         );
   
         // Optimistic update
@@ -628,10 +630,11 @@ export class UpdateService extends BaseHttpService {
     private async formatPatches(
       patches: unknown,
       format: string,
-      sanitize: boolean
+      sanitize: boolean,
+      preserveNull = false
     ): Promise<unknown> {
       if (sanitize) {
-        patches = this.sanitizeRequestBody(patches);
+        patches = this.sanitizeRequestBody(patches, { preserveNull });
       }
   
       switch (format) {
@@ -843,9 +846,9 @@ export class UpdateService extends BaseHttpService {
     }
   
     // Méthodes utilitaires héritées
-    private sanitizeRequestBody(body: unknown): unknown {
+    private sanitizeRequestBody(body: unknown, options?: SanitizeOptions): unknown {
       if (typeof body === 'object' && body !== null) {
-        return RequestSanitizer.sanitizeParams(body as Record<string, unknown>);
+        return RequestSanitizer.sanitizeParams(body as Record<string, unknown>, options);
       }
       return body;
     }

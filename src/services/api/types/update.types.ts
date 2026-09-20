@@ -52,6 +52,8 @@ export interface PatchRequestConfig<TRequest, TResponse> {
   timeout?: number;
   requireAuth?: boolean;
   sanitize?: boolean;
+  /** Avec `sanitize`, conserve les `null` explicites du body (= « vider ce champ » pour DRF). */
+  preserveNull?: boolean;
   validatePatches?: boolean;
   optimisticUpdate?: boolean;
   conflictResolution?: ConflictResolutionStrategy;
