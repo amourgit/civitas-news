@@ -1,6 +1,6 @@
 // ============================================================
 // src/components/backoffice/users/__tests__/UserRecordDetail.test.tsx
-// Verrouille le nouveau design "profil" de la fiche Utilisateur (voir
+// Verrouille le design "profil" de la fiche Utilisateur (voir
 // UserRecordDetail.tsx, branché via ModelDef.RecordExtras +
 // recordViewMode: 'replace' dans utilisateur.registry.ts) :
 //  - la consultation affiche nom, rôle, statuts et informations, sans
@@ -8,14 +8,22 @@
 //  - les libellés établissement/organisation sont résolus par id (via
 //    referentielsRepository, mocké ici) plutôt que d'afficher un id
 //    brut ;
-//  - le bouton « Modifier » bascule vers BackofficeRecordForm (édition
-//    inchangée), et « Annuler » revient à la vue profil.
+//  - le bouton « Modifier » NE bascule PLUS vers un formulaire/Card
+//    séparé ("façon Django") : les mêmes cadres (tuiles + pastilles de
+//    statut) deviennent directement des champs modifiables, en place ;
+//  - la tuile « Mot de passe » reste toujours statique/grisée, en
+//    consultation comme en édition ;
+//  - « Enregistrer » envoie les valeurs modifiées à model.data.update
+//    et revient à la vue profil ; « Annuler » revient sans enregistrer.
 //
 // Un modèle minimal (sans champ 'fk') est utilisé plutôt que le vrai
 // utilisateurModel, pour ne pas dépendre du réseau (FkSelectField
 // interrogerait de vraies tables du registre) : ce test cible le
 // design de CETTE fiche, pas BackofficeRecordForm, déjà testé
-// ailleurs.
+// ailleurs. Les valeurs du mode édition sont désormais seedées
+// directement depuis `record` (voir buildEditValues), pas depuis
+// `model.fields` : ce stub minimal reste donc représentatif même sans
+// déclarer email/rôle/etablissement/organisation/isActive/isVerified.
 // ============================================================
 
 import React from 'react';
@@ -117,13 +125,41 @@ describe('UserRecordDetail — vue profil', () => {
     await screen.findByText('Université de Libreville');
   });
 
-  it('bascule vers le formulaire d\'édition puis revient à la vue profil', () => {
+  it('bascule les mêmes cadres d\'affichage en champs modifiables au clic sur Modifier', () => {
     renderDetail();
     fireEvent.click(screen.getByRole('button', { name: /modifier/i }));
-    expect(screen.getByRole('heading', { name: /modifier — amina bongo/i })).toBeInTheDocument();
+
+    // Pas de bascule vers un formulaire/titre séparé : les informations
+    // restent affichées au même endroit, sous forme de champs pré-remplis.
+    expect(screen.queryByRole('heading', { name: /modifier —/i })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Prénom')).toHaveValue('Amina');
+    expect(screen.getByPlaceholderText('Nom')).toHaveValue('Bongo');
 
     fireEvent.click(screen.getByRole('button', { name: 'Annuler' }));
     expect(screen.getByRole('heading', { name: 'Amina Bongo' })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Prénom')).not.toBeInTheDocument();
+  });
+
+  it('la tuile Mot de passe reste statique et grisée, en consultation comme en édition', () => {
+    renderDetail();
+    expect(screen.getByText('••••••••')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /modifier/i }));
+    expect(screen.getByText('••••••••')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/mot de passe/i)).not.toBeInTheDocument();
+  });
+
+  it('enregistre les champs modifiés puis revient à la vue profil', async () => {
+    const { onUpdated } = renderDetail();
+    fireEvent.click(screen.getByRole('button', { name: /modifier/i }));
+    fireEvent.change(screen.getByPlaceholderText('Prénom'), { target: { value: 'Aminata' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    // De retour en vue (le bouton Modifier réapparaît) une fois la
+    // sauvegarde résolue.
+    await screen.findByRole('button', { name: /modifier/i });
+    expect(onUpdated).toHaveBeenCalledTimes(1);
+    expect(onUpdated.mock.calls[0][0]).toMatchObject({ firstName: 'Aminata' });
   });
 
   it('déclenche onBack au clic sur le retour, en vue profil', async () => {
