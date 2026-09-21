@@ -29,6 +29,20 @@ import {
 
 export type OrganisationLoadState = 'loading' | 'ready' | 'not-found' | 'error';
 
+/** Message affiché quand la fiche administrative ne peut pas être chargée -- selon la cause réelle, pas un « réessayez » générique. */
+export function ficheErrorMessage(error: unknown): string {
+  switch ((error as { status?: number } | null)?.status) {
+    case 401:
+      return 'Votre session a expiré. Reconnectez-vous pour consulter la fiche de l’organisation.';
+    case 403:
+      return 'Seul un administrateur de cette organisation, connecté à elle, peut consulter sa fiche.';
+    case 404:
+      return 'Le serveur ne propose pas (ou plus) la fiche de l’organisation : la version du backend déployée est probablement antérieure à cette fonctionnalité.';
+    default:
+      return 'Impossible de charger la fiche de l’organisation pour le moment. Réessayez dans un instant.';
+  }
+}
+
 export function useOrganisationDetails(sousDomaine?: string) {
   const { currentTenant } = useTenantsStore();
   const { user, isHydrating } = useAuthStore();
@@ -104,8 +118,8 @@ export function useOrganisationDetails(sousDomaine?: string) {
       .then((data) => {
         if (!cancelled) setFiche(data);
       })
-      .catch(() => {
-        if (!cancelled) setFicheError('Impossible de charger la fiche de l’organisation pour le moment.');
+      .catch((error: unknown) => {
+        if (!cancelled) setFicheError(ficheErrorMessage(error));
       });
     return () => {
       cancelled = true;

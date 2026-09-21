@@ -17,6 +17,17 @@ const TENANT_COURANT = { id: 1, name: 'Campus Test', sousDomaine: 'campus-test',
 const TENANT_PUBLIC = { id: 2, name: 'Ministère de la Santé', sousDomaine: 'ministere-sante', isPublic: true };
 
 describe('isTenantEnvelope', () => {
+  it('lève une ApiError quand le tenant PRINCIPAL est en erreur, mais ignore l’échec d’un tenant secondaire', () => {
+    const tenant = { id: 1, name: 'A', sousDomaine: 'a', isPublic: false };
+    const enErreur = [{ tenant, statusCode: 404, data: { detail: 'Introuvable.' } }];
+    expect(() => unwrapToPrimaryTenant(enErreur)).toThrow('Introuvable.');
+    const secondaireEnErreur = [
+      { tenant, statusCode: 200, data: { ok: true } },
+      { tenant: { ...tenant, id: 2 }, statusCode: 403, data: { detail: 'Refusé.' } },
+    ];
+    expect(unwrapToPrimaryTenant(secondaireEnErreur)).toEqual({ ok: true });
+  });
+
   it("reconnaît la forme [{tenant, statusCode, data}, ...] renvoyée par le fan-out GET backend", () => {
     const envelope = [
       { tenant: TENANT_COURANT, statusCode: 200, data: { results: [] } },

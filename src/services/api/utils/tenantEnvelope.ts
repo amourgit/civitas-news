@@ -32,6 +32,7 @@
 // ============================================================
 
 import { z } from 'zod';
+import { ApiError } from '../errors';
 
 /**
  * Métadonnées du tenant portées par chaque élément de l'enveloppe.
@@ -96,7 +97,28 @@ export function isTenantEnvelope(value: unknown): value is TenantEnvelopeEntryRa
  */
 export function unwrapToPrimaryTenant(rawData: unknown): unknown {
   if (!isTenantEnvelope(rawData)) return rawData;
-  return rawData[0].data;
+  const primary = rawData[0];
+  // Le middleware répond TOUJOURS en HTTP 200 pour un GET fan-out, même si la
+  // vue a échoué : l'échec du tenant principal vit dans `statusCode`. Sans
+  // ce contrôle, un 404/403 métier `{detail}` était pris pour des données
+  // valides puis rejeté par le schéma Zod de l'appelant (ValidationError
+  // opaque, statut perdu) -- les appelants qui gèrent un 404 attendu
+  // (ex : organisation inconnue) ne pouvaient donc pas le reconnaître.
+  if (primary.statusCode >= 400) throw primaryTenantError(primary);
+  return primary.data;
+}
+
+function primaryTenantError(entry: TenantEnvelopeEntryRaw): ApiError {
+  const body = (entry.data ?? {}) as Record<string, unknown>;
+  const pick = (...keys: string[]): string | undefined =>
+    keys.map((key) => body[key]).find((value): value is string => typeof value === 'string' && value.length > 0);
+  return new ApiError(
+    pick('detail', 'error', 'message') ?? `Erreur HTTP ${entry.statusCode}`,
+    entry.statusCode,
+    pick('errorCode', 'code'),
+    undefined,
+    entry.data,
+  );
 }
 
 /** Un élément aplati, associé au tenant qui l'a produit. */

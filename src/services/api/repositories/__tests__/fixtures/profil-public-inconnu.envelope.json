@@ -1,0 +1,28 @@
+[
+  {
+    "tenant": {
+      "id": 1,
+      "name": "Civitas News 3",
+      "sousDomaine": "civitasnews",
+      "isPublic": false,
+      "schemaName": "civitasnews"
+    },
+    "statusCode": 404,
+    "data": {
+      "detail": "Organisation introuvable."
+    }
+  },
+  {
+    "tenant": {
+      "id": 2,
+      "name": "Autre Org",
+      "sousDomaine": "autre",
+      "isPublic": false,
+      "schemaName": "autre"
+    },
+    "statusCode": 404,
+    "data": {
+      "detail": "Organisation introuvable."
+    }
+  }
+]
