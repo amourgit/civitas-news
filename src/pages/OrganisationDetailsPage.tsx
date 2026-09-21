@@ -14,16 +14,19 @@
 // Chaque section décide seule de son affichage/édition via sa
 // permission déclarée dans organisationFiche.schema.ts.
 // ============================================================
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Building2, Lock, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useTenantsStore } from '../store/tenants.store';
+import { PERMISSIONS } from '../lib/permissions/permissions.catalog';
 import { useAuthStore } from '../store/auth.store';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { OrganisationHero } from '../features/organisations/details/components/OrganisationHero';
 import { OrganisationScopeBanner } from '../features/organisations/details/components/OrganisationScopeBanner';
+import { FichePubliqueCard } from '../features/organisations/details/components/FichePubliqueCard';
+import { IdentiteEditModal } from '../features/organisations/details/components/IdentiteEditModal';
 import { FicheSectionCard } from '../features/organisations/details/components/FicheSectionCard';
 import { FICHE_SECTIONS } from '../features/organisations/details/organisationFiche.schema';
 import { useOrganisationDetails } from '../features/organisations/details/useOrganisationDetails';
@@ -34,6 +37,7 @@ const OrganisationDetailsPage: React.FC = () => {
   const { currentTenant } = useTenantsStore();
   const { isAuthenticated } = useAuthStore();
   const details = useOrganisationDetails(sousDomaine);
+  const [identiteOpen, setIdentiteOpen] = useState(false);
 
   // Une même organisation ne doit jamais s'afficher avec deux jeux de
   // privilèges selon l'URL par laquelle on y arrive.
@@ -87,13 +91,17 @@ const OrganisationDetailsPage: React.FC = () => {
     );
   }
 
-  const { tenant, scope, can, canViewFiche, fiche, ficheError, saveFiche } = details;
+  const { tenant, scope, can, canViewFiche, fiche, ficheError, fichePublique, saveFiche, saveIdentite } = details;
+  const canEditIdentite = can(PERMISSIONS.ORGANISATION_IDENTITE_EDIT);
   const visibleSections = FICHE_SECTIONS.filter((section) => can(section.viewPermission));
 
   return (
     <div className="space-y-4 py-2">
       {!details.isCurrent && back}
-      <OrganisationHero tenant={tenant} scope={scope} />
+      <OrganisationHero tenant={tenant} scope={scope} onEditIdentite={canEditIdentite ? () => setIdentiteOpen(true) : undefined} />
+      {canEditIdentite && (
+        <IdentiteEditModal tenant={tenant} isOpen={identiteOpen} onClose={() => setIdentiteOpen(false)} onSave={saveIdentite} />
+      )}
       <OrganisationScopeBanner scope={scope} isAuthenticated={isAuthenticated} canViewFiche={canViewFiche} />
 
       {tenant.description && (
@@ -104,6 +112,10 @@ const OrganisationDetailsPage: React.FC = () => {
           </p>
         </section>
       )}
+
+      {/* Extrait public : tout ce qu'un visiteur peut voir. L'administrateur
+          courant a déjà la fiche complète juste en dessous. */}
+      {!canViewFiche && fichePublique && <FichePubliqueCard fiche={fichePublique} />}
 
       {canViewFiche ? (
         ficheError ? (

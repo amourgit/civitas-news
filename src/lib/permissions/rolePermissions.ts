@@ -76,6 +76,7 @@ const ADMINISTRATEUR: Permission[] = [
   // Fiche de l'organisation — administrateur STRICT (comme le backend :
   // EstAdministrateurDuTenant), et seulement sur l'organisation courante
   // (voir organisationScope.ts). Le modérateur n'y a pas accès.
+  PERMISSIONS.ORGANISATION_IDENTITE_EDIT,
   PERMISSIONS.ORGANISATION_FICHE_VIEW,
   PERMISSIONS.ORGANISATION_FICHE_EDIT_IDENTITE,
   PERMISSIONS.ORGANISATION_FICHE_EDIT_COORDONNEES,

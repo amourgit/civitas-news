@@ -4,7 +4,7 @@
 // sensible ici : identique pour l'organisation courante et consultée.
 // ============================================================
 import React, { useState } from 'react';
-import { Building2, Copy, ExternalLink, CalendarDays } from 'lucide-react';
+import { Building2, Copy, ExternalLink, CalendarDays, Pencil } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import { Badge } from '../../../../components/ui/Badge';
 import { Button } from '../../../../components/ui/Button';
@@ -14,6 +14,8 @@ import type { OrganisationScope } from '../../../../lib/permissions/organisation
 interface Props {
   tenant: Tenant;
   scope: OrganisationScope;
+  /** Fourni UNIQUEMENT si l'utilisateur a ORGANISATION_IDENTITE_EDIT (organisation courante). */
+  onEditIdentite?: () => void;
 }
 
 export function tenantPublicUrl(tenant: Tenant): string | null {
@@ -21,7 +23,7 @@ export function tenantPublicUrl(tenant: Tenant): string | null {
   return tenant.sousDomaine ? `https://${tenant.sousDomaine}` : null;
 }
 
-export const OrganisationHero: React.FC<Props> = ({ tenant, scope }) => {
+export const OrganisationHero: React.FC<Props> = ({ tenant, scope, onEditIdentite }) => {
   const [copied, setCopied] = useState(false);
   const url = tenantPublicUrl(tenant);
   const since = tenant.createdAt ? new Date(tenant.createdAt).getFullYear() : null;
@@ -80,6 +82,11 @@ export const OrganisationHero: React.FC<Props> = ({ tenant, scope }) => {
           <Button variant="ghost" size="sm" icon={<Copy className="h-4 w-4" />} onClick={copy} disabled={!url}>
             {copied ? 'Lien copié' : 'Copier le lien'}
           </Button>
+          {onEditIdentite && (
+            <Button variant="secondary" size="sm" icon={<Pencil className="h-3.5 w-3.5" />} onClick={onEditIdentite}>
+              Modifier l’identité
+            </Button>
+          )}
         </div>
       </div>
     </section>

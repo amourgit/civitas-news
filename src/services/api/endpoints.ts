@@ -63,6 +63,20 @@ export const TENANTS_ENDPOINTS = {
    * enregistrer la fiche complétée dans le stepper de création.
    */
   informationsPrimaires: '/tenants/v1/informations-primaires/',
+  /**
+   * GET/PATCH -> identité PUBLIQUE (nom, description, logo) du TENANT
+   * COURANT -- singleton réservé à son administrateur (IsAccessTokenTenant
+   * + EstAdministrateurDuTenant). PATCH en JSON, ou multipart si un
+   * nouveau logo est envoyé ; `logo: null` supprime le logo.
+   */
+  identite: '/tenants/v1/identite/',
+  /**
+   * GET `<préfixe><sousDomaine>/` -> profil PUBLIC d'une organisation
+   * (identité de l'annuaire + `fichePublique`, liste blanche côté backend).
+   * Sans authentification : sert la consultation d'une organisation
+   * NON courante.
+   */
+  profilPublic: '/tenants/v1/profil-public/',
 } as const;
 
 export const DOMAIN_ENDPOINTS = {

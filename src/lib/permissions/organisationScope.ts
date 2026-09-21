@@ -22,6 +22,7 @@ export type OrganisationScope = 'courante' | 'consultee';
 
 /** Permissions qui n'existent que sur l'organisation courante. */
 export const ORGANISATION_SCOPED_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
+  PERMISSIONS.ORGANISATION_IDENTITE_EDIT,
   PERMISSIONS.ORGANISATION_FICHE_VIEW,
   PERMISSIONS.ORGANISATION_FICHE_EDIT_IDENTITE,
   PERMISSIONS.ORGANISATION_FICHE_EDIT_COORDONNEES,

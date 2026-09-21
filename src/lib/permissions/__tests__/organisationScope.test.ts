@@ -24,11 +24,13 @@ describe('canOnOrganisation', () => {
   it('accorde la fiche et son édition à l’administrateur sur l’organisation courante', () => {
     expect(canOnOrganisation(admin, PERMISSIONS.ORGANISATION_FICHE_VIEW, 'courante')).toBe(true);
     expect(canOnOrganisation(admin, PERMISSIONS.ORGANISATION_FICHE_EDIT_IDENTITE, 'courante')).toBe(true);
+    expect(canOnOrganisation(admin, PERMISSIONS.ORGANISATION_IDENTITE_EDIT, 'courante')).toBe(true);
   });
   it('refuse tout privilège d’administrateur sur une organisation simplement consultée', () => {
     expect(canOnOrganisation(admin, PERMISSIONS.ORGANISATION_FICHE_VIEW, 'consultee')).toBe(false);
     expect(canOnOrganisation(admin, PERMISSIONS.ORGANISATION_FICHE_EDIT_COORDONNEES, 'consultee')).toBe(false);
     expect(canOnOrganisation(admin, PERMISSIONS.ORGANISATION_VERIFICATION_VIEW, 'consultee')).toBe(false);
+    expect(canOnOrganisation(admin, PERMISSIONS.ORGANISATION_IDENTITE_EDIT, 'consultee')).toBe(false);
   });
   it('garde l’identité publique visible partout', () => {
     expect(canOnOrganisation(userWithRole('anonyme'), PERMISSIONS.ORGANISATION_VIEW_PUBLIC, 'consultee')).toBe(true);
@@ -36,6 +38,7 @@ describe('canOnOrganisation', () => {
   it('refuse la fiche aux rôles non administrateurs, même sur l’organisation courante', () => {
     for (const role of ['anonyme', 'etudiant', 'organisation', 'moderateur'] as const) {
       expect(canOnOrganisation(userWithRole(role), PERMISSIONS.ORGANISATION_FICHE_VIEW, 'courante')).toBe(false);
+      expect(canOnOrganisation(userWithRole(role), PERMISSIONS.ORGANISATION_IDENTITE_EDIT, 'courante')).toBe(false);
     }
   });
 });

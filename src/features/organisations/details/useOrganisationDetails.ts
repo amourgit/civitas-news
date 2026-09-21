@@ -12,11 +12,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   tenantsRepository,
-  type Tenant,
+  type TenantFichePublique,
+  type TenantIdentiteUpdatePayload,
   type TenantInformationsPrimaires,
   type TenantInformationsPrimairesEcriturePayload,
+  type TenantProfilPublic,
 } from '../../../services/api/repositories/tenants.repository';
-import { useTenantsStore } from '../../../store/tenants.store';
+import { switchTenant, useTenantsStore } from '../../../store/tenants.store';
 import { useAuthStore } from '../../../store/auth.store';
 import { PERMISSIONS, type Permission } from '../../../lib/permissions/permissions.catalog';
 import {
@@ -33,7 +35,7 @@ export function useOrganisationDetails(sousDomaine?: string) {
 
   const target = (sousDomaine ?? currentTenant?.domainHeaderValue ?? '').toLowerCase();
 
-  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [tenant, setTenant] = useState<TenantProfilPublic | null>(null);
   const [state, setState] = useState<OrganisationLoadState>('loading');
   const [fiche, setFiche] = useState<TenantInformationsPrimaires | null>(null);
   const [ficheError, setFicheError] = useState<string | null>(null);
@@ -56,8 +58,14 @@ export function useOrganisationDetails(sousDomaine?: string) {
     setState('loading');
     setFiche(null);
     setFicheError(null);
-    tenantsRepository
-      .getBySousDomaine(target)
+    // Profil public (identité + extrait public de la fiche) ; un domaine
+    // complet (VITE_TENANT_HOST) n'est pas un sous-domaine valide -> repli
+    // sur l'annuaire, qui sait aussi retrouver un tenant par son domaine.
+    const loadProfil = async (): Promise<TenantProfilPublic | null> => {
+      const profil = /^[a-z0-9-]+$/.test(target) ? await tenantsRepository.getProfilPublic(target) : null;
+      return profil ?? (await tenantsRepository.getBySousDomaine(target));
+    };
+    loadProfil()
       .then((found) => {
         if (cancelled) return;
         if (found) {
@@ -113,8 +121,26 @@ export function useOrganisationDetails(sousDomaine?: string) {
     [],
   );
 
+  /** Nom / description / logo -- la permission est revérifiée ICI, pas seulement au rendu du bouton. */
+  const saveIdentite = useCallback(
+    async (payload: TenantIdentiteUpdatePayload) => {
+      if (!can(PERMISSIONS.ORGANISATION_IDENTITE_EDIT)) throw new Error('Modification non autorisée.');
+      const updated = await tenantsRepository.updateIdentite(payload);
+      setTenant((previous) => ({ ...(previous ?? updated), ...updated }));
+      // Garde le libellé du sélecteur d'organisations à jour.
+      if (currentTenant) switchTenant({ domainHeaderValue: currentTenant.domainHeaderValue, name: updated.name });
+      return updated;
+    },
+    [can, currentTenant],
+  );
+
+  const fichePublique: TenantFichePublique | null = tenant?.fichePublique ?? null;
+
   return useMemo(
-    () => ({ tenant, state, scope, isCurrent: scope === 'courante', can, canViewFiche, fiche, ficheError, saveFiche, isHydrating }),
-    [tenant, state, scope, can, canViewFiche, fiche, ficheError, saveFiche, isHydrating],
+    () => ({
+      tenant, state, scope, isCurrent: scope === 'courante', can, canViewFiche, fiche, ficheError, fichePublique,
+      saveFiche, saveIdentite, isHydrating,
+    }),
+    [tenant, state, scope, can, canViewFiche, fiche, ficheError, fichePublique, saveFiche, saveIdentite, isHydrating],
   );
 }

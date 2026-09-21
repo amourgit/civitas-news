@@ -98,6 +98,7 @@ export const PERMISSIONS = {
   //   - FICHE_* / VERIFICATION_VIEW : fiche légale/administrative —
   //     portée COURANTE uniquement, administrateur uniquement.
   ORGANISATION_VIEW_PUBLIC: 'organisation:view:public',
+  ORGANISATION_IDENTITE_EDIT: 'organisation:identite:edit',
   ORGANISATION_FICHE_VIEW: 'organisation:fiche:view',
   ORGANISATION_FICHE_EDIT_IDENTITE: 'organisation:fiche:edit:identite',
   ORGANISATION_FICHE_EDIT_COORDONNEES: 'organisation:fiche:edit:coordonnees',

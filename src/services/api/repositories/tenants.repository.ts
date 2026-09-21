@@ -111,6 +111,40 @@ export const TenantSchema = z.object({
 });
 export type Tenant = z.infer<typeof TenantSchema>;
 
+/**
+ * Extrait PUBLIC de la fiche d'une organisation -- voir
+ * `TenantFichePubliqueSerializer` côté backend (liste blanche : aucun
+ * numéro légal, contact ni responsable).
+ */
+export const TenantFichePubliqueSchema = z.object({
+  raisonSociale: z.string().nullable().optional(),
+  sigle: z.string().nullable().optional(),
+  formeJuridique: z.string().nullable().optional(),
+  secteurActivite: z.string().nullable().optional(),
+  ville: z.string().nullable().optional(),
+  province: z.string().nullable().optional(),
+  pays: z.string().nullable().optional(),
+  siteWeb: z.string().nullable().optional(),
+  reseauxSociaux: z.record(z.string(), z.string()).optional(),
+  zoneCouverture: z.string().nullable().optional(),
+  descriptionActivites: z.string().nullable().optional(),
+  identiteVerifiee: z.boolean().optional(),
+});
+export type TenantFichePublique = z.infer<typeof TenantFichePubliqueSchema>;
+
+export const TenantProfilPublicSchema = TenantSchema.extend({
+  /** `null` tant que l'organisation n'a jamais renseigné sa fiche. */
+  fichePublique: TenantFichePubliqueSchema.nullable().optional(),
+});
+export type TenantProfilPublic = z.infer<typeof TenantProfilPublicSchema>;
+
+/** Modification de l'identité publique du tenant courant. `logo: null` = supprimer ; absent = inchangé. */
+export interface TenantIdentiteUpdatePayload {
+  name?: string;
+  description?: string;
+  logo?: File | null;
+}
+
 const TenantCreateResponseSchema = z.object({
   tenant: TenantSchema,
   domaine: z.string(),
@@ -153,10 +187,64 @@ export const tenantsRepository = {
   },
 
   /**
-   * Identité PUBLIQUE d'une organisation à partir de son sous-domaine,
-   * pour la page de détails d'une organisation consultée. Il n'existe
-   * pas (encore) d'endpoint « un seul tenant » : on filtre l'annuaire
-   * public. `null` si aucune organisation ne porte ce sous-domaine.
+   * GET /tenants/v1/profil-public/<sousDomaine>/ -- profil PUBLIC d'une
+   * organisation (identité + extrait public de sa fiche). `null` si elle
+   * n'existe pas ou est inactive (404). Réservé aux sous-domaines valides
+   * (lettres minuscules, chiffres, tirets) : un domaine complet doit
+   * passer par `getBySousDomaine`.
+   */
+  async getProfilPublic(sousDomaine: string): Promise<TenantProfilPublic | null> {
+    try {
+      const response = await http.get.get<TenantProfilPublic>({
+        endpoint: `${TENANTS_ENDPOINTS.profilPublic}${encodeURIComponent(sousDomaine.toLowerCase())}/`,
+        schema: TenantProfilPublicSchema,
+        requireAuth: false,
+      });
+      return response.data;
+    } catch (error) {
+      if ((error as { status?: number })?.status === 404) return null;
+      throw error;
+    }
+  },
+
+  /**
+   * PATCH /tenants/v1/identite/ -- nom, description et logo du tenant
+   * COURANT (administrateur uniquement, voir TENANTS_ENDPOINTS.identite).
+   * Multipart si un nouveau logo est fourni, sinon JSON (dont
+   * `logo: null` pour supprimer le logo). Même singleton `{id}` +
+   * `resourceId: ''` que `updateInformationsPrimaires`.
+   */
+  async updateIdentite(payload: TenantIdentiteUpdatePayload): Promise<Tenant> {
+    const endpoint = `${TENANTS_ENDPOINTS.identite}{id}`;
+    const { logo, ...scalarFields } = payload;
+    if (logo instanceof File) {
+      const response = await http.update.patchWithFiles<Tenant>({
+        endpoint,
+        resourceId: '',
+        files: [logo],
+        fieldName: 'logo',
+        additionalFields: scalarFields,
+        responseSchema: TenantSchema,
+        requireAuth: true,
+        timeout: 0,
+      });
+      return response.data;
+    }
+    const response = await http.update.patch<Omit<TenantIdentiteUpdatePayload, 'logo'> & { logo?: null }, Tenant>({
+      endpoint,
+      resourceId: '',
+      patches: logo === null ? { ...scalarFields, logo: null } : scalarFields,
+      responseSchema: TenantSchema,
+      requireAuth: true,
+    });
+    return response.data;
+  },
+
+  /**
+   * Repli de `getProfilPublic` : identité PUBLIQUE trouvée dans l'annuaire
+   * par sous-domaine OU par domaine complet (le tenant courant peut être
+   * identifié par son domaine, voir VITE_TENANT_HOST). Sans extrait de
+   * fiche. `null` si aucune organisation ne correspond.
    */
   async getBySousDomaine(sousDomaine: string): Promise<Tenant | null> {
     const tenants = await tenantsRepository.list();
