@@ -9,34 +9,18 @@
 // clubs... à l'intérieur d'UN tenant, voir useReferentiels) est un tout
 // autre concept, sans rapport ici.
 //
-// Carte réutilisée TELLE QUELLE (OrganisationCard.tsx, design/animations
-// copiés du composant fourni, non modifiés) : seule la fonction de
-// conversion Tenant -> Organisation ci-dessous adapte les données à ses
-// champs attendus (organisation.id doit être une chaîne : String(tenant.id)).
+// Carte (OrganisationCard.tsx) intégralement remplacée par le design
+// glassmorphism fourni : elle consomme directement un Tenant, plus
+// besoin d'adapter les champs vers un type Organisation intermédiaire.
 // ============================================================
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Plus } from 'lucide-react';
 import { tenantsRepository, type Tenant } from '../../services/api/repositories/tenants.repository';
-import type { Organisation } from '../../types/global.types';
 import { Skeleton } from '../ui/Skeleton';
 import { Button } from '../ui/Button';
 import { DragCarousel } from '../ui/DragCarousel';
 import { OrganisationCard } from './organisations/OrganisationCard';
-
-/** Un tenant de l'annuaire public, présenté à OrganisationCard comme une
- * Organisation -- seuls les champs que la carte lit réellement sont
- * renseignés (voir OrganisationCard.tsx : logo/nom/type/id/creeLe/description). */
-function tenantVersOrganisation(tenant: Tenant): Organisation {
-  return {
-    id: String(tenant.id),
-    nom: tenant.name,
-    logo: tenant.logo ?? null,
-    type: 'Organisation',
-    description: tenant.description ?? '',
-    creeLe: tenant.createdAt,
-  };
-}
 
 export const OrganisationsSection: React.FC = () => {
   const navigate = useNavigate();
@@ -63,8 +47,6 @@ export const OrganisationsSection: React.FC = () => {
       cancelled = true;
     };
   }, []);
-
-  const organisations = tenants.map(tenantVersOrganisation);
 
   return (
     <div className="w-full my-4 space-y-3">
@@ -94,18 +76,17 @@ export const OrganisationsSection: React.FC = () => {
         </Button>
       </div>
 
-      {/* Contenu : cartes organisations, défilement horizontal (cartes
-          riches en hauteur -- panneaux dépliants -- un carrousel se
-          prête mieux qu'une grille). Le titre ci-dessus reste TOUJOURS
-          affiché, même sans donnée/en erreur -- la section ne doit
-          jamais disparaître entièrement en silence. */}
+      {/* Contenu : cartes organisations, défilement horizontal. Le
+          titre ci-dessus reste TOUJOURS affiché, même sans donnée/en
+          erreur -- la section ne doit jamais disparaître entièrement
+          en silence. */}
       {isLoading ? (
-        <div className="flex items-start gap-4 overflow-x-auto overflow-y-visible pt-1 pb-8 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
+        <div className="flex items-start gap-4 overflow-x-auto overflow-y-visible pt-1 pb-14 -mx-1 px-1 snap-x snap-mandatory no-scrollbar">
           <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
           <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
           <Skeleton variant="card" height={420} className="w-[320px] max-w-[85vw] shrink-0 rounded-3xl" />
         </div>
-      ) : organisations.length === 0 ? (
+      ) : tenants.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 dark:border-white/10 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
           {error ?? 'Aucune organisation pour le moment.'}
         </div>
@@ -115,19 +96,18 @@ export const OrganisationsSection: React.FC = () => {
         // simple scroll natif. items-start sur la piste : un conteneur
         // flex étire sinon ses enfants à la hauteur du plus grand
         // (align-items: stretch) -- c'est la carte qui doit mener la
-        // taille, pas la section. pt-1/pb-8 (au lieu de pb-2) : filet
-        // de sécurité pour que le glow/box-shadow de chaque carte (voir
-        // OrganisationCard.css : box-shadow de .content, qui déborde
-        // visuellement de ~30-40px sous la carte) ait toujours la place
-        // de se dessiner en entier -- overflow-y-visible sur le
-        // viewport joue le même rôle que dans l'ancien rail.
+        // taille, pas la section. pb-14 : filet de sécurité pour que le
+        // glow citron-vert + la bannière flottante sous chaque carte
+        // (voir OrganisationCard.tsx) aient toujours la place de se
+        // dessiner en entier -- overflow-y-visible sur le viewport joue
+        // le même rôle.
         <DragCarousel
           ariaLabel="Organisations actives sur la plateforme"
           viewportClassName="-mx-1 px-1"
-          trackClassName="items-start gap-4 pt-1 pb-8"
+          trackClassName="items-start gap-4 pt-1 pb-14"
         >
-          {organisations.map((organisation) => (
-            <OrganisationCard key={organisation.id} organisation={organisation} />
+          {tenants.map((tenant) => (
+            <OrganisationCard key={tenant.id} tenant={tenant} />
           ))}
         </DragCarousel>
       )}
