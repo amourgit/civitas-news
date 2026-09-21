@@ -15,6 +15,8 @@ const ANONYME: Permission[] = [
   // voir referentiels/api/v1/views.py) : nécessaire ne serait-ce que
   // pour peupler les sélecteurs du formulaire de création de News.
   PERMISSIONS.REFERENTIEL_VIEW,
+  // Identité publique d'une organisation (annuaire GET /tenants/v1/).
+  PERMISSIONS.ORGANISATION_VIEW_PUBLIC,
 ];
 
 const ETUDIANT: Permission[] = [
@@ -71,6 +73,15 @@ const ADMINISTRATEUR: Permission[] = [
   PERMISSIONS.ADMIN_UTILISATEUR_EDIT_RATTACHEMENT,
   PERMISSIONS.ADMIN_UTILISATEUR_EDIT_STATUT,
   PERMISSIONS.ADMIN_QUICK_NEWS_CREATE,
+  // Fiche de l'organisation — administrateur STRICT (comme le backend :
+  // EstAdministrateurDuTenant), et seulement sur l'organisation courante
+  // (voir organisationScope.ts). Le modérateur n'y a pas accès.
+  PERMISSIONS.ORGANISATION_FICHE_VIEW,
+  PERMISSIONS.ORGANISATION_FICHE_EDIT_IDENTITE,
+  PERMISSIONS.ORGANISATION_FICHE_EDIT_COORDONNEES,
+  PERMISSIONS.ORGANISATION_FICHE_EDIT_RESPONSABLES,
+  PERMISSIONS.ORGANISATION_FICHE_EDIT_ACTIVITES,
+  PERMISSIONS.ORGANISATION_VERIFICATION_VIEW,
 ];
 
 export const ROLE_PERMISSIONS: Record<RoleUtilisateur, Permission[]> = {

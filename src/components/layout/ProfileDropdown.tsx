@@ -56,12 +56,14 @@ import {
   HelpCircle,
   Users,
   LogOut,
+  Building2,
 } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
 import { ConfirmDialog } from '../backoffice/ConfirmDialog';
 import { useAuthStore } from '../../store/auth.store';
 import { useUiStore } from '../../store/ui.store';
+import { useTenantsStore } from '../../store/tenants.store';
 import { toast } from '../../hooks/useToast';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -131,6 +133,7 @@ export const ProfileDropdown: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuthStore();
   const { theme, toggleTheme } = useUiStore();
+  const { currentTenant } = useTenantsStore();
 
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<Coords>({ top: 0, left: 0, maxHeight: 420 });
@@ -313,6 +316,9 @@ export const ProfileDropdown: React.FC = () => {
                       setIsOpen(false);
                     }}
                   />
+                  {currentTenant && (
+                    <MenuRow icon={<Building2 />} label="Mon organisation" onSelect={() => goTo('/organisation')} />
+                  )}
                   <MenuRow icon={<Bell />} label="Notifications" onSelect={() => goTo('/notifications')} />
                   <MenuRow icon={<Settings />} label="Paramètres" onSelect={() => goTo('/parametres')} />
 

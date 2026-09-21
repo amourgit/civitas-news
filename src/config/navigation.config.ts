@@ -17,10 +17,11 @@
 // ============================================================
 
 import type { ComponentType } from 'react';
-import { Home, Layers, Search, Vote, Video, BarChart3, User } from 'lucide-react';
+import { Home, Layers, Search, Vote, Video, BarChart3, User, Building2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { usePermissions } from '../lib/permissions/usePermissions';
 import { PERMISSIONS, type Permission } from '../lib/permissions/permissions.catalog';
+import { useTenantsStore } from '../store/tenants.store';
 
 export interface NavDestination {
   id: string;
@@ -37,6 +38,9 @@ export interface NavDestination {
    *  Absente = visible par tous, y compris un visiteur anonyme (voir
    *  ANONYME dans rolePermissions.ts). */
   permission?: Permission;
+  /** Visible uniquement s'il existe une organisation COURANTE (voir
+   *  store/tenants.store.ts) -- ex : « Mon organisation ». */
+  requiresTenant?: boolean;
   isActive: (pathname: string) => boolean;
 }
 
@@ -97,6 +101,18 @@ export const NAV_DESTINATIONS: NavDestination[] = [
     isActive: (pathname) => pathname.startsWith('/statistiques'),
   },
   {
+    id: 'organisation',
+    label: 'Organisation',
+    icon: Building2,
+    color: 'var(--civitas-teal)',
+    path: '/organisation',
+    // Sans permission : tout membre (ou visiteur) d'une organisation
+    // courante peut voir son identité publique ; la fiche
+    // administrative reste, elle, gardée par permission sur la page.
+    requiresTenant: true,
+    isActive: (pathname) => pathname === '/organisation',
+  },
+  {
     id: 'profil',
     label: 'Profil',
     icon: User,
@@ -113,5 +129,9 @@ export const NAV_DESTINATIONS: NavDestination[] = [
  */
 export function useNavDestinations(): NavDestination[] {
   const { can } = usePermissions();
-  return NAV_DESTINATIONS.filter((destination) => !destination.permission || can(destination.permission));
+  const { currentTenant } = useTenantsStore();
+  return NAV_DESTINATIONS.filter(
+    (destination) =>
+      (!destination.permission || can(destination.permission)) && (!destination.requiresTenant || !!currentTenant),
+  );
 }

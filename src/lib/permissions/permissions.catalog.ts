@@ -85,6 +85,25 @@ export const PERMISSIONS = {
   BACKOFFICE_LIEN_MANAGE: 'backoffice:lien:manage',
   BACKOFFICE_NOTIFICATION_VIEW: 'backoffice:notification:view',
   BACKOFFICE_SIGNALEMENT_MANAGE: 'backoffice:signalement:manage',
+
+  // Organisations (tenants) — page de détails. À la différence des
+  // permissions ci-dessus, celles marquées « portée courante » ne valent
+  // QUE pour l'organisation dans laquelle la session est connectée (voir
+  // lib/permissions/organisationScope.ts) : être administrateur dans A
+  // n'accorde strictement rien sur B, une organisation que l'on ne fait
+  // que consulter. Le backend applique la même règle (IsAccessTokenTenant
+  // + EstAdministrateurDuTenant sur /tenants/v1/informations-primaires/).
+  //   - PUBLIC : identité publique de l'annuaire (nom, logo, description,
+  //     lien) — toutes portées, tous visiteurs.
+  //   - FICHE_* / VERIFICATION_VIEW : fiche légale/administrative —
+  //     portée COURANTE uniquement, administrateur uniquement.
+  ORGANISATION_VIEW_PUBLIC: 'organisation:view:public',
+  ORGANISATION_FICHE_VIEW: 'organisation:fiche:view',
+  ORGANISATION_FICHE_EDIT_IDENTITE: 'organisation:fiche:edit:identite',
+  ORGANISATION_FICHE_EDIT_COORDONNEES: 'organisation:fiche:edit:coordonnees',
+  ORGANISATION_FICHE_EDIT_RESPONSABLES: 'organisation:fiche:edit:responsables',
+  ORGANISATION_FICHE_EDIT_ACTIVITES: 'organisation:fiche:edit:activites',
+  ORGANISATION_VERIFICATION_VIEW: 'organisation:verification:view',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -31,6 +31,7 @@ const StatistiquesPage = lazy(() => import('./pages/StatistiquesPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const ProfilPage = lazy(() => import('./pages/ProfilPage'));
 const CreerOrganisationPage = lazy(() => import('./pages/CreerOrganisationPage'));
+const OrganisationDetailsPage = lazy(() => import('./pages/OrganisationDetailsPage'));
 const ParametresPage = lazy(() => import('./pages/ParametresPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 const BackofficeListPage = lazy(() => import('./pages/admin/BackofficeListPage'));
@@ -87,6 +88,14 @@ export function App() {
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/profil" element={<ProfilPage />} />
                   <Route path="/parametres" element={<ParametresPage />} />
+                  {/* Détails d'organisation (voir OrganisationDetailsPage.tsx) :
+                      /organisation = organisation COURANTE (privilèges selon
+                      le rôle) ; /organisations/:sousDomaine = organisation
+                      simplement CONSULTÉE (identité publique uniquement).
+                      "/organisations/creer" (route sœur plus bas) reste
+                      prioritaire : segment statique > paramètre. */}
+                  <Route path="/organisation" element={<OrganisationDetailsPage />} />
+                  <Route path="/organisations/:sousDomaine" element={<OrganisationDetailsPage />} />
                   {/* Backoffice « à la Django admin » — voir
                       src/components/backoffice/. Une seule paire de
                       pages génériques (BackofficeListPage /

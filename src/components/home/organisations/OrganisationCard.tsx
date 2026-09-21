@@ -31,10 +31,13 @@
 // version, façon "carte artiste").
 // ============================================================
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Building2, Clock, Copy, ExternalLink, Zap } from 'lucide-react';
+import { Building2, Clock, Copy, ExternalLink, Info, Zap } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import type { Tenant } from '../../../services/api/repositories/tenants.repository';
+import { useTenantsStore } from '../../../store/tenants.store';
+import { resolveOrganisationScope } from '../../../lib/permissions/organisationScope';
 
 /** Tronque un texte à `max` caractères (ellipse simple, suffisant pour
  * une bannière d'une ligne). */
@@ -64,6 +67,13 @@ const OrganisationLogo: React.FC<{ tenant: Tenant }> = ({ tenant }) =>
 
 export const OrganisationCard: React.FC<{ tenant: Tenant }> = ({ tenant }) => {
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
+  const { currentTenant } = useTenantsStore();
+  // Courante -> /organisation (privilèges selon le rôle) ; sinon simple
+  // consultation -> /organisations/:sousDomaine (identité publique seule).
+  // Voir pages/OrganisationDetailsPage.tsx.
+  const isCurrent = resolveOrganisationScope(tenant, currentTenant) === 'courante';
+  const openDetails = () => navigate(isCurrent ? '/organisation' : `/organisations/${tenant.sousDomaine}`);
 
   const publicUrl = tenant.domain
     ? `https://${tenant.domain}`
@@ -117,7 +127,7 @@ export const OrganisationCard: React.FC<{ tenant: Tenant }> = ({ tenant }) => {
           <div className="mb-6 flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400">
             <div className="flex items-center gap-2">
               <span className="inline-block h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-lime-500" />
-              <span className="select-none">Organisation active</span>
+              <span className="select-none">{isCurrent ? 'Votre organisation' : 'Organisation active'}</span>
             </div>
             {creationYear && (
               <div className="flex items-center gap-2 opacity-80">
@@ -167,6 +177,18 @@ export const OrganisationCard: React.FC<{ tenant: Tenant }> = ({ tenant }) => {
               )}
             >
               <Copy className="h-4 w-4 shrink-0" /> {copied ? 'Copié' : 'Copier le lien'}
+            </button>
+
+            <button
+              type="button"
+              onClick={openDetails}
+              aria-label={`Détails de ${tenant.name}`}
+              className={cn(
+                'flex h-12 items-center justify-center gap-3 rounded-2xl sm:col-span-2',
+                'bg-[#5B4DFF] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#4a3ee0]',
+              )}
+            >
+              <Info className="h-4 w-4 shrink-0" /> Détails
             </button>
           </div>
         </div>

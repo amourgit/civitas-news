@@ -9,3 +9,9 @@ export { ROLE_PERMISSIONS } from './rolePermissions';
 export { hasPermission, hasAnyPermission, hasAllPermissions, canOnResource } from './hasPermission';
 export { usePermissions } from './usePermissions';
 export { Can } from './Can';
+export {
+  canOnOrganisation,
+  resolveOrganisationScope,
+  ORGANISATION_SCOPED_PERMISSIONS,
+  type OrganisationScope,
+} from './organisationScope';

@@ -153,6 +153,18 @@ export const tenantsRepository = {
   },
 
   /**
+   * Identité PUBLIQUE d'une organisation à partir de son sous-domaine,
+   * pour la page de détails d'une organisation consultée. Il n'existe
+   * pas (encore) d'endpoint « un seul tenant » : on filtre l'annuaire
+   * public. `null` si aucune organisation ne porte ce sous-domaine.
+   */
+  async getBySousDomaine(sousDomaine: string): Promise<Tenant | null> {
+    const tenants = await tenantsRepository.list();
+    const wanted = sousDomaine.toLowerCase();
+    return tenants.find((t) => t.sousDomaine.toLowerCase() === wanted || t.domain?.toLowerCase() === wanted) ?? null;
+  },
+
+  /**
    * GET /tenants/v1/publics/ -- tenants is_public=true, destinés à être
    * ajoutés (en plus du tenant courant) dans X-Tenant-Domain sur CHAQUE
    * requête GET -- voir store/tenants.store.ts::getTenantHeaderListValue,
